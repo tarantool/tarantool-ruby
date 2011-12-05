@@ -18,13 +18,14 @@ require 'tarantool/record'
 
 # Usage
 
-Before all requests you must configure client:
+To be able to send requests to the server, you must
+configure and establish a client connection:
 
 ```ruby
 Tarantool.configure host: 'locahost', port: 33013, space_no: 0
 ```
 
-Low level part of client can work in two mode: EM deferrables and EM-Synchrony.
+The driver internals can work in two modes: EM deferrables and EM-Synchrony.
 
 EM deferrables:
 
@@ -41,7 +42,7 @@ req.errback do |err|
 end
 ```
 
-Synchrony mode:
+'Synchrony' mode:
 
 ```ruby
 require 'tarantool/synchrony'
@@ -51,7 +52,9 @@ res = Tarantool.select 'prepor'
 puts "Name: #{res.tuple[1].to_s}; Email: #{res.tuple[2].to_s}"
 ```
 
-High level part of client implements ActiveModel API: Callbacks, Validations, Serialization, Dirty. Its autocast types, choose right index for query and something more. So code looks like this:
+The driver itself provides ActiveModel API: Callbacks, Validations, Serialization, Dirty. 
+Type casting is automatic, based on the index type chosen to process the query.
+For example:
 
 ```ruby
 require 'tarantool/record'
@@ -104,7 +107,10 @@ User.find('prepor').info['bio'] # => 'hi!'
 user.destroy
 ```
 
-On record definition step, fields order are important, in that order they will be store in Tarantool. By default primary key is first field. `index` method just mapping to your Tarantool schema, client doesn't modify schema for you.
+When definining a record, field order is important: this is the order of fields
+in the tuple stored by Tarantool. By default, the primary key is field 0. 
+
+`index` method just mapping to your Tarantool schema, client doesn't modify schema for you.
 
 # TODO
 
