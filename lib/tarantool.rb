@@ -1,0 +1,44 @@
+# -*- coding: utf-8 -*-
+require 'eventmachine'
+require 'em-synchrony'
+
+module Tarantool
+  VERSION = '0.1'
+  extend self
+  require 'tarantool/space'
+  require 'tarantool/connection'
+  require 'tarantool/requests'
+  require 'tarantool/response'
+  require 'tarantool/exceptions'
+  require 'tarantool/serializers'
+
+  def singleton_space
+    @singleton_space ||= Space.new connection, @config[:space_no]
+  end
+
+  def connection    
+    @connection ||= begin
+      raise "Tarantool.configure before connect" unless @config
+      EM.connect @config[:host], @config[:port], Tarantool::Connection
+    end
+  end
+
+  def space(no = nil)
+    Space.new connection, no || @config[:space_no]
+  end
+
+  def configure(config = {})
+    @config = config
+  end
+
+  def hexdump(string)
+    string.unpack('C*').map{ |c| "%02x" % c }.join(' ')
+  end
+
+  [:select, :update, :insert, :delete, :call, :ping].each do |v|
+    define_method v do |*params|
+      singleton_space.send v, *params
+    end
+  end
+
+end
