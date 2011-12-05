@@ -1,6 +1,6 @@
 # About
 
-Its asynchronyous EventMachine ruby client for [Tarantool Key-Value Storage](github.com/mailru/tarantool).
+Its asynchronyous EventMachine ruby client for [Tarantool Key-Value Storage](http://github.com/mailru/tarantool).
 
 # Install
 
