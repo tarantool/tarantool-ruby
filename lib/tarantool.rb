@@ -23,11 +23,17 @@ module Tarantool
     end
   end
 
+  def reset_connection
+    @connection = nil
+    @singleton_space = nil
+  end
+
   def space(no = nil)
     Space.new connection, no || @config[:space_no]
   end
 
   def configure(config = {})
+    EM.add_shutdown_hook { reset_connection }
     @config = config
   end
 
