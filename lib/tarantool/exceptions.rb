@@ -8,5 +8,4 @@ module Tarantool
   class UnexpectedResponse < TarantoolError; end
   class UndefinedSpace < TarantoolError; end
   class ValueError < TarantoolError; end
-  class ConnectionTimeOut < TarantoolError; end
 end

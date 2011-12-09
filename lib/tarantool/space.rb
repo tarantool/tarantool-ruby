@@ -33,8 +33,7 @@ module Tarantool
     end
 
     def request(cls, args)
-      df = cls.new(self, *args).perform
-      # df.timeout( 1 )
+      cls.new(self, *args).perform
     end
   end
 end
