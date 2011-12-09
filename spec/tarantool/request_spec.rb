@@ -59,6 +59,10 @@ describe Tarantool::Request do
           lambda { Tarantool.insert 100, 'yo' }.must_raise(Tarantool::BadReturnCode)
         end
       end
+
+      # it "should raise timeout_exception on select" do
+      #   Tarantool.call proc_name: 'box.fiber.sleep', args: ['4']
+      # end
     end
 
     describe "select" do
@@ -109,6 +113,5 @@ describe Tarantool::Request do
         res.must_be_kind_of Numeric
       end
     end
-
   end
 end

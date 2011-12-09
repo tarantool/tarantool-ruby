@@ -32,8 +32,9 @@ module Tarantool
       request Requests::Ping, args
     end
 
-    def request(cls, args)      
-      cls.new(self, *args).perform
+    def request(cls, args)
+      df = cls.new(self, *args).perform
+      # df.timeout( 1 )
     end
   end
 end

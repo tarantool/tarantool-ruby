@@ -76,7 +76,7 @@ module Tarantool
       if return_code == 0
         succeed Response.new(data[4, data.size], response_params)
       else
-        msg = data[4, data.size].unpack('a*')
+        msg = data[4, data.size].unpack('A*')
         fail BadReturnCode.new("Error code #{return_code}: #{msg}")
       end
     end
