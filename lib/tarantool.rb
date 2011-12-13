@@ -3,7 +3,7 @@ require 'eventmachine'
 require 'em-synchrony'
 
 module Tarantool
-  VERSION = '0.1'
+  VERSION = '0.1.1'
   extend self
   require 'tarantool/space'
   require 'tarantool/connection'
