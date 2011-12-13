@@ -28,7 +28,7 @@ module Tarantool
     end
 
     def receive_body(data)
-      clb = waiting_requests[@request_id]
+      clb = waiting_requests.delete @request_id
       raise UnexpectedResponse.new("For request id #{request_id}") unless clb
       clb.call data
     end
