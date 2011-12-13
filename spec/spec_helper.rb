@@ -10,7 +10,7 @@ require 'rr'
 
 require 'tarantool/synchrony'
 
-config = { host: '192.168.127.128', port: 33013, space_no: 0 }
+config = { host: '127.0.0.1', port: 33013, space_no: 0 }
 
 Tarantool.configure config
 
