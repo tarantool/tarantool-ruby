@@ -6,12 +6,12 @@ module Tarantool
     header_size 12
 
     def next_request_id
-      @request_id ||= 0
-      @request_id += 1
-      if @request_id > 0xffffffff
-        @request_id = 0
+      @next_request_id ||= 0
+      @next_request_id += 1
+      if @next_request_id > 0xffffffff
+        @next_request_id = 0
       end
-      @request_id
+      @next_request_id
     end
 
     def connection_completed
@@ -29,7 +29,7 @@ module Tarantool
 
     def receive_body(data)
       clb = waiting_requests.delete @request_id
-      raise UnexpectedResponse.new("For request id #{request_id}") unless clb
+      raise UnexpectedResponse.new("For request id #{@request_id}") unless clb
       clb.call data
     end
     # end FixedHeaderAndBody API
