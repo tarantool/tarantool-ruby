@@ -13,10 +13,10 @@ module Tarantool
   require 'tarantool/serializers'
 
   def singleton_space
-    @singleton_space ||= Space.new connection, @config[:space_no]
+    @singleton_space ||= space
   end
 
-  def connection    
+  def connection
     @connection ||= begin
       raise "Tarantool.configure before connect" unless @config
       EM.connect @config[:host], @config[:port], Tarantool::Connection
