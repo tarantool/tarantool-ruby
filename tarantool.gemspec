@@ -20,9 +20,9 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--charset=UTF-8"]
 
   s.add_dependency('activemodel', [">= 3.1", "< 4.0"])
-  # I suppose that there dependencies are optional, isn't it?
-  s.add_development_dependency('eventmachine', [">= 1.0.0.beta.4", "< 2.0.0"])
-  s.add_development_dependency('em-synchrony', [">= 1.0.0", "< 2.0"])
+  # TODO: Remove there dependencies to make 'em optional
+  s.add_dependency('eventmachine', [">= 1.0.0.beta.4", "< 2.0.0"])
+  s.add_dependency('em-synchrony', [">= 1.0.0", "< 2.0"])
 
   # = MANIFEST =
   s.executables = `git ls-files -- bin/*`.split("\n").map { |f| File.basename(f) }
