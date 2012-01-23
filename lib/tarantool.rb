@@ -12,14 +12,16 @@ module Tarantool
   require 'tarantool/exceptions'
   require 'tarantool/serializers'
 
+
+  attr_reader :config
   def singleton_space
     @singleton_space ||= space
   end
 
-  def connection
+  def connection(c = config)
     @connection ||= begin
-      raise "Tarantool.configure before connect" unless @config
-      EM.connect @config[:host], @config[:port], Tarantool::Connection
+      raise "Tarantool.configure before connect" unless c
+      EM.connect c[:host], c[:port], Tarantool::Connection
     end
   end
 
@@ -28,8 +30,8 @@ module Tarantool
     @singleton_space = nil
   end
 
-  def space(no = nil)
-    Space.new connection, no || @config[:space_no]
+  def space(no = nil, conn = connection)
+    Space.new conn, no || @config[:space_no]
   end
 
   def configure(config = {})
