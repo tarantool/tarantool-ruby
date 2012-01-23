@@ -1,10 +1,9 @@
 PATH
   remote: .
   specs:
-    tarantool (0.1)
+    tarantool (0.1.1)
       activemodel (>= 3.1, < 4.0)
-      em-synchrony (>= 1.0.0, < 2.0)
-      eventmachine (>= 1.0.0.beta.4, < 2.0.0)
+      iproto (>= 0.1)
 
 GEM
   remote: http://rubygems.org/
@@ -24,6 +23,7 @@ GEM
       eventmachine (>= 1.0.0.beta.1)
     eventmachine (1.0.0.beta.4)
     i18n (0.6.0)
+    iproto (0.1)
     linecache19 (0.5.12)
       ruby_core_source (>= 0.1.4)
     multi_json (1.0.3)
@@ -48,7 +48,6 @@ DEPENDENCIES
   bson
   bson_ext
   em-synchrony
-  eventmachine
   rr
   ruby-debug19
   tarantool!

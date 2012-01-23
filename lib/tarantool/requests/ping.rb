@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Requests
     class Ping < Request
       request_type :ping
@@ -9,7 +9,7 @@ module Tarantool
       end
 
       def make_response(data)
-        succeed(Time.now - @start_time)
+        Time.now - @start_time
       end
     end
   end

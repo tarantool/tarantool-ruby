@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Requests
     class Select < Request
       request_type :select

@@ -5,11 +5,16 @@ require 'yajl'
 require 'tarantool/serializers/bson'
 describe Tarantool::Record do
   include Helpers::Truncate
-  before do
-    Tarantool.singleton_space.space_no = 0
+
+  def space
+    @space ||= DB.space 0
   end
+
   let(:user_class) do
     Class.new(Tarantool::Record) do
+      set_tarantool DB
+      set_space_no 0
+
       def self.name # For naming
         "User"
       end

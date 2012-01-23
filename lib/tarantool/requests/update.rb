@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Requests
     class Update < Request
       request_type :update

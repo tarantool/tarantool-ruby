@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Requests
     class Call < Request
       request_type :call

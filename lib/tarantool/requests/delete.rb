@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Requests
     class Delete < Request
       request_type :delete

@@ -4,18 +4,15 @@ Bundler.setup
 
 require 'tarantool'
 
-EM.run do
-  Tarantool.configure host: 'localhost', port: 33013, space_no: 0
-  req = Tarantool.insert 'prepor', 'Andrew', 'ceo@prepor.ru'
-  req.callback do
-    req = Tarantool.select 'prepor'
-    req.callback do |res|
-      puts "Name: #{res.tuple[1].to_s}; Email: #{res.tuple[2].to_s}"
-      EM.stop
-    end
-  end
-  req.errback do |err|
-    puts "Error while insert: #{err}"
+require 'em-synchrony'
+DB = Tarantool.new host: 'localhost', port: 33013
+space = DB.space 0
+EM.synchrony do
+  Fiber.new do
+    space.insert 'prepor', 'Andrew', 'ceo@prepor.ru'
+    res = space.select 'prepor'
+    puts "Name: #{res.tuple[1].to_s}; Email: #{res.tuple[2].to_s}"
+    space.delete 'prepor'
     EM.stop
-  end
+  end.resume
 end

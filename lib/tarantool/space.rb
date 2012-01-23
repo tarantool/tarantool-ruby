@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   class Space
     attr_accessor :space_no
     attr_reader :connection

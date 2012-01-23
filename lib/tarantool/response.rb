@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   class Field
     attr_reader :data
     def initialize(data)

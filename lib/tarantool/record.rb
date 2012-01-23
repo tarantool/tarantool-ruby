@@ -1,6 +1,6 @@
 require 'active_model'
-require 'tarantool/synchrony'
-module Tarantool
+require 'tarantool'
+class Tarantool
   class Select
     include Enumerable
     attr_reader :record
@@ -13,7 +13,7 @@ module Tarantool
     end
 
     def each(&blk)
-      res = Tarantool.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
+      res = record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
       res.each do |tuple|
         blk.call record.from_server(tuple)
       end
@@ -114,10 +114,16 @@ module Tarantool
     self.indexes = []
 
     class_attribute :space_no
-    define_attr_method :space_no do
-      original_space_no || 0
-    end
+    class_attribute :tarantool
     class << self
+      def set_space_no(val)
+        self.space_no = val
+      end
+
+      def set_tarantool(val)
+        self.tarantool = val
+      end
+
       def field(name, type, params = {})
         define_attribute_method name
         self.fields = fields.merge name => { type: type, field_no: fields.size, params: params }
@@ -173,7 +179,7 @@ module Tarantool
       end
 
       def space
-        @space ||= Tarantool.space space_no
+        @space ||= tarantool.space(space_no)
       end
 
       def tuple_to_hash(tuple)

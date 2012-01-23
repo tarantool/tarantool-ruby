@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   require 'tarantool/request'
   module Requests
     REQUEST_TYPES = {

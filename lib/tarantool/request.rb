@@ -1,6 +1,5 @@
-module Tarantool
+class Tarantool
   class Request
-    include EM::Deferrable
 
     class << self
       def request_type(name = nil)
@@ -48,8 +47,8 @@ module Tarantool
     end
 
     def perform
-      send_packet(make_packet(make_body))
-      self
+      data = connection.send_packet request_id, make_packet(make_body)
+      make_response data
     end
 
     def parse_args
@@ -65,19 +64,13 @@ module Tarantool
       body
     end
 
-    def send_packet(packet)
-      connection.send_packet request_id, packet do |data|
-        make_response data
-      end
-    end
-
     def make_response(data)
       return_code,  = data[0,4].unpack('L')
       if return_code == 0
-        succeed Response.new(data[4, data.size], response_params)
+        Response.new(data[4, data.size], response_params)
       else
         msg = data[4, data.size].unpack('A*')
-        fail BadReturnCode.new("Error code #{return_code}: #{msg}")
+        raise BadReturnCode.new("Error code #{return_code}: #{msg}")
       end
     end
 

@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Serializers
     class Integer
       Serializers::MAP[:integer] = self

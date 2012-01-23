@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Serializers
     class String
       Serializers::MAP[:string] = self

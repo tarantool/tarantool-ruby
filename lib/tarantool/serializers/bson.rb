@@ -1,5 +1,5 @@
 require 'bson'
-module Tarantool
+class Tarantool
   module Serializers
     class BSON
       Serializers::MAP[:bson] = self

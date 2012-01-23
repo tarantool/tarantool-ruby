@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Serializers
     MAP = {}
     %w{string integer}.each do |v|

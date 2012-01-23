@@ -1,4 +1,4 @@
-module Tarantool
+class Tarantool
   module Requests
     class Insert < Request
       request_type :insert
