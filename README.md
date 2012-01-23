@@ -38,15 +38,14 @@ To use EventMachine pass type: em in options:
 
 ```ruby
 require 'em-synchrony'
-DB = Tarantool.new host: 'locahost', port: 33013
-space = DB.space 0
+DB = Tarantool.new host: 'locahost', port: 33013, type: :em
 EM.synchrony do
-  Fiber.new do
-    space.insert 'prepor', 'Andrew', 'ceo@prepor.ru'
-    res = space.select 'prepor'
-    puts "Name: #{res.tuple[1].to_s}; Email: #{res.tuple[2].to_s}"
-    space.delete 'prepor'
-  end.resume
+  space = DB.space 0
+  space.insert 'prepor', 'Andrew', 'ceo@prepor.ru'
+  res = space.select 'prepor'
+  puts "Name: #{res.tuple[1].to_s}; Email: #{res.tuple[2].to_s}"
+  space.delete 'prepor'
+  EM.stop
 end
 ```
 

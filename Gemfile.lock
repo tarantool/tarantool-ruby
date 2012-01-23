@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    tarantool (0.1.1)
+    tarantool (0.2)
       activemodel (>= 3.1, < 4.0)
       iproto (>= 0.1)
 
