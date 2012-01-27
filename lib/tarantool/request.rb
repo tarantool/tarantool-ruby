@@ -47,7 +47,7 @@ class Tarantool
     end
 
     def perform
-      data = connection.send_packet request_id, make_packet(make_body)
+      data = connection.send_request self.class.request_type, make_body
       make_response data
     end
 
@@ -55,17 +55,8 @@ class Tarantool
       
     end
 
-    def request_id
-      @request_id ||= connection.next_request_id
-    end
-
-    def make_packet(body)
-      [self.class.request_type, body.size, request_id].pack('LLL') +
-      body
-    end
-
     def make_response(data)
-      return_code,  = data[0,4].unpack('L')
+      return_code, = data[0,4].unpack('L')
       if return_code == 0
         Response.new(data[4, data.size], response_params)
       else

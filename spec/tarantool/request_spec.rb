@@ -31,17 +31,6 @@ describe Tarantool::Request do
     end
   end
 
-  describe "instance" do
-    let(:request) { Tarantool::Requests::Insert.new space }
-
-    it "should make packet with right request type, body size and next request id + body" do
-      body = 'hi'
-      expect = [Tarantool::Requests::REQUEST_TYPES[:insert], body.bytesize, request.request_id].pack('LLL') + body
-      request.make_packet(body).must_equal expect
-    end
-
-  end
-
   describe "requests" do
     include Helpers::Truncate
     describe "insert and select" do
