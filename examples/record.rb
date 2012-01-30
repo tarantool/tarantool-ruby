@@ -28,6 +28,8 @@ class User < MyTarantool
   end
 end
 
+User.tarantool.call
+
 # Now attribute positions are not important.
 User.create login: 'prepor', email: 'ceo@prepor.ru', name: 'Andrew'
 User.create login: 'ruden', name: 'Andrew', email: 'rudenkoco@gmail.com'
@@ -48,6 +50,9 @@ end
 # increment field apples_count by one. Its atomic operation vie native Tarantool interface
 User.find('prepor').increment :apples_count
 
+# call lua func, which return record's tuples
+User.call('box.select_range', '0','0', '5')
+
 # update only dirty attributes
 user = User.find('prepor')
 user.name = "Petr"
@@ -59,3 +64,5 @@ user.save
 User.find('prepor').info['bio'] # => 'hi!'
 user.destroy
 puts "Ok!"
+
+

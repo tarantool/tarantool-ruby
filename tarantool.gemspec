@@ -4,8 +4,8 @@ Gem::Specification.new do |s|
   s.rubygems_version = '1.3.5'
 
   s.name              = 'tarantool'
-  s.version           = '0.2.1'
-  s.date              = '2012-01-27'
+  s.version           = '0.2.2'
+  s.date              = '2012-01-30'
   s.rubyforge_project = 'tarantool'
 
   s.summary     = "Tarantool KV-storage client."
@@ -32,6 +32,7 @@ Gem::Specification.new do |s|
     README.md
     Rakefile
     examples/em_simple.rb
+    examples/get_firsts.rb
     examples/record.rb
     examples/simple.rb
     lib/tarantool.rb

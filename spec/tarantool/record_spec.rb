@@ -245,7 +245,20 @@ describe Tarantool::Record do
           end
         end
       end
+    end
 
+    describe "call" do
+      let(:res) { user.class.select.call('box.select_range', '0','0', '2')}
+      before do
+        user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru'
+        user_class.create login: 'petro', name: 'Petr', email: 'petro@gmail.com'
+        user_class.create login: 'ruden', name: 'Andrew', email: 'rudenkoco@gmail.com'
+      end
+
+      it "should select 2 records and return UserClass instances" do
+        res.size.must_equal 2
+        res.any? { |v| v.is_a? user_class }
+      end
     end
   end
 

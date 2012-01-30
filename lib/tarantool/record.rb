@@ -13,10 +13,13 @@ class Tarantool
     end
 
     def each(&blk)
-      res = record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
-      res.each do |tuple|
-        blk.call record.from_server(tuple)
+      to_records(record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples).each do |r|
+        blk.call r
       end
+    end
+
+    def call(proc_name, *args)
+      to_records record.space.call(proc_name: proc_name, args: args, return_tuple: true).tuples
     end
 
     def limit(limit)
@@ -88,6 +91,12 @@ class Tarantool
         break if index_no
       end
       index_no
+    end
+
+    def to_records(tuples)
+      tuples.map do |tuple|
+        record.from_server(tuple)
+      end
     end
   end
   class Record
@@ -164,7 +173,7 @@ class Tarantool
         Select.new(self)
       end
 
-      %w{where limit offset}.each do |v|
+      %w{where limit offset call first}.each do |v|
         define_method v do |*args|
           select.send(v, *args)
         end
