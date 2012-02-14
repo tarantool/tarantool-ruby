@@ -6,12 +6,15 @@ class Tarantool
     end
 
     def to_i
-      if data.bytesize == 4
-        data.unpack('L')[0]
-      elsif data.bytesize == 8
+      case data.bytesize
+      when 8
         data.unpack('Q')[0]
+      when 4
+        data.unpack('L')[0]
+      when 2
+        data.unpack('S')[0]
       else
-        raise ValueError.new("Unable to cast field to int: length must be 4 or 8 bytes, field length is #{data.size}")
+        raise ValueError.new("Unable to cast field to int: length must be 2, 4 or 8 bytes, field length is #{data.size}")
       end
     end
 
