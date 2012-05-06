@@ -61,14 +61,14 @@ describe Tarantool::Request do
 
     describe "call" do
       it "should call lua proc" do
-        res = space.call proc_name: 'box.pack', args: ['i', '100'], return_tuple: true
+        res = space.call 'box.pack', 'i', '100', return_tuple: true
         res.tuple[0].to_i.must_equal 100
       end
 
       it "should return batches via select_range" do
         space.insert 100, 'привет'
         space.insert 101, 'hi'
-        res = space.call proc_name: 'box.select_range', args: ['1', '0', '100'], return_tuple: true
+        res = space.call 'box.select_range', '1', '0', '100', return_tuple: true
         res.tuples.size.must_equal 2
       end
     end

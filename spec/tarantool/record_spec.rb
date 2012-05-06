@@ -248,7 +248,7 @@ describe Tarantool::Record do
     end
 
     describe "call" do
-      let(:res) { user.class.select.call('box.select_range', '0','0', '2')}
+      let(:res) { user.class.select.call('box.select_range', 0, 0, 2)}
       before do
         user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru'
         user_class.create login: 'petro', name: 'Petr', email: 'petro@gmail.com'

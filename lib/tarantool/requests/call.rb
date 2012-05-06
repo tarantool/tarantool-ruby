@@ -6,8 +6,8 @@ class Tarantool
       attr_reader :flags, :proc_name, :tuple
       def parse_args
         @flags = params[:return_tuple] ? 1 : 0
-        @proc_name = params[:proc_name]
-        @tuple = params[:args] || []
+        @proc_name = args.shift
+        @tuple = args.map(&:to_s)
       end
 
       def make_body

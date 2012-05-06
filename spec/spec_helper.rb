@@ -11,7 +11,7 @@ require 'rr'
 
 require 'tarantool'
 
-TARANTOOL_CONFIG = { host: '127.0.0.1', port: 33013, type: :block }
+TARANTOOL_CONFIG = { host: 'localhost', port: 33013, type: :block }
 
 DB = Tarantool.new TARANTOOL_CONFIG
 

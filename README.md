@@ -111,6 +111,7 @@ in the tuple stored by Tarantool. By default, the primary key is field 0.
 
 # TODO
 
+# .to_config
 * `#first`, `#all` without keys, batches requests via box.select_range
 * `#where` chains
 * admin-socket protocol

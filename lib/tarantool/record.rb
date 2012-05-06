@@ -19,7 +19,7 @@ class Tarantool
     end
 
     def call(proc_name, *args)
-      to_records record.space.call(proc_name: proc_name, args: args, return_tuple: true).tuples
+      to_records record.space.call(proc_name, *args, return_tuple: true).tuples
     end
 
     def limit(limit)
