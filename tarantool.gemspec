@@ -4,7 +4,7 @@ Gem::Specification.new do |s|
   s.rubygems_version = '1.3.5'
 
   s.name              = 'tarantool'
-  s.version           = '0.2.3'
+  s.version           = '0.2.4'
   s.date              = '2012-02-24'
   s.rubyforge_project = 'tarantool'
 
