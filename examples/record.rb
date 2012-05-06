@@ -51,7 +51,7 @@ end
 User.find('prepor').increment :apples_count
 
 # call lua func, which return record's tuples
-User.call('box.select_range', '0','0', '5')
+User.call('box.select_range', 0, 0, 5)
 
 # update only dirty attributes
 user = User.find('prepor')
