@@ -327,5 +327,9 @@ class Tarantool
       self.class.find(id)
     end
 
+    def ==(other)
+      self.attributes == other.attributes
+    end
+
   end
 end
