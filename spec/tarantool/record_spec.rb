@@ -242,6 +242,26 @@ describe Tarantool::Record do
       end
 
     end
+
+    describe "==" do
+
+      before do
+        user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru'
+        user_class.create login: 'petro', name: 'Petr', email: 'petro@gmail.com'
+      end
+
+      it "should return equality as true" do
+        u1 = user_class.where(login: "prepor").first
+        u2 = user_class.where(login: "prepor").first
+        (u1 == u2).must_equal true
+      end
+
+      it "should not return equality as true" do
+        u1 = user_class.where(login: "prepor")
+        u2 = user_class.where(login: "petro")
+        (u1 == u2).must_equal false
+      end
+    end
   end
 
 end
