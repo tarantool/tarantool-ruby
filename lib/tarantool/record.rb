@@ -138,7 +138,14 @@ module Tarantool
       end
 
       def index(*fields)
-        self.indexes = (indexes.dup << fields).sort_by { |v| v.size }
+        options = {}
+        options = fields.pop if Hash === fields.last
+        if options[:primary]
+          self.indexes[0] = fields
+          self.primary_index = fields
+        else
+          self.indexes = (indexes.dup << fields).sort_by { |v| v.size }
+        end
       end
 
       def find(*keys)
@@ -227,7 +234,13 @@ module Tarantool
     end
 
     def id
-      attributes[self.class.primary_index]
+      primary = self.class.primary_index
+      case primary
+      when Array
+        primary.map{ |p| attributes[p] }
+      else
+        attributes[primary]
+      end
     end
 
     def space
@@ -313,7 +326,7 @@ module Tarantool
     end
 
     def ==(other)
-      self.attributes == other.attributes
+      self.id == other.id
     end
 
   end

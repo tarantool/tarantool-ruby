@@ -65,7 +65,6 @@ task :console do
   sh "irb -rubygems -r ./lib/#{name}.rb"
 end
 
-
 #############################################################################
 #
 # Packaging tasks

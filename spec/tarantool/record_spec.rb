@@ -16,7 +16,7 @@ describe Tarantool::Record do
 
       field :login, :string
       field :name, :string
-      field :email, :string      
+      field :email, :string
       field :apples_count, :integer, default: 0
       index :name, :email
     end
