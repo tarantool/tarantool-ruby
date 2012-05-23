@@ -5,6 +5,7 @@ describe Tarantool::Request do
   def space
     @space ||= DB.space 1
   end
+  
   describe "pack method" do
     describe "for field" do
       it "should pack integer as 32 bit integer" do
