@@ -77,20 +77,14 @@ class Tarantool
     end
 
     def detect_index_no(keys)
-      index_no = nil
-      record.indexes.each_with_index do |v, i|
+      record.indexes.each.with_index do |v, i|
         keys_inst = keys.dup
         v.each do |index_part|
-          unless keys_inst.delete(index_part)
-            break
-          end
-          if keys_inst.size == 0
-            index_no = i
-          end
+          break unless keys_inst.delete(index_part)
+          return i if keys_inst.empty?
         end
-        break if index_no
       end
-      index_no
+      nil
     end
 
     def to_records(tuples)
