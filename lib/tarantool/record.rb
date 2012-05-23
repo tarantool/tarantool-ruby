@@ -77,20 +77,14 @@ class Tarantool
     end
 
     def detect_index_no(keys)
-      index_no = nil
-      record.indexes.each_with_index do |v, i|
+      record.indexes.each.with_index do |v, i|
         keys_inst = keys.dup
         v.each do |index_part|
-          unless keys_inst.delete(index_part)
-            break
-          end
-          if keys_inst.size == 0
-            index_no = i
-          end
+          break unless keys_inst.delete(index_part)
+          return i if keys_inst.empty?
         end
-        break if index_no
       end
-      index_no
+      nil
     end
 
     def to_records(tuples)
@@ -153,7 +147,14 @@ class Tarantool
       end
 
       def index(*fields)
-        self.indexes = (indexes.dup << fields).sort_by { |v| v.size }
+        options = {}
+        options = fields.pop if Hash === fields.last
+        if options[:primary]
+          self.indexes[0] = fields
+          self.primary_index = fields
+        else
+          self.indexes = (indexes.dup << fields)
+        end
       end
 
       def find(*keys)
@@ -242,7 +243,13 @@ class Tarantool
     end
 
     def id
-      attributes[self.class.primary_index]
+      primary = self.class.primary_index
+      case primary
+      when Array
+        primary.map{ |p| attributes[p] }
+      else
+        attributes[primary]
+      end
     end
 
     def space
@@ -325,6 +332,10 @@ class Tarantool
     # return new object, not reloading itself as AR-model
     def reload
       self.class.find(id)
+    end
+
+    def ==(other)
+      self.id == other.id
     end
 
   end
