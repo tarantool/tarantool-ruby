@@ -11,7 +11,7 @@ class Tarantool
 
       def make_body
         [space_no, flags].pack('LL') +
-        self.class.pack_tuple(key)
+        self.class.pack_tuple(*key)
       end
     end
   end

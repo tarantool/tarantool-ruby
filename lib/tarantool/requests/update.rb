@@ -26,7 +26,7 @@ class Tarantool
 
       def make_body
         [space_no, flags].pack('LL') +
-        self.class.pack_tuple(key) +
+        self.class.pack_tuple(*key) +
         [ops.size].pack('L') +
         self.class.pack_ops(ops)
       end
