@@ -281,6 +281,7 @@ class Tarantool
           if new_record?
             space.insert(*to_tuple)
           else
+            return true if changed.size == 0
             ops = changed.inject([]) do |memo, k|
               k = k.to_sym
               memo << [field_no(k), :set, self.class._cast(k, attributes[k])] if attributes[k]
