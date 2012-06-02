@@ -110,13 +110,13 @@ describe Tarantool::Record do
         u = user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru', apples_count: nil
         u.info.must_be_nil
         u.apples_count.must_be_nil
-        u = u.reload
+        u.reload
         u.info.must_be_nil
         u.apples_count.must_be_nil
         u.info = {'bio' => 'hi!'}
         u.apples_count = 1
         u.save
-        u = u.reload
+        u.reload
         u.info.must_equal({ 'bio' => 'hi!' })
         u.apples_count.must_equal 1
       end
@@ -132,6 +132,7 @@ describe Tarantool::Record do
   end
 
   describe "increment" do
+    before { @truncate_fields = 2 }
     let(:user) { user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru' }
     it "should increment apples count by 1" do
       user.increment :apples_count
@@ -148,7 +149,7 @@ describe Tarantool::Record do
     it "should destroy record" do
       u = user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru'
       u.destroy
-      u.reload.must_be_nil
+      u.reload.must_equal false
     end
   end
 
@@ -171,14 +172,41 @@ describe Tarantool::Record do
   end
 
   describe "callbacks" do
+    let(:u) { user_class.new login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru '}
     it "should run before / after create callbackss in right places" do
       user_class.before_create :action_before_create
-      user_class.after_create :action_after_create
-
-      u = user_class.new login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru'
+      user_class.after_create :action_after_create      
       mock(u).action_before_create { u.new_record?.must_equal true }
       mock(u).action_after_create { u.new_record?.must_equal false }
       u.save
+    end
+
+    describe "initialize" do
+      it "should run after_initialize after any initialization" do
+        user_class.after_initialize :action_after_initialize
+        any_instance_of(user_class) do |u|
+          mock(u).action_after_initialize.twice
+        end
+        u.save
+        user_class.find u.login
+      end
+
+      it "should not run after_initialize after reload" do        
+        user_class.after_initialize :action_after_initialize
+        any_instance_of(user_class) do |u|
+          mock(u).action_after_initialize.once
+        end
+        u.save
+        u.reload
+      end
+
+      it "should properly save record inside after_initialize" do
+        user_class.after_initialize do |u|
+          u.save
+        end
+        u
+        user_class.find u.login
+      end
     end
   end
 
@@ -198,7 +226,9 @@ describe Tarantool::Record do
         info = { 'bio' => "hi!", 'age' => 23, 'hobbies' => ['mufa', 'tuka'] }
         u = user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru', info: info
         u.info['hobbies'].must_equal ['mufa', 'tuka']
-        u = u.reload
+        u.reload
+        u.info['hobbies'].must_equal ['mufa', 'tuka']
+        u = user_class.find u.login
         u.info['hobbies'].must_equal ['mufa', 'tuka']
       end
     end

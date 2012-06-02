@@ -105,6 +105,7 @@ class Tarantool
     include ActiveModel::Serializers::Xml
 
     define_model_callbacks :save, :create, :update, :destroy
+    define_model_callbacks :initialize, :only => :after
 
     class_attribute :fields
     self.fields = {}
@@ -185,7 +186,7 @@ class Tarantool
       end
 
       def from_server(tuple)
-        new(tuple_to_hash(tuple)).tap { |v| v.old_record! }
+        new(tuple_to_hash(tuple).merge __new_record: false)
       end
 
       def space
@@ -234,12 +235,19 @@ class Tarantool
       end
     end
 
-    attr_accessor :new_record
+    attr_accessor :__new_record
     def initialize(attributes = {})
+      run_callbacks(:initialize) do
+        init attributes
+      end
+    end
+
+    def init(attributes)
+      @__new_record = attributes.delete(:__new_record)
+      @__new_record = true if @__new_record.nil?
       attributes.each do |k, v|
         send("#{k}=", v)
-      end
-      @new_record = true
+      end      
     end
 
     def id
@@ -257,7 +265,7 @@ class Tarantool
     end
 
     def new_record?
-      @new_record
+      @__new_record
     end
 
     def attributes
@@ -265,11 +273,11 @@ class Tarantool
     end
 
     def new_record!
-      @new_record = true
+      @__new_record = true
     end
 
     def old_record!
-      @new_record = false
+      @__new_record = false
     end
 
     def save
@@ -330,9 +338,11 @@ class Tarantool
       self.class.fields[name][:field_no]
     end
 
-    # return new object, not reloading itself as AR-model
     def reload
-      self.class.find(id)
+      tuple = space.select(id).tuple
+      return false unless tuple
+      init self.class.tuple_to_hash(tuple).merge __new_record: false
+      self
     end
 
     def ==(other)

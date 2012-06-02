@@ -4,8 +4,8 @@ Gem::Specification.new do |s|
   s.rubygems_version = '1.3.5'
 
   s.name              = 'tarantool'
-  s.version           = '0.2.4'
-  s.date              = '2012-02-24'
+  s.version           = '0.2.5'
+  s.date              = '2012-06-02'
   s.rubyforge_project = 'tarantool'
 
   s.summary     = "Tarantool KV-storage client."
@@ -55,6 +55,7 @@ Gem::Specification.new do |s|
     spec/helpers/truncate.rb
     spec/spec_helper.rb
     spec/tarantool.cfg
+    spec/tarantool/composite_primary_key_spec.rb
     spec/tarantool/em_spec.rb
     spec/tarantool/record_spec.rb
     spec/tarantool/request_spec.rb
