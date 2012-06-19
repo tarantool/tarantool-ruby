@@ -193,10 +193,16 @@ class Tarantool
       end
 
       def tuple_to_hash(tuple)
-        fields.keys.zip(tuple).inject({}) do |memo, (k, v)|
-          memo[k] = _cast(k, v) unless v.nil?
-          memo
+        memo = {}; keys = fields.keys
+        i = 0; n = keys.size
+        while i < n
+          unless (v = tuple[i]).nil?
+            k = keys[i]
+            memo[k] = _cast(k, v)
+          end
+          i += 1
         end
+        memo
       end
 
       def hash_to_tuple(hash, with_nils = false)
