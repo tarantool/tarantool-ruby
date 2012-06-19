@@ -107,8 +107,9 @@ class Tarantool
     define_model_callbacks :save, :create, :update, :destroy
     define_model_callbacks :initialize, :only => :after
 
-    class_attribute :fields
+    class_attribute :fields, :field_keys
     self.fields = {}
+    self.field_keys = [].freeze
 
     class_attribute :default_values    
     self.default_values = {}
@@ -131,6 +132,7 @@ class Tarantool
       def field(name, type, params = {})
         define_attribute_method name
         self.fields = fields.merge name => { type: type, field_no: fields.size, params: params }
+        self.field_keys = self.fields.keys.freeze
         unless self.primary_index
           self.primary_index = name
           index name
@@ -196,7 +198,7 @@ class Tarantool
       end
 
       def tuple_to_hash(tuple)
-        memo = {}; keys = fields.keys
+        memo = {}; keys = field_keys
         i = 0; n = keys.size
         while i < n
           unless (v = tuple[i]).nil?
@@ -210,10 +212,10 @@ class Tarantool
 
       def hash_to_tuple(hash, with_nils = false)
         if with_nils
-          fields.keys.map{|k| _cast(k, hash[k])}
+          field_keys.map{|k| _cast(k, hash[k])}
         else
           res = []
-          fields.keys.each do |k|
+          field_keys.each do |k|
             (v = hash[k]).nil? || res << _cast(k, v)
           end
           res
@@ -221,7 +223,7 @@ class Tarantool
       end
 
       def ordered_keys(keys)
-        fields.keys & keys
+        field_keys & keys
       end
 
       def _cast(name, value)
