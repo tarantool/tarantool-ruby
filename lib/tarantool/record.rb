@@ -186,7 +186,9 @@ class Tarantool
       end
 
       def from_server(tuple)
-        new(tuple_to_hash(tuple).merge __new_record: false)
+        h = tuple_to_hash(tuple)
+        h[:__new_record] = false
+        new(h)
       end
 
       def space
