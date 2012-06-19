@@ -40,8 +40,9 @@ class Tarantool
       when Hash
         ordered_keys = @record.ordered_keys params.keys
         # name: ['a', 'b'], email: ['c', 'd'] => [['a', 'c'], ['b', 'd']]
-        if params.values.first.is_a?(Array)          
-          [ordered_keys, params[ordered_keys.first].zip(*ordered_keys[1, ordered_keys.size].map { |k| params[k] })]
+        if params.first.last.is_a?(Array)
+          vals = params.values_at(*ordered_keys)
+          [ordered_keys, vals.first.zip(*values[1..-1])] # isn't cast is missing?
         else
           [ordered_keys, [@record.hash_to_tuple(params)]]
         end
