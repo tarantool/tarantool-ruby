@@ -209,12 +209,7 @@ class Tarantool
       end
 
       def ordered_keys(keys)
-        fields.keys.inject([]) do |memo, k|
-          keys.each do |k2|
-            memo << k2 if k2 == k
-          end
-          memo
-        end
+        fields.keys & keys
       end
 
       def _cast(name, value)
