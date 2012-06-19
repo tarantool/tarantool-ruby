@@ -9,17 +9,16 @@ class Tarantool
     end
 
     def space_no
-      record.space_no
+      @record.space_no
     end
 
     def each(&blk)
-      to_records(record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples).each do |r|
-        blk.call r
-      end
+      res = to_records @record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
+      res.each &blk
     end
 
     def call(proc_name, *args)
-      to_records record.space.call(proc_name, *args, return_tuple: true).tuples
+      to_records @record.space.call(proc_name, *args, return_tuple: true).tuples
     end
 
     def limit(limit)
@@ -39,15 +38,16 @@ class Tarantool
       raise SelectError.new('Where condition already setted') if @index_no # todo?
       keys, @tuples = case params
       when Hash
-        ordered_keys = record.ordered_keys params.keys
+        ordered_keys = @record.ordered_keys params.keys
         # name: ['a', 'b'], email: ['c', 'd'] => [['a', 'c'], ['b', 'd']]
-        if params.values.first.is_a?(Array)          
-          [ordered_keys, params[ordered_keys.first].zip(*ordered_keys[1, ordered_keys.size].map { |k| params[k] })]
+        if params.first.last.is_a?(Array)
+          vals = params.values_at(*ordered_keys)
+          [ordered_keys, vals.first.zip(*values[1..-1])] # isn't cast is missing?
         else
-          [ordered_keys, [record.hash_to_tuple(params)]]
+          [ordered_keys, [@record.hash_to_tuple(params)]]
         end
       when Array
-        [params.first.keys, params.map { |v| record.hash_to_tuple(v) }]
+        [@record.ordered_keys(params.first.keys), params.map { |v| @record.hash_to_tuple(v) }]
       end
       @index_no = detect_index_no keys
       raise ArgumentError.new("Undefined index for keys #{keys}") unless @index_no
@@ -77,7 +77,7 @@ class Tarantool
     end
 
     def detect_index_no(keys)
-      record.indexes.each.with_index do |v, i|
+      @record.indexes.each.with_index do |v, i|
         keys_inst = keys.dup
         v.each do |index_part|
           break unless keys_inst.delete(index_part)
@@ -89,7 +89,7 @@ class Tarantool
 
     def to_records(tuples)
       tuples.map do |tuple|
-        record.from_server(tuple)
+        @record.from_server(tuple)
       end
     end
   end
@@ -107,8 +107,9 @@ class Tarantool
     define_model_callbacks :save, :create, :update, :destroy
     define_model_callbacks :initialize, :only => :after
 
-    class_attribute :fields
+    class_attribute :fields, :field_keys
     self.fields = {}
+    self.field_keys = [].freeze
 
     class_attribute :default_values    
     self.default_values = {}
@@ -131,6 +132,7 @@ class Tarantool
       def field(name, type, params = {})
         define_attribute_method name
         self.fields = fields.merge name => { type: type, field_no: fields.size, params: params }
+        self.field_keys = self.fields.keys.freeze
         unless self.primary_index
           self.primary_index = name
           index name
@@ -186,7 +188,9 @@ class Tarantool
       end
 
       def from_server(tuple)
-        new(tuple_to_hash(tuple).merge __new_record: false)
+        h = tuple_to_hash(tuple)
+        h[:__new_record] = false
+        new(h)
       end
 
       def space
@@ -194,28 +198,32 @@ class Tarantool
       end
 
       def tuple_to_hash(tuple)
-        fields.keys.zip(tuple).inject({}) do |memo, (k, v)|
-          memo[k] = _cast(k, v) unless v.nil?
-          memo
+        memo = {}; keys = field_keys
+        i = 0; n = keys.size
+        while i < n
+          unless (v = tuple[i]).nil?
+            k = keys[i]
+            memo[k] = _cast(k, v)
+          end
+          i += 1
         end
+        memo
       end
 
       def hash_to_tuple(hash, with_nils = false)
-        res = []
-        fields.keys.each do |k|
-          v = hash[k]
-          res << _cast(k, v) if with_nils || !v.nil?
+        if with_nils
+          field_keys.map{|k| _cast(k, hash[k])}
+        else
+          res = []
+          field_keys.each do |k|
+            (v = hash[k]).nil? || res << _cast(k, v)
+          end
+          res
         end
-        res
       end
 
       def ordered_keys(keys)
-        fields.keys.inject([]) do |memo, k|
-          keys.each do |k2|
-            memo << k2 if k2 == k
-          end
-          memo
-        end
+        field_keys & keys
       end
 
       def _cast(name, value)
@@ -280,10 +288,11 @@ class Tarantool
       @__new_record = false
     end
 
+    def in_callbacks(&blk)
+      run_callbacks(:save) { run_callbacks(new_record? ? :create : :update, &blk)}
+    end
+
     def save
-      def in_callbacks(&blk)
-        run_callbacks(:save) { run_callbacks(new_record? ? :create : :update, &blk)}
-      end
       in_callbacks do
         if valid?
           if new_record?

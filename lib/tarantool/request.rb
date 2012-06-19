@@ -15,16 +15,17 @@ class Tarantool
       end
 
       def pack_field(value)
-        if String === value
+        case value
+        when String
           raise StringTooLong.new if value.bytesize > 1024 * 1024
           [value.bytesize, value].pack('wa*')
-        elsif Integer === value
+        when Integer
           if value < 4294967296 # 2 ^ 32
             [4, value].pack('wL')
           else
             [8, value].pack('wQ')
           end
-        elsif value.is_a?(Tarantool::Field)
+        when Tarantool::Field
           [value.data.bytesize].pack('w') + value.data
         else
           raise ArgumentError.new("Field should be integer or string")
@@ -37,11 +38,7 @@ class Tarantool
     def initialize(space, *args)
       @space = space      
       @args = args
-      @params = if args.last.is_a? Hash
-        args.pop
-      else
-        {}
-      end
+      @params = args.last.is_a?(Hash) ? args.pop : {}
       @space_no = params.delete(:space_no) || space.space_no || raise(UndefinedSpace.new)
       parse_args
     end
@@ -66,9 +63,7 @@ class Tarantool
     end
 
     def response_params
-      res = {}
-      res[:return_tuple] = true if params[:return_tuple]
-      res
+      @params[:return_tuple] ? {return_tuple: true} : {}
     end
 
     def connection
