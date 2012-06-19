@@ -43,9 +43,9 @@ class Tarantool
     end
 
     def unpack_tuple(data)
-      byte_size, cardinality = data[offset, 8].unpack("LL")
+      byte_size, cardinality = data[@offset, 8].unpack("LL")
       @offset += 8
-      tuple_data = data[offset, byte_size]
+      tuple_data = data[@offset, byte_size]
       @offset += byte_size
       (1..cardinality).map do
         Field.new unpack_field(tuple_data)
