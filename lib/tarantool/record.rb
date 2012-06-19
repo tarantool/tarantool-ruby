@@ -288,10 +288,11 @@ class Tarantool
       @__new_record = false
     end
 
+    def in_callbacks(&blk)
+      run_callbacks(:save) { run_callbacks(new_record? ? :create : :update, &blk)}
+    end
+
     def save
-      def in_callbacks(&blk)
-        run_callbacks(:save) { run_callbacks(new_record? ? :create : :update, &blk)}
-      end
       in_callbacks do
         if valid?
           if new_record?
