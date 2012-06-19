@@ -38,11 +38,7 @@ class Tarantool
     def initialize(space, *args)
       @space = space      
       @args = args
-      @params = if args.last.is_a? Hash
-        args.pop
-      else
-        {}
-      end
+      @params = args.last.is_a?(Hash) ? args.pop : {}
       @space_no = params.delete(:space_no) || space.space_no || raise(UndefinedSpace.new)
       parse_args
     end
@@ -67,9 +63,7 @@ class Tarantool
     end
 
     def response_params
-      res = {}
-      res[:return_tuple] = true if params[:return_tuple]
-      res
+      @params[:return_tuple] ? {return_tuple: true} : {}
     end
 
     def connection
