@@ -9,16 +9,16 @@ class Tarantool
     end
 
     def space_no
-      record.space_no
+      @record.space_no
     end
 
     def each(&blk)
-      res = to_records record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
+      res = to_records @record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
       res.each &blk
     end
 
     def call(proc_name, *args)
-      to_records record.space.call(proc_name, *args, return_tuple: true).tuples
+      to_records @record.space.call(proc_name, *args, return_tuple: true).tuples
     end
 
     def limit(limit)
@@ -38,15 +38,15 @@ class Tarantool
       raise SelectError.new('Where condition already setted') if @index_no # todo?
       keys, @tuples = case params
       when Hash
-        ordered_keys = record.ordered_keys params.keys
+        ordered_keys = @record.ordered_keys params.keys
         # name: ['a', 'b'], email: ['c', 'd'] => [['a', 'c'], ['b', 'd']]
         if params.values.first.is_a?(Array)          
           [ordered_keys, params[ordered_keys.first].zip(*ordered_keys[1, ordered_keys.size].map { |k| params[k] })]
         else
-          [ordered_keys, [record.hash_to_tuple(params)]]
+          [ordered_keys, [@record.hash_to_tuple(params)]]
         end
       when Array
-        [params.first.keys, params.map { |v| record.hash_to_tuple(v) }]
+        [params.first.keys, params.map { |v| @record.hash_to_tuple(v) }]
       end
       @index_no = detect_index_no keys
       raise ArgumentError.new("Undefined index for keys #{keys}") unless @index_no
@@ -76,7 +76,7 @@ class Tarantool
     end
 
     def detect_index_no(keys)
-      record.indexes.each.with_index do |v, i|
+      @record.indexes.each.with_index do |v, i|
         keys_inst = keys.dup
         v.each do |index_part|
           break unless keys_inst.delete(index_part)
@@ -88,7 +88,7 @@ class Tarantool
 
     def to_records(tuples)
       tuples.map do |tuple|
-        record.from_server(tuple)
+        @record.from_server(tuple)
       end
     end
   end
