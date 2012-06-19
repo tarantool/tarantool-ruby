@@ -209,12 +209,15 @@ class Tarantool
       end
 
       def hash_to_tuple(hash, with_nils = false)
-        res = []
-        fields.keys.each do |k|
-          v = hash[k]
-          res << _cast(k, v) if with_nils || !v.nil?
+        if with_nils
+          fields.keys.map{|k| _cast(k, hash[k])}
+        else
+          res = []
+          fields.keys.each do |k|
+            (v = hash[k]).nil? || res << _cast(k, v)
+          end
+          res
         end
-        res
       end
 
       def ordered_keys(keys)
