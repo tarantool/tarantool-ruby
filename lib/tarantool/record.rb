@@ -13,9 +13,8 @@ class Tarantool
     end
 
     def each(&blk)
-      to_records(record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples).each do |r|
-        blk.call r
-      end
+      res = to_records record.space.select(*@tuples, index_no: @index_no, limit: @limit, offset: @offset).tuples
+      res.each &blk
     end
 
     def call(proc_name, *args)
