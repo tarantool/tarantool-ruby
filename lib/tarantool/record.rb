@@ -42,7 +42,7 @@ class Tarantool
         # name: ['a', 'b'], email: ['c', 'd'] => [['a', 'c'], ['b', 'd']]
         if params.first.last.is_a?(Array)
           vals = params.values_at(*ordered_keys)
-          [ordered_keys, vals.first.zip(*values[1..-1])] # isn't cast is missing?
+          [ordered_keys, vals.first.zip(*vals[1..-1])] # isn't cast is missing?
         else
           [ordered_keys, [@record.hash_to_tuple(params)]]
         end
