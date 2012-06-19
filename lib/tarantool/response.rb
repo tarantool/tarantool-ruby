@@ -52,9 +52,15 @@ class Tarantool
       end
     end
 
+    EMPTY = ''.freeze
     def unpack_field(data)
       byte_size,  = data.unpack('w')
-      data.slice!(0, [byte_size].pack('w').bytesize) # ololo
+      rem = byte_size < 128 ? 1 :
+            byte_size < 16384 ? 2 :
+            byte_size < 2097152 ? 3 :
+            byte_size < 268435456 ? 4 :
+            5 # Assume, we do not store values longer than 32GB
+      data[0, rem] = EMPTY
       data.slice!(0, byte_size)
     end
   end
