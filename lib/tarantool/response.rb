@@ -6,7 +6,7 @@ class Tarantool
     end
 
     def to_i
-      case data.bytesize
+      @i ||= case data.bytesize
       when 8
         data.unpack('Q')[0]
       when 4
@@ -19,7 +19,7 @@ class Tarantool
     end
 
     def to_s
-      data.dup.force_encoding('utf-8')
+      @s ||= data.dup.force_encoding('utf-8')
     end
   end
   class Response
