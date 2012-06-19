@@ -46,7 +46,7 @@ class Tarantool
           [ordered_keys, [@record.hash_to_tuple(params)]]
         end
       when Array
-        [params.first.keys, params.map { |v| @record.hash_to_tuple(v) }]
+        [@record.ordered_keys(params.first.keys), params.map { |v| @record.hash_to_tuple(v) }]
       end
       @index_no = detect_index_no keys
       raise ArgumentError.new("Undefined index for keys #{keys}") unless @index_no
