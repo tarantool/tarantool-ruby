@@ -39,6 +39,8 @@ class Tarantool
       keys, @tuples = case params
       when Hash
         ordered_keys = @record.ordered_keys params.keys
+        undefined_indexes = params.keys - ordered_keys
+        raise UndefinedIndex, "Undefined index(es): #{undefined_indexes * ', '}" if undefined_indexes.any?
         # name: ['a', 'b'], email: ['c', 'd'] => [['a', 'c'], ['b', 'd']]
         if params.first.last.is_a?(Array)
           vals = params.values_at(*ordered_keys)
