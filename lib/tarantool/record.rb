@@ -314,10 +314,11 @@ class Tarantool
             space.insert(*to_tuple)
           else
             return true if changed.size == 0
-            ops = changed.inject([]) do |memo, k|
+            ops = []
+            changed.each do |k|
               k = k.to_sym
-              memo << [field_no(k), :set, self.class._cast_value_to_tuple(k, attributes[k])] if attributes[k]
-              memo
+              v = attributes[k]
+              ops << [field_no(k), :set, self.class._cast_value_to_tuple(k, v)] if v
             end
             space.update id, ops: ops
           end
