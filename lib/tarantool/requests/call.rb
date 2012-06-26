@@ -11,7 +11,7 @@ class Tarantool
       end
 
       def make_body
-        [flags].pack('L') +
+        [flags].pack('V') +
         self.class.pack_field(proc_name) +
         self.class.pack_tuple(*tuple)
       end

@@ -11,7 +11,7 @@ class Tarantool
       end
 
       def pack_tuple(*values)
-        [values.size].pack('L') + values.map { |v| pack_field(v) }.join
+        [values.size].pack('V') + values.map { |v| pack_field(v) }.join
       end
 
       def pack_field(value)
@@ -21,9 +21,9 @@ class Tarantool
           [value.bytesize, value].pack('wa*')
         when Integer
           if value < 4294967296 # 2 ^ 32
-            [4, value].pack('wL')
+            [4, value].pack('wV')
           else
-            [8, value].pack('wQ')
+            [8, value].pack('wQ<')
           end
         when Tarantool::Field
           [value.data.bytesize].pack('w') + value.data
@@ -53,7 +53,7 @@ class Tarantool
     end
 
     def make_response(data)
-      return_code, = data[0,4].unpack('L')
+      return_code, = data[0,4].unpack('V')
       if return_code == 0
         Response.new(data[4, data.size], response_params)
       else

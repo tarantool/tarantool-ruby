@@ -14,7 +14,7 @@ class Tarantool
       end
 
       def make_body
-        [space_no, index_no, offset, limit, tuples.size].pack('LLLLL') +
+        [space_no, index_no, offset, limit, tuples.size].pack('VVVVV') +
         tuples.map { |tuple| self.class.pack_tuple(*tuple) }.join
       end
     end

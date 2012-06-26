@@ -8,9 +8,9 @@ class Tarantool
     def to_i
       @i ||= case data.bytesize
       when 8
-        data.unpack('Q')[0]
+        data.unpack('Q<')[0]
       when 4
-        data.unpack('L')[0]
+        data.unpack('V')[0]
       when 2
         data.unpack('S')[0]
       else
@@ -26,7 +26,7 @@ class Tarantool
     attr_reader :tuples_affected, :offset, :tuples
     def initialize(data, params = {})
       @offset = 0
-      @tuples_affected, = data[0, 4].unpack('L')
+      @tuples_affected, = data[0, 4].unpack('V')
       @offset += 4
       if params[:return_tuple]
         @tuples = (1..tuples_affected).map do
@@ -43,7 +43,7 @@ class Tarantool
     end
 
     def unpack_tuple(data)
-      byte_size, cardinality = data[@offset, 8].unpack("LL")
+      byte_size, cardinality = data[@offset, 8].unpack("VV")
       @offset += 8
       tuple_data = data[@offset, byte_size]
       @offset += byte_size

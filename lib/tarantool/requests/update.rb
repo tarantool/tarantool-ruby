@@ -12,7 +12,7 @@ class Tarantool
           field_no, op_symbol, op_arg = op
           op_code = OP_CODES[op_symbol] || raise(ArgumentError.new("Unsupported operation symbol '#{op_symbol}'"))
 
-          [field_no, op_code].pack('LC') + self.pack_field(op_arg)
+          [field_no, op_code].pack('VC') + self.pack_field(op_arg)
         end.join
       end
 
@@ -25,9 +25,9 @@ class Tarantool
       end
 
       def make_body
-        [space_no, flags].pack('LL') +
+        [space_no, flags].pack('VV') +
         self.class.pack_tuple(*key) +
-        [ops.size].pack('L') +
+        [ops.size].pack('V') +
         self.class.pack_ops(ops)
       end
     end
