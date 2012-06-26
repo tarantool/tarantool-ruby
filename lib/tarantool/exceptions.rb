@@ -5,5 +5,6 @@ class Tarantool
   class StringTooLong < TarantoolError; end
   class ArgumentError < TarantoolError; end
   class UndefinedSpace < TarantoolError; end
+  class UndefinedIndex < TarantoolError; end
   class ValueError < TarantoolError; end
 end
