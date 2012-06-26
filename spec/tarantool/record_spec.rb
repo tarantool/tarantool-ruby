@@ -262,6 +262,10 @@ describe Tarantool::Record do
         user_class.where(name: ['Andrew', 'Petr']).map(&:login).must_equal ['prepor', 'ruden', 'petro']
       end
 
+      it "should raise an error for wrong index" do
+        proc{ user_class.where(namee: "Andrew").all }.must_raise Tarantool::UndefinedIndex
+      end
+
       describe "with limit 1" do
         let(:select) { super().limit(1) }
         it "should select first record with name == 'Andrew'" do
