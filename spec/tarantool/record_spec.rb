@@ -267,15 +267,15 @@ describe Tarantool::Record do
       end
 
       describe "with limit 1" do
-        let(:select) { super().limit(1) }
+        let(:select_limit) { select.limit(1) }
         it "should select first record with name == 'Andrew'" do
-          select.map(&:login).must_equal ['prepor']
+          select_limit.map(&:login).must_equal ['prepor']
         end
 
         describe "with offset 1" do
-          let(:select) { super().offset(1) }
+          let(:select_offset) { select_limit.offset(1) }
           it "should select last record with name == 'Andrew'" do
-            select.map(&:login).must_equal ['ruden']
+            select_offset.map(&:login).must_equal ['ruden']
           end
         end
       end

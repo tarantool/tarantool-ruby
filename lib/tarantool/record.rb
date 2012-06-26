@@ -36,23 +36,31 @@ class Tarantool
     # [{ name: 'a', email: 'a'}, { name: 'b', email: 'b'}]
     def where(params)
       raise SelectError.new('Where condition already setted') if @index_no # todo?
-      keys, @tuples = case params
+      keys = case params
+        when Hash
+          params.keys
+        when Array
+          params.first.keys
+        end
+
+      unless @index_no = detect_index_no(keys)
+        @index_no, index_keys = detect_poor_index_no(keys)
+        raise UndefinedIndex.new("Undefined index for keys #{keys}") unless @index_no
+        keys = index_keys
+      end
+
+      @tuples = case params
       when Hash
-        ordered_keys = @record.ordered_keys params.keys
-        undefined_indexes = params.keys - ordered_keys
-        raise UndefinedIndex, "Undefined index(es): #{undefined_indexes * ', '}" if undefined_indexes.any?
         # name: ['a', 'b'], email: ['c', 'd'] => [['a', 'c'], ['b', 'd']]
-        if params.first.last.is_a?(Array)
-          vals = params.values_at(*ordered_keys)
-          [ordered_keys, vals.first.zip(*vals[1..-1])] # isn't cast is missing?
+        values = params.values_at(*keys)
+        if values.first.is_a?(Array)
+          values.transpose.map{|vals| @record.keys_values_to_tuple(keys, vals)}
         else
-          [ordered_keys, [@record.hash_to_tuple(params)]]
+          [@record.keys_values_to_tuple(keys, values)]
         end
       when Array
-        [@record.ordered_keys(params.first.keys), params.map { |v| @record.hash_to_tuple(v) }]
+        params.map{|v| @record.keys_values_to_tuple(keys, v.values_at(*keys))}
       end
-      @index_no = detect_index_no keys
-      raise ArgumentError.new("Undefined index for keys #{keys}") unless @index_no
       self
     end
 
@@ -79,12 +87,20 @@ class Tarantool
     end
 
     def detect_index_no(keys)
-      @record.indexes.each.with_index do |v, i|
-        keys_inst = keys.dup
-        v.each do |index_part|
-          break unless keys_inst.delete(index_part)
-          return i if keys_inst.empty?
-        end
+      i = 0
+      @record.indexes.each do |index_fields|
+        return i if index_fields[0, keys.size] == keys
+        i += 1
+      end
+      nil
+    end
+
+    def detect_poor_index_no(keys)
+      i = 0
+      @record.indexes.each do |index_fields|
+        fields = index_fields[0, keys.size]
+        return [i, fields] if (fields - keys).empty?
+        i += 1
       end
       nil
     end
@@ -136,8 +152,7 @@ class Tarantool
         self.fields = fields.merge name => { type: type, field_no: fields.size, params: params }
         self.field_keys = self.fields.keys.freeze
         unless self.primary_index
-          self.primary_index = name
-          index name
+          index name, primary: true
         end
         if params[:default]
           self.default_values = default_values.merge name => params[:default]
@@ -158,7 +173,7 @@ class Tarantool
           self.indexes[0] = fields
           self.primary_index = fields
         else
-          self.indexes = (indexes.dup << fields)
+          self.indexes += [fields]
         end
       end
 
@@ -205,39 +220,38 @@ class Tarantool
         while i < n
           unless (v = tuple[i]).nil?
             k = keys[i]
-            memo[k] = _cast(k, v)
+            memo[k] = _cast_tuple_to_value(k, v)
           end
           i += 1
         end
         memo
       end
 
-      def hash_to_tuple(hash, with_nils = false)
-        if with_nils
-          field_keys.map{|k| _cast(k, hash[k])}
-        else
-          res = []
-          field_keys.each do |k|
-            (v = hash[k]).nil? || res << _cast(k, v)
-          end
-          res
+      def hash_to_tuple(hash)
+        field_keys.map{|k| _cast_value_to_tuple(k, hash[k])}
+      end
+
+      def keys_values_to_tuple(keys, values)
+        i = 0
+        values.take_while{|v| !v.nil?}.map do |v|
+          k = keys[i]
+          i += 1
+          _cast_value_to_tuple(k, v)
         end
       end
 
-      def ordered_keys(keys)
-        field_keys & keys
+      ZERO = "\0".freeze
+      def _cast_tuple_to_value(name, value)
+        serializer = _get_serializer(fields[name][:type])
+        raise TarantoolError.new("Value is not a Field") unless value.is_a?(Field)
+        return nil if value.data == ZERO
+        serializer.decode(value)
       end
 
-      def _cast(name, value)
-        type = self.fields[name][:type]
-        serializer = _get_serializer(type)
-        if value.is_a?(Field)
-          return nil if value.data == "\0"
-          serializer.decode(value)
-        else
-          return "\0" if value.nil?
-          serializer.encode(value)
-        end
+      def _cast_value_to_tuple(name, value)
+        serializer = _get_serializer(fields[name][:type])
+        return ZERO if value.nil?
+        serializer.encode(value)
       end
 
       def _get_serializer(type)
@@ -262,11 +276,10 @@ class Tarantool
 
     def id
       primary = self.class.primary_index
-      case primary
-      when Array
-        primary.map{ |p| attributes[p] }
+      if primary.size == 1
+        attributes[primary[0]]
       else
-        attributes[primary]
+        primary.map{ |p| attributes[p] }
       end
     end
 
@@ -303,7 +316,7 @@ class Tarantool
             return true if changed.size == 0
             ops = changed.inject([]) do |memo, k|
               k = k.to_sym
-              memo << [field_no(k), :set, self.class._cast(k, attributes[k])] if attributes[k]
+              memo << [field_no(k), :set, self.class._cast_value_to_tuple(k, attributes[k])] if attributes[k]
               memo
             end
             space.update id, ops: ops
@@ -342,7 +355,7 @@ class Tarantool
     end
 
     def to_tuple
-      self.class.hash_to_tuple attributes, true
+      self.class.hash_to_tuple attributes
     end
 
     def field_no(name)

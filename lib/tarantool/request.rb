@@ -28,7 +28,7 @@ class Tarantool
         when Tarantool::Field
           [value.data.bytesize].pack('w') + value.data
         else
-          raise ArgumentError.new("Field should be integer or string")
+          raise ArgumentError.new("Field should be integer or string (got #{value.inspect})")
         end
       end 
     end
