@@ -1,9 +1,9 @@
 PATH
   remote: .
   specs:
-    tarantool (0.2.5)
+    tarantool (0.2.6)
       activemodel (>= 3.1, < 4.0)
-      iproto (>= 0.2)
+      iproto (>= 0.3)
 
 GEM
   remote: http://rubygems.org/
@@ -29,7 +29,7 @@ GEM
       eventmachine (>= 1.0.0.beta.1)
     eventmachine (1.0.0.beta.4)
     i18n (0.6.0)
-    iproto (0.2)
+    iproto (0.3)
     multi_json (1.0.3)
     rr (1.0.4)
     yajl-ruby (1.1.0)

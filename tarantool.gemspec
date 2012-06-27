@@ -4,8 +4,8 @@ Gem::Specification.new do |s|
   s.rubygems_version = '1.3.5'
 
   s.name              = 'tarantool'
-  s.version           = '0.2.5'
-  s.date              = '2012-06-02'
+  s.version           = '0.2.6'
+  s.date              = '2012-06-27'
   s.rubyforge_project = 'tarantool'
 
   s.summary     = "Tarantool KV-storage client."
@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--charset=UTF-8"]
   s.extra_rdoc_files = %w[README.md LICENSE]
 
-  s.add_dependency('iproto', [">= 0.2"])
+  s.add_dependency('iproto', [">= 0.3"])
   s.add_dependency('activemodel', [">= 3.1", "< 4.0"])
 
 

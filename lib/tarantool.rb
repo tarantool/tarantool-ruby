@@ -2,7 +2,7 @@
 require 'iproto'
 
 class Tarantool
-  VERSION = '0.2.5'
+  VERSION = '0.2.6'
   
   require 'tarantool/space'
   require 'tarantool/requests'
