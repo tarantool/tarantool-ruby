@@ -10,9 +10,11 @@ class Tarantool
   require 'tarantool/exceptions'
   require 'tarantool/serializers'
 
-  attr_reader :config
+  attr_reader :config, :closed
+  alias closed? closed
   def initialize(config = {})
     @config = config
+    @closed = false
   end
 
   def configure(config)
@@ -20,6 +22,7 @@ class Tarantool
   end
 
   def connection(c = config)
+    return @connection  if @closed
     @connection ||= begin
       raise "Tarantool.configure before connect" unless c
       IProto.get_connection c[:host], c[:port], c[:type] || :block
@@ -28,6 +31,14 @@ class Tarantool
 
   def space(no, conn = connection)
     Space.new conn, no
+  end
+
+  def close
+    @closed = true
+    if @connection
+      @connection.close
+      @connection = nil
+    end
   end
 
   def self.hexdump(string)
