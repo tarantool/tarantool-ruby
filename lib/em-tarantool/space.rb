@@ -28,6 +28,14 @@ module EM
       BOX_ADD = 0x02
       BOX_REPLACE = 0x04
 
+      UPDATE_OPS = {
+        :"=" => 0, :+   => 1, :&   => 2, :^   => 3, :|  => 4, :[]     => 5,
+        :set => 0, :add => 1, :and => 2, :xor => 3, :or => 4, :splice => 5, :delete => 6, :insert => 7,
+                                                                            :del    => 6, :ins    => 7,
+        'set'=> 0, 'add'=> 1, 'and'=> 2, 'xor'=> 3, 'or'=> 4, 'splice'=> 5, 'delete'=> 6, 'insert'=> 7,
+                                                                            'del'   => 6, 'ins'   => 7
+      }
+      UPDATE_FIELDNO_OP = 'VC'.freeze
 
       def initialize(tarantool, space_no, fields, indexes)
         @tarantool = tarantool
@@ -153,7 +161,6 @@ module EM
         _insert(BOX_REPLACE, tuple, cb_or_opts, opts, &block)
       end
 
-=begin
       def update(pk, operations, cb_or_opts = nil, opts = {}, &block)
         if Hash === cb_or_opts
           opts = cb_or_opts
@@ -161,13 +168,53 @@ module EM
         end
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
 
-        body = [space_no, flags].pack(UPDATE_HEADER)
+        body = [@space_no, flags].pack(UPDATE_HEADER)
         pack_key_tuple(body, pk, @indexes[0])
+        body << [operations.size].pack(INT32)
 
-        for 
+        fields = @fields
 
+        for operation in operations
+          operation.flatten!
+          field_no = operation[0]
+          if operation.size == 2
+            body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
+            pack_key(body, fields[field_no], operation[1])
+          else
+            op = operation[1]
+            op = UPDATE_OPS[op]  unless Integer === op
+            body << [field_no, op].pack(UPDATE_FIELDNO_OP)
+            case op
+            when 0, 7
+              unless operation.size == 3
+                raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
+              end
+              pack_key(body, fields[field_no], operation[2])
+            when 1, 2, 3, 4
+              unless operation.size == 3 && !operation[2].nil?
+                raise ValueError, "wrong arguments for integer operation #{operation.inspect}"
+              end
+              pack_key(body, :int, operation[2])
+            when 5
+              unless operation.size == 5 && operation.all{|v| !v.nil?}
+                raise ValueError, "wrong arguments for slice operation #{operation.inspect}"
+              end
+              pack_key(body, :int, operation[2])
+              pack_key(body, :int, operation[3])
+              pack_key(body, :str, operation[4])
+            when 6
+              # pass
+            end
+          end
+        end
+
+        if opts[:return_tuple]
+          cb = ResponseWithTuples.new(cb_or_opts || block, fields)
+        else
+          cb = ResponseWithoutTuples.new(cb_or_opts || block)
+        end
+        @tarantool._send_request(REQUEST_UPDATE, body, cb)
       end
-=end
 
     end
   end
