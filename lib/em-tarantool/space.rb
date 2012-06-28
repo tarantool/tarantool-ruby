@@ -9,6 +9,7 @@ module EM
       SELECT_HEADER = 'VVVVV'.freeze
       INSERT_HEADER = 'VVV'.freeze
       UPDATE_HEADER = 'VV'.freeze
+      DELETE_HEADER = 'VV'.freeze
       INT32_0 = "\x00\x00\x00\x00".freeze
       INT32_1 = "\x01\x00\x00\x00".freeze
       BER4 = "\x04".freeze
@@ -211,6 +212,19 @@ module EM
         end
 
         _modify_request(REQUEST_UPDATE, body, opts, cb_or_opts || block)
+      end
+
+      def delete(pk, cb_or_opts = nil, opts = {}, &block)
+        if Hash === cb_or_opts
+          opts = cb_or_opts
+          cb_or_opts = nil
+        end
+        flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
+
+        body = [@space_no, flags].pack(DELETE_HEADER)
+        pack_key_tuple(body, pk, @indexes[0])
+
+        _modify_request(REQUEST_DELETE, body, opts, cb_or_opts || block)
       end
 
     end
