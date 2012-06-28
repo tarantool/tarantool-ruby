@@ -170,7 +170,7 @@ class Tarantool
         options = {}
         options = fields.pop if Hash === fields.last
         if options[:primary]
-          self.indexes[0] = fields
+          self.indexes = indexes.dup.tap{|ind| ind[0] = fields}
           self.primary_index = fields
         else
           self.indexes += [fields]
