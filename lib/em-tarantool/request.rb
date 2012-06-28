@@ -4,9 +4,10 @@ module EM
       INT32 = 'V'.freeze
       INT64 = 'Q<'.freeze
       SELECT_HEADER = 'VVVVV'.freeze
-      INSERT_HEADER = 'VVV'.freeze
+      INSERT_HEADER = 'VV'.freeze
       UPDATE_HEADER = 'VV'.freeze
       DELETE_HEADER = 'VV'.freeze
+      CALL_HEADER = 'Vwa*'.freeze
       INT32_0 = "\x00\x00\x00\x00".freeze
       INT32_1 = "\x01\x00\x00\x00".freeze
       BER4 = "\x04".freeze
@@ -14,6 +15,8 @@ module EM
       PACK_STRING = 'wa*'.freeze
       LEST_INT32 = -(2**31)
       GREATEST_INT32 = 2**32
+      TYPES_STR = [:str].freeze
+      TYPES_INT_STR = [:int, :str].freeze
 
       REQUEST_SELECT = 17
       REQUEST_INSERT = 13
@@ -37,24 +40,31 @@ module EM
 
       def _select(space_no, index_no, offset, limit, keys, cb, fields=nil, index_fields=nil)
         body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
-        index_fields = @indexes[index_no]
 
         for key in keys
-          pack_key_tuple(body, key, index_fields)
+          pack_key_tuple(body, key, index_fields, :error, index_no)
         end
-        cb = ResponseWithTuples.new(cb || block, @fields)
+        cb = ResponseWithTuples.new(cb || block, fields)
         _send_request(REQUEST_SELECT, body, cb)
       end
 
-      def pack_key_tuple(body, key, index_fields)
+      def pack_key_tuple(body, key, types, tail = :error, index_no = 0)
         case key
         when Array
           key = key.take_while{|v| !v.nil?}
           body << [key_size = key.size].pack(INT32)
           i = 0
           while i < key_size
-            unless field = index_fields[i]
-              raise ValueError, "Key #{key} has more entries than index #{index_no}"
+            if (field = types[i]).nil?
+              case tail
+              when :error
+                raise ValueError, "tuple #{key} has more entries than index #{index_no}"
+              when :last
+                field = types.last
+              when Integer
+                pos = types.size - tail + (i - types.size) % tail
+                field = types[pos]
+              end
             end
             pack_key(body, field, key[i])
             i += 1
@@ -63,7 +73,7 @@ module EM
           body << INT32_0
         else
           body << INT32_1
-          pack_key(body, index_fields[0], key)
+          pack_key(body, types[0], key)
         end
       end
 
@@ -89,7 +99,7 @@ module EM
         _send_request(type, body, cb)
       end
 
-      def _insert(space_no, flags, tuple, fields, cb_or_opts = nil, opts = {}, &block)
+      def _insert(space_no, flags, tuple, fields, return_tuple, cb_or_opts = nil, opts = {}, &block)
         if Hash === cb_or_opts
           opts = cb_or_opts
           cb_or_opts = nil
@@ -98,12 +108,8 @@ module EM
 
         tuple = Array(tuple)
         tuple_size = tuple.size
-        body = [space_no, flags, tuple_size].pack(INSERT_HEADER)
-        i = 0
-        while i < tuple_size
-          pack_key(body, fields[i] || fields.last, tuple[i])
-          i += 1
-        end
+        body = [space_no, flags].pack(INSERT_HEADER)
+        pack_key_tuple(body, tuple, fields, opts[:tail] || :last, :space)
 
         _modify_request(REQUEST_INSERT, body, fields, opts, cb_or_opts || block)
       end
@@ -116,7 +122,7 @@ module EM
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
 
         body = [space_no, flags].pack(UPDATE_HEADER)
-        pack_key_tuple(body, pk, pk_fields)
+        pack_key_tuple(body, pk, pk_fields, :error)
         body << [operations.size].pack(INT32)
 
         for operation in operations
@@ -164,9 +170,32 @@ module EM
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
 
         body = [space_no, flags].pack(DELETE_HEADER)
-        pack_key_tuple(body, pk, pk_fields)
+        pack_key_tuple(body, pk, pk_fields, :error)
 
         _modify_request(REQUEST_DELETE, body, fields, opts, cb_or_opts || block)
+      end
+
+      def _call(func_name, values, cb_or_opts = nil, opts={}, &block)
+        if Hash === cb_or_opts
+          opts = cb_or_opts
+          cb_or_opts = nil
+        end
+        flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
+
+        value_types = Array(opts[:types] || _detect_types(values))
+        return_types = Array(opts[:returns] || TYPES_STR)
+        tail = opts[:tail] || :last
+
+        func_name = func_name.to_s
+
+        body = [flags, func_name.size, func_name].pack(CALL_HEADER)
+        pack_key_tuple(body, values, value_types, tail)
+
+        _modify_request(REQUEST_CALL, body, return_types, opts, cb_or_opts || block)
+      end
+
+      def _detect_types(values)
+        values.map{|v| Integer === v ? :int : :str}
       end
 
     end

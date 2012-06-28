@@ -2,8 +2,41 @@ require 'em-tarantool/util'
 
 module EM
   class Tarantool
+    class Error < StandardError; end
+    class ValueError < Error; end
+    class StatusCode < Error; end
+    # try again return codes
+    class TryAgain < StatusCode; end
+    class TupleReadOnly < TryAgain; end
+    class TupleIsLocked < TryAgain; end
+    class MemoryIssue   < TryAgain; end
+    # general error return codes
+    class BadReturnCode < StatusCode; end
+    class NonMaster     < BadReturnCode; end
+    class IllegalParams < BadReturnCode; end
+    class UnsupportedCommand < BadReturnCode; end
+    class WrongField    < BadReturnCode; end
+    class WrongNumber   < BadReturnCode; end
+    class Duplicate     < BadReturnCode; end # it is rather useful
+    class WrongVersion  < BadReturnCode; end
+    class WalIO         < BadReturnCode; end
+    CODE_TO_EXCEPTION = {
+      0x0401 => TupleReadOnly,
+      0x0601 => TupleIsLocked,
+      0x0701 => MemoryIssue,
+      0x0102 => NonMaster,
+      0x0202 => IllegalParams,
+      0x0a02 => UnsupportedCommand,
+      0x1e02 => WrongField,
+      0x1f02 => WrongNumber,
+      0x2002 => Duplicate,
+      0x2602 => WrongVersion,
+      0x2702 => WalIO
+    }
+
     module Response
       include EM::Tarantool::Util::Packer
+
       def call(data)
         if Exception === data
           cb.call(data)

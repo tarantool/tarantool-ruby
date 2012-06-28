@@ -7,11 +7,12 @@ module EM
     class Space
       include Request
 
-      def initialize(tarantool, space_no, fields, indexes)
+      def initialize(tarantool, space_no, fields, primary_index, indexes)
         @tarantool = tarantool
         @space_no = space_no
         @fields = fields
-        indexes = indexes ? Array(indexes).map{|a| Array(a)} : [[0]]
+        primary_index ||= [0]
+        indexes = [primary_index].concat(Array(indexes))
         @indexes = indexes.map{|index| index.map{|i| @fields[i]}}
       end
 
@@ -74,6 +75,28 @@ module EM
 
       def delete(pk, cb_or_opts = nil, opts = {}, &block)
         _delete(@space_no, pk, @fields, @indexes[0], cb_or_opts, opts, &block)
+      end
+
+      def invoke(func_name, values, cb_or_opts = nil, opts = {}, &block)
+        values.unshift(@space_no)
+        if opts[:types]
+          opts[:types].unshift(:int)
+        else
+          opts[:types] = TYPES_INT_STR
+        end
+        _call(func_name, values, cb_or_opts, opts, &block)
+      end
+
+      def call(func_name, values, cb_or_opts = nil, opts = {}, &block)
+        if Hash === cb_or_opts
+          opts = cb_or_opts
+          cb_or_opts = nil
+        end
+        opts[:return_tuples] = true  if opts[:return_tuple].nil?
+        opts[:returns] ||= @fields   if opts[:return_tuple]
+
+        values.unshift(@space_no)
+        _call(func_name, values, cb_or_opts, opts, &block)
       end
 
     end
