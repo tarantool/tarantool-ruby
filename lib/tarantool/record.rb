@@ -87,20 +87,15 @@ class Tarantool
     end
 
     def detect_index_no(keys)
-      i = 0
-      @record.indexes.each do |index_fields|
-        return i if index_fields[0, keys.size] == keys
-        i += 1
+      @record.indexes.index do |index_fields|
+        index_fields[0, keys.size] == keys
       end
-      nil
     end
 
     def detect_poor_index_no(keys)
-      i = 0
-      @record.indexes.each do |index_fields|
+      @record.indexes.each_with_index do |index_fields, i|
         fields = index_fields[0, keys.size]
         return [i, fields] if (fields - keys).empty?
-        i += 1
       end
       nil
     end
