@@ -128,6 +128,13 @@ module EM
         end
       end
 
+      def _modify_request(type, body, opts, cb)
+        cb = opts[:return_tuple] ?
+           ResponseWithTuples.new(cb, @fields) :
+           ResponseWithoutTuples.new(cb)
+        @tarantool._send_request(type, body, cb)
+      end
+
       def _insert(flags, tuple, cb_or_opts = nil, opts = {}, &block)
         if Hash === cb_or_opts
           opts = cb_or_opts
@@ -145,12 +152,7 @@ module EM
           i += 1
         end
 
-        if opts[:return_tuple]
-          cb = ResponseWithTuples.new(cb_or_opts || block, fields)
-        else
-          cb = ResponseWithoutTuples.new(cb_or_opts || block)
-        end
-        @tarantool._send_request(REQUEST_INSERT, body, cb)
+        _modify_request(REQUEST_INSERT, body, opts, cb_or_opts || block)
       end
 
       def insert(tuple, cb_or_opts = nil, opts = {}, &block)
@@ -208,12 +210,7 @@ module EM
           end
         end
 
-        if opts[:return_tuple]
-          cb = ResponseWithTuples.new(cb_or_opts || block, fields)
-        else
-          cb = ResponseWithoutTuples.new(cb_or_opts || block)
-        end
-        @tarantool._send_request(REQUEST_UPDATE, body, cb)
+        _modify_request(REQUEST_UPDATE, body, opts, cb_or_opts || block)
       end
 
     end
