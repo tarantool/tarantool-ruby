@@ -372,9 +372,30 @@ describe EM::Tarantool::SpaceCB do
           results[2] = res; emstop
         }
       }
-      results[0].must_equal ['vasya', 'petrov', 'eb@lo.com', 5]
+      results[0].must_equal vasya
       results[1].must_equal [1, 'common', 4]
       results[2].must_equal ['hi zo', 'pidas', 1, 3, 5]
+    end
+
+    it "should be able to choose index by field numbers" do
+      results = []
+      emrun(4) {
+        space0.first_by_key([0], 'vasya'){|res| results[0] = res; emstop}
+        space0.first_by_key([1,2], ['zimov', 'il@zi.bot']){|res|
+          results[1] = res; emstop
+        }
+        space0.all_by_key([3], 13){|res|
+          results[2] = res; emstop
+        }
+        space2.first_by_key([1,0], ['peredoma', 'coma']){|res|
+          results[3] = res; emstop
+        }
+      }
+      results[0].must_equal vasya
+      results[1].must_equal ilya
+      (results[2] - [ilya, fedor]).must_be_empty
+      ([ilya, fedor] - results[2]).must_be_empty
+      results[3].must_equal ['coma', 'peredoma', 2]
     end
   end
 end

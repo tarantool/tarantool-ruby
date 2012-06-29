@@ -14,10 +14,13 @@ module EM
         indexes = Array(indexes)
         if primary_index
           indexes = [Array(primary_index)].concat(indexes)
+          @index_fields = indexes
           @indexes = _map_indexes(indexes)
         elsif !indexes.empty?
+          @index_fields = [[]] + indexes
           @indexes = [TYPES_FALLBACK] + _map_indexes(indexes)
         else
+          @index_fields = nil
           @indexes = nil
         end
       end
@@ -63,8 +66,29 @@ module EM
         select(index_no, opts[:offset] || 0, opts[:limit] || -1, keys, cb)
       end
 
+      def _fix_index_fields(index_fields, keys)
+        sorted = index_fields.sort
+        if index_no = @index_fields.index{|fields| fields.take(index_fields.size).sort == sorted}
+          real_fields = @index_fields[index_no]
+          permutation = index_fields.map{|i| real_fields.index(i)}
+          keys = Array(keys).map{|v| Array(v).values_at(*permutation)}
+          [index_no, keys]
+        end
+      end
 
       def select(index_no, offset, limit, keys, cb=nil, &block)
+        if Array === index_no
+          raise ValueError, "Has no defined indexes to search index #{index_no}"  unless @indexes
+          index_fields = index_no
+          index_no = @index_fields.index{|fields| fields.take(index_fields.size) == index_fields}
+          unless index_no || index_fields.size == 1
+            index_no, keys = _fix_index_fields(index_fields, keys)
+            unless index_no
+               raise(ValueError, "Not found index with field numbers #{index_no}, " +
+                                 "(defined indexes #{@index_fields})")
+            end
+          end
+        end
         _select(@space_no, index_no, offset, limit, keys, cb || block, @fields, @indexes ? @indexes[index_no] : TYPES_FALLBACK)
       end
 
