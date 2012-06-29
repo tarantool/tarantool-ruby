@@ -39,6 +39,7 @@ module EM
       UPDATE_FIELDNO_OP = 'VC'.freeze
 
       def _select(space_no, index_no, offset, limit, keys, cb, fields=nil, index_fields=nil)
+        keys = Array(keys)
         body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
         for key in keys

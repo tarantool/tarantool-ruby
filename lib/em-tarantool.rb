@@ -1,13 +1,14 @@
 require 'eventmachine'
 require "iproto"
 require "em-tarantool/version"
-require "em-tarantool/space"
+require "em-tarantool/request"
+require "em-tarantool/response"
+require "em-tarantool/space_cb"
 
 module EM
   class Tarantool
-    class Error < StandardError; end
-    class BadReturnCode < Error; end
-    class ValueError < Error; end
+    include Request
+    include Response
 
     attr_reader :closed, :connection
     alias closed? closed
@@ -24,15 +25,15 @@ module EM
 
     # returns regular space, where fields are named by position
     #
-    # tarantool.space(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
-    def space_plain(space_no, *args)
+    # tarantool.space_cb(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
+    def space_cp(space_no, *args)
       options = args.pop  if Hash === args.last
       options ||= {}
       fields = args
       fields.flatten!
       primary_key = options[:pk]
       indexes = options[:indexes]
-      Space.new(self, space_no, fields, primary_key, indexes)
+      SpaceCB.new(self, space_no, fields, primary_key, indexes)
     end
 
     def close

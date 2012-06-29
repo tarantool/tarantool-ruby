@@ -13,6 +13,6 @@ Gem::Specification.new do |gem|
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
   gem.name          = "em-tarantool"
   gem.require_paths = ["lib"]
-  gem.version       = Em::Tarantool::VERSION
+  gem.version       = EM::Tarantool::VERSION
   gem.add_dependency "iproto", [">= 0.3"]
 end

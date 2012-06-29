@@ -4,13 +4,13 @@ require 'em-tarantool/response'
 
 module EM
   class Tarantool
-    class Space
+    class SpaceCB
       include Request
 
       def initialize(tarantool, space_no, fields, primary_index, indexes)
         @tarantool = tarantool
         @space_no = space_no
-        @fields = fields
+        @fields = fields.empty? ? [:str] : fields
         primary_index ||= [0]
         indexes = [primary_index].concat(Array(indexes))
         @indexes = indexes.map{|index| index.map{|i| @fields[i]}}
@@ -58,7 +58,7 @@ module EM
 
 
       def select(index_no, offset, limit, keys, cb=nil, &block)
-        _select(@space_no, index_no, offset, limit, keys, cb, @fields, @indexes[index_no])
+        _select(@space_no, index_no, offset, limit, keys, cb || block, @fields, @indexes[index_no])
       end
 
       def insert(tuple, cb_or_opts = nil, opts = {}, &block)
