@@ -45,7 +45,6 @@ class Tarantool
 
     def perform
       data = connection.send_request self.class.request_type, make_body
-      raise data  if Exception === data
       make_response data
     end
 
