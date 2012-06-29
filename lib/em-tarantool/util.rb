@@ -2,6 +2,7 @@ module EM
   class Tarantool
     module Util
       module Packer
+      private
         EMPTY = ''.freeze
         def unpack_int16!(int)
           int = data.getbyte(0) + data.getbyte(1) * 256
@@ -29,6 +30,13 @@ module EM
                 )
           data[0, 8] = EMPTY
           int
+        end
+
+        def ber_size(int)
+          int < 128 ? 1 :
+          int < 16384 ? 2 :
+          int < 2097153 ? 3 :
+          int < 268435456 ? 4 : 5
         end
 
         def unpack_ber!(data)

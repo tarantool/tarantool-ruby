@@ -10,10 +10,27 @@ module EM
       def initialize(tarantool, space_no, fields, primary_index, indexes)
         @tarantool = tarantool
         @space_no = space_no
-        @fields = fields.empty? ? [:str] : fields
-        primary_index ||= [0]
-        indexes = [primary_index].concat(Array(indexes))
-        @indexes = indexes.map{|index| index.map{|i| @fields[i]}}
+        @fields = (fields.empty? ? [:str] : fields).dup.freeze
+        indexes = Array(indexes)
+        if primary_index
+          indexes = [Array(primary_index)].concat(indexes)
+          @indexes = _map_indexes(indexes)
+        elsif !indexes.empty?
+          @indexes = [TYPES_FALLBACK] + _map_indexes(indexes)
+        else
+          @indexes = nil
+        end
+      end
+
+      def _map_indexes(indexes)
+        indexes.map{|index|
+          index.map{|i|
+            unless Symbol === (field = @fields[i])
+              raise "Wrong index field number: #{index} #{i}"
+            end
+            field
+          }
+        }
       end
 
       def _send_request(type, body, cb)
@@ -33,18 +50,8 @@ module EM
         select(index_no, opts[:offset] || 0, opts[:limit] || -1, [key], cb)
       end
 
-      class FirstCB < Struct.new(:cb)
-        def call(tuples)
-          if Exception === tuples
-            cb.call tuples
-          else
-            cb.call(tuples.first)
-          end
-        end
-      end
-
       def first_by_key(index_no, key, cb=nil, &block)
-        select(index_no, 0, 1, [key], FirstCB.new(cb || block))
+        select(index_no, 0, 1, [key], cb, &block).first = true
       end
 
       def all_by_keys(index_no, keys, cb_or_opts = nil, opts = {}, &block)
@@ -58,7 +65,7 @@ module EM
 
 
       def select(index_no, offset, limit, keys, cb=nil, &block)
-        _select(@space_no, index_no, offset, limit, keys, cb || block, @fields, @indexes[index_no])
+        _select(@space_no, index_no, offset, limit, keys, cb || block, @fields, @indexes ? @indexes[index_no] : TYPES_FALLBACK)
       end
 
       def insert(tuple, cb_or_opts = nil, opts = {}, &block)

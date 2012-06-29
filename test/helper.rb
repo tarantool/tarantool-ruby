@@ -9,10 +9,10 @@ DB = EM::Tarantool.new TCONFIG[:host], TCONFIG[:port]
 SPACE0 = {
   types:  [:str, :str, :str, :int],
   pk:     [0],
-  indexes:[[1,2]]
+  indexes:[[1,2], [3]]
 }
 SPACE1 = {
-  types:  [:int],
+  types:  [:int, :str, :int, 2],
   pk:     [0],
   indexes:[]
 }
@@ -23,13 +23,6 @@ SPACE2 = {
 }
 
 module Helper
-  def set_timer
-    EM.add_timer(0.3) {
-      EM.stop
-      assert false, "timeout encounted"
-    }
-  end
-
   def exec_tarantool(cmd)
     cnf = TCONFIG
     tarant = %W{tarantool -p #{cnf[:port]} -m #{cnf[:admin]}}
@@ -57,26 +50,40 @@ module Helper
     exec_tarantool <<-EOF
       insert into t0 values ('vasya', 'petrov', 'eb@lo.com', 5)
       insert into t0 values ('ilya', 'zimov', 'il@zi.bot', 13)
-      insert into t1 values (1)
-      insert into t1 values (2, 'medium')
-      insert into t3 values ('hi zo', 'ho zo', 1)
-      insert into t3 values ('hi zo', 'pidas', 1)
-      insert into t3 values ('coma', 'peredoma', 2)
+      insert into t0 values ('fedor', 'kuklin', 'ku@kl.in', 13)
+      insert into t1 values (1, 'common', 4)
+      insert into t1 values (2, 'medium', 6, 'common', 7)
+      insert into t2 values ('hi zo', 'ho zo', 1)
+      insert into t2 values ('hi zo', 'pidas', 1, 3, 5)
+      insert into t2 values ('coma', 'peredoma', 2)
     EOF
   end
 
-  def emrun
+  def clear_db
     truncate
     seed
+  end
+
+  def emrun(semaphore = 1)
+    @semaphore = semaphore
     EM.run {
-      set_timer
+      @timeout_timer = EM.add_timer(1) {
+        EM.stop
+        assert false, "timeout encounted"
+      }
       yield
     }
+  end
+
+  def emstop
+    @semaphore -= 1
+    if @semaphore == 0
+      EM.cancel_timer @timeout_timer
+      EM.next_tick{ EM.stop }
+    end
   end
 end
 
 class MiniTest::Unit::TestCase
   include ::Helper
 end
-def assert(r, m) raise m unless r end
-include ::Helper

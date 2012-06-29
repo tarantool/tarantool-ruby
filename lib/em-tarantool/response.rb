@@ -61,12 +61,18 @@ module EM
       end
     end
 
-    class ResponseWithTuples < Struct.new(:cb, :fields)
+    class ResponseWithTuples < Struct.new(:cb, :fields, :first)
       include Response
       def parse_response(data)
         tuples_affected = unpack_int32!(data)
         tuples = []
         fields = fields()
+        if Integer === fields.last
+          *fields, tail = fields
+        else
+          tail = 1
+        end
+
         while tuples_affected > 0
           byte_size = unpack_int32!(data)
           fields_num = unpack_int32!(data)
@@ -75,7 +81,13 @@ module EM
           tuple = []
           while i < fields_num
             field_size = unpack_ber!(tuple_str)
-            case fields[i]
+
+            if (field = fields[i]).nil?
+              pos = fields.size - tail + (i - fields.size) % tail
+              field = fields[pos]
+            end
+
+            case field
             when :int
               case field_size
               when 8
@@ -95,6 +107,7 @@ module EM
           tuples << tuple
           tuples_affected -= 1
         end
+        tuples = tuples[0]  if first
         cb.call tuples
       end
     end

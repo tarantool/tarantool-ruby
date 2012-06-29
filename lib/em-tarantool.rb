@@ -4,6 +4,7 @@ require "em-tarantool/version"
 require "em-tarantool/request"
 require "em-tarantool/response"
 require "em-tarantool/space_cb"
+require "em-tarantool/core-ext.rb"
 
 module EM
   class Tarantool
@@ -26,7 +27,7 @@ module EM
     # returns regular space, where fields are named by position
     #
     # tarantool.space_cb(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
-    def space_cp(space_no, *args)
+    def space_cb(space_no, *args)
       options = args.pop  if Hash === args.last
       options ||= {}
       fields = args
@@ -47,9 +48,7 @@ module EM
     end
 
     def _send_request(request_type, body, cb)
-      EM.schedule do
-        @connection.send_request(request_type, body, cb)
-      end
+      @connection.send_request(request_type, body, cb)
     end
   end
 end
