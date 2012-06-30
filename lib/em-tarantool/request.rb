@@ -47,15 +47,17 @@ module EM
         body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
         for key in keys
-          pack_key_tuple(body, key, index_fields, :error, index_no)
+          pack_key_tuple(body, key, index_fields, index_no)
         end
         cb = ResponseWithTuples.new(cb || block, fields, false)
         _send_request(REQUEST_SELECT, body, cb)
         cb
       end
 
-      def pack_key_tuple(body, key, types, tail = :error, index_no = 0)
-        if types.equal?(TYPES_FALLBACK) || tail == :last
+      def pack_key_tuple(body, key, types, index_no = 0)
+        if Integer === types.last
+          *types, tail = types
+        else
           tail = 1
         end
         case key
@@ -66,14 +68,7 @@ module EM
           body << [key_size = key.size].pack(INT32)
           i = 0
           while i < key_size
-            if (field = types[i]).nil?
-              case tail
-              when :error
-                raise ValueError, "tuple #{key} has more entries than index #{index_no}"
-              when Integer
-                field = get_tail_item(types, i, tail)
-              end
-            end
+            field = types[i] || get_tail_item(types, i, tail)
             pack_key(body, field, key[i])
             i += 1
           end
@@ -83,6 +78,8 @@ module EM
           body << INT32_1
           pack_key(body, types[0], key)
         end
+      rescue ValueError => e
+        raise ValueError, "tuple #{key} has more entries than index #{index_no}"
       end
 
       def pack_key(body, field_kind, value)
@@ -94,6 +91,8 @@ module EM
           else
             body << BER8 << [value].pack(INT64)
           end
+        when :error
+          raise ValueError
         else
           value = value.to_s
           body << [value.bytesize, value].pack(PACK_STRING)
@@ -101,13 +100,10 @@ module EM
       end
 
       def _modify_request(type, body, fields, opts, cb)
-        cb = case opts[:return_tuple]
-             when nil, false
-               ResponseWithoutTuples.new(cb)
-             when :all
-               ResponseWithTuples.new(cb, fields, false)
+        cb = if (ret = opts[:return_tuple])
+               ResponseWithTuples.new(cb, fields, ret != :all)
              else
-               ResponseWithTuples.new(cb, fields, true)
+               ResponseWithoutTuples.new(cb)
              end
         _send_request(type, body, cb)
       end
@@ -117,14 +113,13 @@ module EM
           opts = cb_or_opts
           cb_or_opts = nil
         end
-        flags |= (opts[:return_tuple] ? BOX_RETURN_TUPLE : 0)
+        flags |= BOX_RETURN_TUPLE  if opts[:return_tuple]
         fields = Array(fields)
-        *fields, tail = fields  if Integer === fields.last
 
         tuple = Array(tuple)
         tuple_size = tuple.size
         body = [space_no, flags].pack(INSERT_HEADER)
-        pack_key_tuple(body, tuple, fields, tail || 1, :space)
+        pack_key_tuple(body, tuple, fields, :space)
 
         _modify_request(REQUEST_INSERT, body, fields, opts, cb_or_opts || block)
       end
@@ -135,24 +130,28 @@ module EM
           cb_or_opts = nil
         end
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
-        *fields, tail = fields  if Integer === fields.last
 
         if Array === operations && !(Array === operations.first)
           operations = [operations]
         end
 
         body = [space_no, flags].pack(UPDATE_HEADER)
-        pack_key_tuple(body, pk, pk_fields, :error)
+        pack_key_tuple(body, pk, pk_fields, 0)
         body << [operations.size].pack(INT32)
 
-        _pack_operations(body, operations, fields, tail || 1)
+        _pack_operations(body, operations, fields)
 
         _modify_request(REQUEST_UPDATE, body, fields, opts, cb_or_opts || block)
       end
 
-      def _pack_operations(body, operations, fields, tail)
+      def _pack_operations(body, operations, fields)
+        if Integer === fields.last
+          *fields, tail = fields
+        else
+          tail = 1
+        end
         for operation in operations
-          operation.flatten!
+          operation = operation.flatten
           field_no = operation[0]
           if operation.size == 2 && UPDATE_OPS[operation[1]] != 6
             body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
@@ -206,7 +205,7 @@ module EM
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
 
         body = [space_no, flags].pack(DELETE_HEADER)
-        pack_key_tuple(body, pk, pk_fields, :error)
+        pack_key_tuple(body, pk, pk_fields, 0)
 
         _modify_request(REQUEST_DELETE, body, fields, opts, cb_or_opts || block)
       end
@@ -219,13 +218,13 @@ module EM
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
         opts[:return_tuple] = :all  if opts[:return_tuple]
 
-        value_types = Array(opts[:types] || _detect_types(values))
+        value_types = opts[:types] ? Array(opts[:types]) :
+                                    _detect_types(values)
         return_types = Array(opts[:returns] || TYPES_STR)
 
         func_name = func_name.to_s
-
         body = [flags, func_name.size, func_name].pack(CALL_HEADER)
-        pack_key_tuple(body, values, value_types, opts[:tail] || 1)
+        pack_key_tuple(body, values, value_types, :func_call)
 
         _modify_request(REQUEST_CALL, body, return_types, opts, cb_or_opts || block)
       end

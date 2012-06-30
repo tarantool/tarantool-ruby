@@ -26,14 +26,14 @@ module EM
       end
 
       def _map_indexes(indexes)
-        indexes.map{|index|
-          index.map{|i|
+        indexes.map do |index|
+          index.map do |i|
             unless Symbol === (field = @fields[i])
               raise "Wrong index field number: #{index} #{i}"
             end
             field
-          }
-        }
+          end << :error
+        end
       end
 
       def _send_request(type, body, cb)
@@ -101,7 +101,7 @@ module EM
       end
 
       def update(pk, operations, cb_or_opts = nil, opts = {}, &block)
-        _update(@space_no, pk, operations, @fields, 
+        _update(@space_no, pk, operations, @fields,
                 @indexes ? @indexes[0] : TYPES_FALLBACK,
                 cb_or_opts, opts, &block)
       end
