@@ -304,7 +304,8 @@ describe EM::Tarantool::SpaceCB do
       asdf = ['asdf', 'asdf', 'asdf', 4, 5]
       qwer = ['qwer', 'qwer', 'qwer', 4, 20, 19]
       zxcv = [4, 'zxcv', 7, 'zxcv', 8]
-      emrun(3) {
+      xcvb = [5, 'xcvb', 7, 'xcvb', 8]
+      emrun(4) {
         space0.insert(asdf){|res| results[0] = res; emstop}
         space0.insert(qwer, return_tuple: true){|res| results[1] = res; emstop }
         space1.insert(zxcv){|res|
@@ -314,11 +315,13 @@ describe EM::Tarantool::SpaceCB do
             emstop
           }
         }
+        space1.insert(xcvb, return_tuple: true){|res| results[4] = res; emstop }
       }
       results[0].must_equal 1
       results[1].must_equal qwer
       results[2].must_equal 1
       results[3].must_equal zxcv
+      results[4].must_equal xcvb
     end
 
     it "should be able to update" do
