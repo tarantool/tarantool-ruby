@@ -58,7 +58,7 @@ module EM
         select_cb(index_no, 0, 1, [key], cb, &block).first = true
       end
 
-      def all_by_keys(index_no, keys, cb_or_opts = nil, opts = {}, &block)
+      def all_by_keys_cb(index_no, keys, cb_or_opts = nil, opts = {}, &block)
         if Hash === cb_or_opts
           opts = cb_or_opts
           cb_or_opts = nil

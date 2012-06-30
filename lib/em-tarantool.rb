@@ -4,12 +4,12 @@ require "em-tarantool/version"
 require "em-tarantool/request"
 require "em-tarantool/response"
 require "em-tarantool/space_cb"
-require "em-tarantool/core-ext.rb"
 
 module EM
   class Tarantool
     include Request
     include Response
+    autoload :SpaceFiber, "em-tarantool/space_fiber"
 
     attr_reader :closed, :connection
     alias closed? closed
