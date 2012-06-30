@@ -119,9 +119,9 @@ module EM
       def invoke_cb(func_name, values, cb_or_opts = nil, opts = {}, &block)
         values.unshift(@space_no)
         if opts[:types]
-          opts[:types].unshift(:int)
+          opts[:types].unshift(:str) # cause lua could convert it to integer by itself
         else
-          opts[:types] = TYPES_INT_STR
+          opts[:types] = TYPES_STR_STR
         end
         _call(func_name, values, cb_or_opts, opts, &block)
       end
@@ -136,9 +136,9 @@ module EM
 
         values.unshift(@space_no)
         if opts[:types]
-          opts[:types].unshift(:int)
+          opts[:types].unshift(:str) # cause lua could convert it to integer by itself
         else
-          opts[:types] = TYPES_INT_STR
+          opts[:types] = TYPES_STR_STR
         end
         _call(func_name, values, cb_or_opts, opts, &block)
       end

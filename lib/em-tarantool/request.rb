@@ -20,7 +20,7 @@ module EM
       GREATEST_INT32 = 2**32
       TYPES_STR = [:str].freeze
       TYPES_FALLBACK = [:str].freeze
-      TYPES_INT_STR = [:int, :str].freeze
+      TYPES_STR_STR = [:str, :str].freeze
 
       REQUEST_SELECT = 17
       REQUEST_INSERT = 13
@@ -35,10 +35,15 @@ module EM
 
       UPDATE_OPS = {
         :"=" => 0, :+   => 1, :&   => 2, :^   => 3, :|  => 4, :[]     => 5,
-        :set => 0, :add => 1, :and => 2, :xor => 3, :or => 4, :splice => 5, :delete => 6, :insert => 7,
-                                                                            :del    => 6, :ins    => 7,
-        'set'=> 0, 'add'=> 1, 'and'=> 2, 'xor'=> 3, 'or'=> 4, 'splice'=> 5, 'delete'=> 6, 'insert'=> 7,
-                                                                            'del'   => 6, 'ins'   => 7
+         '=' => 0, '+'  => 1, '&'  => 2, '^'  => 3, '|' => 4, '[]'    => 5,
+                                                              ':'     => 5,
+        :set => 0, :add => 1, :and => 2, :xor => 3, :or => 4, :splice => 5,
+        'set'=> 0, 'add'=> 1, 'and'=> 2, 'xor'=> 3, 'or'=> 4, 'splice'=> 5,
+        '#'     => 6, '!'     => 7,
+        :delete => 6, :insert => 7,
+        :del    => 6, :ins    => 7,
+        'delete'=> 6, 'insert'=> 7,
+        'del'   => 6, 'ins'   => 7
       }
       UPDATE_FIELDNO_OP = 'VC'.freeze
 
@@ -153,46 +158,54 @@ module EM
         for operation in operations
           operation = operation.flatten
           field_no = operation[0]
-          if operation.size == 2 && UPDATE_OPS[operation[1]] != 6
-            body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
-            pack_field(body, fields[field_no], operation[1])
-          else
-            op = operation[1]
-            op = UPDATE_OPS[op]  unless Integer === op
-            raise ValueError, "Unknown operation #{operation[1]}" unless op
-            body << [field_no, op].pack(UPDATE_FIELDNO_OP)
-            case op
-            when 0, 7
-              if (type = fields[field_no]).nil?
-                if operation.size == 4 && Symbol === operation.last
-                  *operation, type = operation
-                else
-                  type = get_tail_item(fields, field_no, tail)
-                end
+          if operation.size == 2
+            if (Integer === field_no || field_no =~ /\A\d/)
+              unless Symbol === operation[1] && UPDATE_OPS[operation[1]] == 6
+                body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
+                pack_field(body, fields[field_no], operation[1])
+                next
               end
-              unless operation.size == 3
-                raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
-              end
-              pack_field(body, fields[field_no], operation[2])
-            when 1, 2, 3, 4
-              unless operation.size == 3 && !operation[2].nil?
-                raise ValueError, "wrong arguments for integer operation #{operation.inspect}"
-              end
-              pack_field(body, :int, operation[2])
-            when 5
-              unless operation.size == 5 && !operation[2].nil? && !operation[3].nil?
-                raise ValueError, "wrong arguments for slice operation #{operation.inspect}"
-              end
-
-              str = operation[4].to_s
-              body << [ 10 + ber_size(str.bytesize) + str.bytesize ].pack('w')
-              pack_field(body, :int, operation[2])
-              pack_field(body, :int, operation[3])
-              pack_field(body, :str, str)
-            when 6
-              body << "\x00"
-              # pass
+            else
+              operation.insert(1, field_no.slice(0, 1))
+              field_no = field_no.slice(1..-1).to_i
             end
+          end
+
+          op = operation[1]
+          op = UPDATE_OPS[op]  unless Integer === op
+          raise ValueError, "Unknown operation #{operation[1]}" unless op
+          body << [field_no, op].pack(UPDATE_FIELDNO_OP)
+          case op
+          when 0, 7
+            if (type = fields[field_no]).nil?
+              if operation.size == 4 && Symbol === operation.last
+                *operation, type = operation
+              else
+                type = get_tail_item(fields, field_no, tail)
+              end
+            end
+            unless operation.size == 3
+              raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
+            end
+            pack_field(body, fields[field_no], operation[2])
+          when 1, 2, 3, 4
+            unless operation.size == 3 && !operation[2].nil?
+              raise ValueError, "wrong arguments for integer operation #{operation.inspect}"
+            end
+            pack_field(body, :int, operation[2])
+          when 5
+            unless operation.size == 5 && !operation[2].nil? && !operation[3].nil?
+              raise ValueError, "wrong arguments for slice operation #{operation.inspect}"
+            end
+
+            str = operation[4].to_s
+            body << [ 10 + ber_size(str.bytesize) + str.bytesize ].pack('w')
+            pack_field(body, :int, operation[2])
+            pack_field(body, :int, operation[3])
+            pack_field(body, :str, str)
+          when 6
+            body << "\x00"
+            # pass
           end
         end
       end
