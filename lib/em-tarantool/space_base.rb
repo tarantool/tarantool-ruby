@@ -5,7 +5,7 @@ require 'em-tarantool/core-ext'
 
 module EM
   class Tarantool
-    class SpaceCB
+    class SpaceBase
       include Request
 
       def initialize(tarantool, space_no, fields, primary_index, indexes)
