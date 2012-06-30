@@ -3,6 +3,7 @@ module EM
   class Tarantool
     module Request
       include Util::Packer
+      include Util::TailGetter
       INT32 = 'V'.freeze
       INT64 = 'Q<'.freeze
       SELECT_HEADER = 'VVVVV'.freeze
@@ -54,12 +55,14 @@ module EM
       end
 
       def pack_key_tuple(body, key, types, tail = :error, index_no = 0)
-        if types.equal?(TYPES_FALLBACK)
-          tail = :last
+        if types.equal?(TYPES_FALLBACK) || tail == :last
+          tail = 1
         end
         case key
         when Array
-          key = key.take_while{|v| !v.nil?}
+          if nili = key.index(nil)
+            key = key.slice(0, nili)
+          end
           body << [key_size = key.size].pack(INT32)
           i = 0
           while i < key_size
@@ -67,11 +70,8 @@ module EM
               case tail
               when :error
                 raise ValueError, "tuple #{key} has more entries than index #{index_no}"
-              when :last
-                field = types.last
               when Integer
-                pos = types.size - tail + (i - types.size) % tail
-                field = types[pos]
+                field = get_tail_item(types, i, tail)
               end
             end
             pack_key(body, field, key[i])
@@ -119,15 +119,12 @@ module EM
         end
         flags |= (opts[:return_tuple] ? BOX_RETURN_TUPLE : 0)
         fields = Array(fields)
-        if Integer === fields.last
-          opts[:tail] = fields.last
-          fields = fields.slice(0..-1)
-        end
+        *fields, tail = fields  if Integer === fields.last
 
         tuple = Array(tuple)
         tuple_size = tuple.size
         body = [space_no, flags].pack(INSERT_HEADER)
-        pack_key_tuple(body, tuple, fields, opts[:tail] || :last, :space)
+        pack_key_tuple(body, tuple, fields, tail || 1, :space)
 
         _modify_request(REQUEST_INSERT, body, fields, opts, cb_or_opts || block)
       end
@@ -138,10 +135,7 @@ module EM
           cb_or_opts = nil
         end
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
-        if Integer === fields.last
-          *fields, tail = fields
-        end
-        tail = opts[:tail] || tail || 1
+        *fields, tail = fields  if Integer === fields.last
 
         if Array === operations && !(Array === operations.first)
           operations = [operations]
@@ -151,12 +145,12 @@ module EM
         pack_key_tuple(body, pk, pk_fields, :error)
         body << [operations.size].pack(INT32)
 
-        pack_operations(body, operations, fields, tail)
+        _pack_operations(body, operations, fields, tail || 1)
 
         _modify_request(REQUEST_UPDATE, body, fields, opts, cb_or_opts || block)
       end
 
-      def pack_operations(body, operations, fields, tail)
+      def _pack_operations(body, operations, fields, tail)
         for operation in operations
           operation.flatten!
           field_no = operation[0]
@@ -174,7 +168,7 @@ module EM
                 if operation.size == 4 && Symbol === operation.last
                   *operation, type = operation
                 else
-                  type = fields - tail + (field_no - fields) % tail
+                  type = get_tail_item(fields, field_no, tail)
                 end
               end
               unless operation.size == 3
@@ -227,12 +221,11 @@ module EM
 
         value_types = Array(opts[:types] || _detect_types(values))
         return_types = Array(opts[:returns] || TYPES_STR)
-        tail = opts[:tail] || :last
 
         func_name = func_name.to_s
 
         body = [flags, func_name.size, func_name].pack(CALL_HEADER)
-        pack_key_tuple(body, values, value_types, tail)
+        pack_key_tuple(body, values, value_types, opts[:tail] || 1)
 
         _modify_request(REQUEST_CALL, body, return_types, opts, cb_or_opts || block)
       end

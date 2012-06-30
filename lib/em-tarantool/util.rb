@@ -55,6 +55,15 @@ module EM
           res
         end
       end
+
+      module TailGetter
+        private
+        def get_tail_item(array, index, tail)
+          tail == 1 ?
+            array.last :
+            array[array.size - tail + (index - array.size) % tail]
+        end
+      end
     end
   end
 end

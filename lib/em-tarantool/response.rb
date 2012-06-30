@@ -63,6 +63,7 @@ module EM
 
     class ResponseWithTuples < Struct.new(:cb, :fields, :first)
       include Response
+      include Util::TailGetter
       def parse_response(data)
         tuples_affected = unpack_int32!(data)
         tuples = []
@@ -82,33 +83,29 @@ module EM
           while i < fields_num
             field_size = unpack_ber!(tuple_str)
 
-            if (field = fields[i]).nil?
-              pos = fields.size - tail + (i - fields.size) % tail
-              field = fields[pos]
-            end
+            field = fields[i] || get_tail_item(fields, i, tail)
 
-            case field
-            when :int
-              case field_size
-              when 8
-                tuple << unpack_int64!(tuple_str)
-              when 4
-                tuple << unpack_int32!(tuple_str)
-              when 2
-                tuple << unpack_int16!(tuple_str)
+            tuple << case field
+              when :int
+                case field_size
+                when 8
+                  unpack_int64!(tuple_str)
+                when 4
+                  unpack_int32!(tuple_str)
+                when 2
+                  unpack_int16!(tuple_str)
+                else
+                  raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
+                end
               else
-                raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
+                tuple_str.slice!(0, field_size)
               end
-            else
-              tuple << tuple_str.slice!(0, field_size)
-            end
             i += 1
           end
           tuples << tuple
           tuples_affected -= 1
         end
-        tuples = tuples[0]  if first
-        cb.call tuples
+        cb.call first ? tuples[0] : tuples
       end
     end
   end

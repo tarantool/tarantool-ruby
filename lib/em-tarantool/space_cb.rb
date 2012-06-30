@@ -10,7 +10,7 @@ module EM
       def initialize(tarantool, space_no, fields, primary_index, indexes)
         @tarantool = tarantool
         @space_no = space_no
-        @fields = (fields.empty? ? [:str] : fields).dup.freeze
+        @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
         indexes = Array(indexes)
         if primary_index
           indexes = [Array(primary_index)].concat(indexes)
@@ -101,11 +101,15 @@ module EM
       end
 
       def update(pk, operations, cb_or_opts = nil, opts = {}, &block)
-        _update(@space_no, pk, operations, @fields, @indexes[0], cb_or_opts, opts, &block)
+        _update(@space_no, pk, operations, @fields, 
+                @indexes ? @indexes[0] : TYPES_FALLBACK,
+                cb_or_opts, opts, &block)
       end
 
       def delete(pk, cb_or_opts = nil, opts = {}, &block)
-        _delete(@space_no, pk, @fields, @indexes[0], cb_or_opts, opts, &block)
+        _delete(@space_no, pk, @fields,
+                @indexes ? @indexes[0] : TYPES_FALLBACK,
+                cb_or_opts, opts, &block)
       end
 
       def invoke(func_name, values, cb_or_opts = nil, opts = {}, &block)
@@ -127,6 +131,11 @@ module EM
         opts[:returns] ||= @fields   if opts[:return_tuple]
 
         values.unshift(@space_no)
+        if opts[:types]
+          opts[:types].unshift(:int)
+        else
+          opts[:types] = TYPES_INT_STR
+        end
         _call(func_name, values, cb_or_opts, opts, &block)
       end
 
