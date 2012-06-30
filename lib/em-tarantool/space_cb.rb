@@ -21,7 +21,7 @@ module EM
           @indexes = [TYPES_FALLBACK] + _map_indexes(indexes)
         else
           @index_fields = nil
-          @indexes = nil
+          @indexes = [TYPES_FALLBACK]
         end
       end
 
@@ -78,7 +78,7 @@ module EM
 
       def select(index_no, offset, limit, keys, cb=nil, &block)
         if Array === index_no
-          raise ValueError, "Has no defined indexes to search index #{index_no}"  unless @indexes
+          raise ValueError, "Has no defined indexes to search index #{index_no}"  unless @index_fields
           index_fields = index_no
           index_no = @index_fields.index{|fields| fields.take(index_fields.size) == index_fields}
           unless index_no || index_fields.size == 1
@@ -89,7 +89,12 @@ module EM
             end
           end
         end
-        _select(@space_no, index_no, offset, limit, keys, cb || block, @fields, @indexes ? @indexes[index_no] : TYPES_FALLBACK)
+        unless index_types = (@index_fields ? @indexes[index_no] : TYPES_FALLBACK)
+          raise ValueError, "No index ##{index_no}"
+        end
+
+        _select(@space_no, index_no, offset, limit, keys, cb || block,
+                @fields, index_types)
       end
 
       def insert(tuple, cb_or_opts = nil, opts = {}, &block)
@@ -102,14 +107,12 @@ module EM
 
       def update(pk, operations, cb_or_opts = nil, opts = {}, &block)
         _update(@space_no, pk, operations, @fields,
-                @indexes ? @indexes[0] : TYPES_FALLBACK,
-                cb_or_opts, opts, &block)
+                @indexes[0], cb_or_opts, opts, &block)
       end
 
       def delete(pk, cb_or_opts = nil, opts = {}, &block)
         _delete(@space_no, pk, @fields,
-                @indexes ? @indexes[0] : TYPES_FALLBACK,
-                cb_or_opts, opts, &block)
+                @indexes[0], cb_or_opts, opts, &block)
       end
 
       def invoke(func_name, values, cb_or_opts = nil, opts = {}, &block)
