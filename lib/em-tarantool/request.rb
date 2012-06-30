@@ -47,14 +47,14 @@ module EM
         body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
         for key in keys
-          pack_key_tuple(body, key, index_fields, index_no)
+          pack_tuple(body, key, index_fields, index_no)
         end
         cb = ResponseWithTuples.new(cb || block, fields, false)
         _send_request(REQUEST_SELECT, body, cb)
         cb
       end
 
-      def pack_key_tuple(body, key, types, index_no = 0)
+      def pack_tuple(body, key, types, index_no = 0)
         if Integer === types.last
           *types, tail = types
         else
@@ -69,20 +69,20 @@ module EM
           i = 0
           while i < key_size
             field = types[i] || get_tail_item(types, i, tail)
-            pack_key(body, field, key[i])
+            pack_field(body, field, key[i])
             i += 1
           end
         when nil
           body << INT32_0
         else
           body << INT32_1
-          pack_key(body, types[0], key)
+          pack_field(body, types[0], key)
         end
       rescue ValueError => e
         raise ValueError, "tuple #{key} has more entries than index #{index_no}"
       end
 
-      def pack_key(body, field_kind, value)
+      def pack_field(body, field_kind, value)
         case field_kind
         when :int
           value = value.to_i
@@ -119,7 +119,7 @@ module EM
         tuple = Array(tuple)
         tuple_size = tuple.size
         body = [space_no, flags].pack(INSERT_HEADER)
-        pack_key_tuple(body, tuple, fields, :space)
+        pack_tuple(body, tuple, fields, :space)
 
         _modify_request(REQUEST_INSERT, body, fields, opts, cb_or_opts || block)
       end
@@ -136,7 +136,7 @@ module EM
         end
 
         body = [space_no, flags].pack(UPDATE_HEADER)
-        pack_key_tuple(body, pk, pk_fields, 0)
+        pack_tuple(body, pk, pk_fields, 0)
         body << [operations.size].pack(INT32)
 
         _pack_operations(body, operations, fields)
@@ -155,7 +155,7 @@ module EM
           field_no = operation[0]
           if operation.size == 2 && UPDATE_OPS[operation[1]] != 6
             body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
-            pack_key(body, fields[field_no], operation[1])
+            pack_field(body, fields[field_no], operation[1])
           else
             op = operation[1]
             op = UPDATE_OPS[op]  unless Integer === op
@@ -173,12 +173,12 @@ module EM
               unless operation.size == 3
                 raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
               end
-              pack_key(body, fields[field_no], operation[2])
+              pack_field(body, fields[field_no], operation[2])
             when 1, 2, 3, 4
               unless operation.size == 3 && !operation[2].nil?
                 raise ValueError, "wrong arguments for integer operation #{operation.inspect}"
               end
-              pack_key(body, :int, operation[2])
+              pack_field(body, :int, operation[2])
             when 5
               unless operation.size == 5 && !operation[2].nil? && !operation[3].nil?
                 raise ValueError, "wrong arguments for slice operation #{operation.inspect}"
@@ -186,9 +186,9 @@ module EM
 
               str = operation[4].to_s
               body << [ 10 + ber_size(str.bytesize) + str.bytesize ].pack('w')
-              pack_key(body, :int, operation[2])
-              pack_key(body, :int, operation[3])
-              pack_key(body, :str, str)
+              pack_field(body, :int, operation[2])
+              pack_field(body, :int, operation[3])
+              pack_field(body, :str, str)
             when 6
               body << "\x00"
               # pass
@@ -205,7 +205,7 @@ module EM
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
 
         body = [space_no, flags].pack(DELETE_HEADER)
-        pack_key_tuple(body, pk, pk_fields, 0)
+        pack_tuple(body, pk, pk_fields, 0)
 
         _modify_request(REQUEST_DELETE, body, fields, opts, cb_or_opts || block)
       end
@@ -224,7 +224,7 @@ module EM
 
         func_name = func_name.to_s
         body = [flags, func_name.size, func_name].pack(CALL_HEADER)
-        pack_key_tuple(body, values, value_types, :func_call)
+        pack_tuple(body, values, value_types, :func_call)
 
         _modify_request(REQUEST_CALL, body, return_types, opts, cb_or_opts || block)
       end
