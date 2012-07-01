@@ -37,6 +37,19 @@ module EM
       SpaceBlock.new(self, space_no, fields, primary_key, indexes)
     end
 
+    # returns fibered space, where fields are named by position
+    #
+    # tarantool.space_fiber(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
+    def space_fiber(space_no, *args)
+      options = args.pop  if Hash === args.last
+      options ||= {}
+      fields = args
+      fields.flatten!
+      primary_key = options[:pk]
+      indexes = options[:indexes]
+      SpaceFiber.new(self, space_no, fields, primary_key, indexes)
+    end
+
     def close
       EM.schedule do
         @closed = true

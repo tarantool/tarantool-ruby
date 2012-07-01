@@ -82,6 +82,21 @@ module Helper
       EM.next_tick{ EM.stop }
     end
   end
+
+  def fibrun
+    res = nil
+    EM.run {
+      f = Fiber.new{
+        begin
+          res = yield
+        ensure
+          EM.next_tick{ EM.stop }
+        end
+      }
+      EM.next_tick{ f.resume }
+    }
+    res
+  end
 end
 
 class MiniTest::Unit::TestCase
