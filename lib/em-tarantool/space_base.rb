@@ -41,30 +41,20 @@ module EM
         @tarantool._send_request(type, body, cb)
       end
 
-      def by_pk_cb(pk, cb=nil, &block)
-        first_by_key_cb(0, pk, cb || block)
+      def by_pk_cb(pk, cb)
+        first_by_key_cb(0, pk, cb)
       end
 
-      def all_by_key_cb(index_no, key, cb_or_opts=nil, opts={}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
-        select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1,
-               [key], cb_or_opts || block)
+      def all_by_key_cb(index_no, key, cb, opts={})
+        select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1, [key], cb)
       end
 
-      def first_by_key_cb(index_no, key, cb=nil, &block)
-        select_cb(index_no, 0, 1, [key], cb, &block).first = true
+      def first_by_key_cb(index_no, key, cb)
+        select_cb(index_no, 0, 1, [key], cb).first = true
       end
 
-      def all_by_keys_cb(index_no, keys, cb_or_opts = nil, opts = {}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
-        select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1,
-               keys, cb_or_opts || block)
+      def all_by_keys_cb(index_no, keys, cb, opts = {})
+        select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1, keys, cb)
       end
 
       def _fix_index_fields(index_fields, keys)
@@ -77,7 +67,7 @@ module EM
         end
       end
 
-      def select_cb(index_no, offset, limit, keys, cb=nil, &block)
+      def select_cb(index_no, offset, limit, keys, cb)
         if Array === index_no
           raise ValueError, "Has no defined indexes to search index #{index_no}"  unless @index_fields
           index_fields = index_no
@@ -94,43 +84,38 @@ module EM
           raise ValueError, "No index ##{index_no}"
         end
 
-        _select(@space_no, index_no, offset, limit, keys, cb || block,
-                @fields, index_types)
+        _select(@space_no, index_no, offset, limit, keys, cb, @fields, index_types)
       end
 
-      def insert_cb(tuple, cb_or_opts = nil, opts = {}, &block)
-        _insert(@space_no, BOX_ADD, tuple, @fields, cb_or_opts, opts, &block)
+      def insert_cb(tuple, cb, opts = {})
+        _insert(@space_no, BOX_ADD, tuple, @fields, cb, opts[:return_tuple])
       end
 
-      def replace_cb(tuple, cb_or_opts = nil, opts = {}, &block)
-        _insert(@space_no, BOX_REPLACE, tuple, @fields, cb_or_opts, opts, &block)
+      def replace_cb(tuple, cb, opts = {})
+        _insert(@space_no, BOX_REPLACE, tuple, @fields, cb, opts[:return_tuple])
       end
 
-      def update_cb(pk, operations, cb_or_opts = nil, opts = {}, &block)
+      def update_cb(pk, operations, cb, opts = {})
         _update(@space_no, pk, operations, @fields,
-                @indexes[0], cb_or_opts, opts, &block)
+                @indexes[0], cb, opts[:return_tuple])
       end
 
-      def delete_cb(pk, cb_or_opts = nil, opts = {}, &block)
+      def delete_cb(pk, cb, opts = {})
         _delete(@space_no, pk, @fields,
-                @indexes[0], cb_or_opts, opts, &block)
+                @indexes[0], cb, opts[:return_tuple])
       end
 
-      def invoke_cb(func_name, values, cb_or_opts = nil, opts = {}, &block)
+      def invoke_cb(func_name, values, cb, opts = {})
         values.unshift(@space_no)
         if opts[:types]
           opts[:types].unshift(:str) # cause lua could convert it to integer by itself
         else
           opts[:types] = TYPES_STR_STR
         end
-        _call(func_name, values, cb_or_opts, opts, &block)
+        _call(func_name, values, cb, opts)
       end
 
-      def call_cb(func_name, values, cb_or_opts = nil, opts = {}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
+      def call_cb(func_name, values, cb, opts = {})
         opts[:return_tuples] = true  if opts[:return_tuple].nil?
         opts[:returns] ||= @fields   if opts[:return_tuple]
 
@@ -140,7 +125,52 @@ module EM
         else
           opts[:types] = TYPES_STR_STR
         end
-        _call(func_name, values, cb_or_opts, opts, &block)
+        _call(func_name, values, cb, opts)
+      end
+
+      # callback with block api
+      def by_pk_blk(pk, &block)
+        by_pk_cb(pk, block)
+      end
+
+      def all_by_key_blk(index_no, key, opts={}, &block)
+        all_by_key_cb(index_no, key, block, opts)
+      end
+
+      def first_by_key_blk(index_no, key, &block)
+        first_by_key_cb(index_no, key, block)
+      end
+
+      def all_by_keys_blk(index_no, keys, opts={}, &block)
+        all_by_keys_cb(index_no, keys, block, opts)
+      end
+
+      def select_blk(index_no, offset, limit, keys, &block)
+        select_cb(index_no, offset, limit, keys, block)
+      end
+
+      def insert_blk(tuple, opts={}, &block)
+        insert_cb(tuple, block, opts)
+      end
+
+      def replace_blk(tuple, opts={}, &block)
+        replace_cb(tuple, block, opts)
+      end
+
+      def update_blk(pk, operations, opts={}, &block)
+        update_cb(pk, operations, block, opts)
+      end
+
+      def delete_blk(pk, opts={}, &block)
+        delete_cb(pk, block, opts)
+      end
+
+      def invoke_blk(func_name, values, opts={}, &block)
+        invoke_cb(func_name, values, block, opts)
+      end
+
+      def call_blk(func_name, values, opts={}, &block)
+        call_cb(func_name, values, block, opts)
       end
 
       # fibered api
@@ -159,6 +189,11 @@ module EM
         ::Fiber.yield
       end
 
+      def all_by_keys_fib(index_no, key, opts={})
+        all_by_keys_cb(index_no, key, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
+
       def select_fib(index_no, offset, limit, keys)
         select_cb(index_no, offset, limit, keys, ::Fiber.current)
         ::Fiber.yield
@@ -174,8 +209,8 @@ module EM
         ::Fiber.yield
       end
 
-      def update_fib(tuple, operations, opts={})
-        update_cb(tuple, operations, ::Fiber.current, opts)
+      def update_fib(pk, operations, opts={})
+        update_cb(pk, operations, ::Fiber.current, opts)
         ::Fiber.yield
       end
 

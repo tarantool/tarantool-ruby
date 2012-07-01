@@ -3,7 +3,7 @@ require "iproto"
 require "em-tarantool/version"
 require "em-tarantool/request"
 require "em-tarantool/response"
-require "em-tarantool/space_cb"
+require "em-tarantool/space_block"
 
 module EM
   class Tarantool
@@ -26,15 +26,15 @@ module EM
 
     # returns regular space, where fields are named by position
     #
-    # tarantool.space_cb(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
-    def space_cb(space_no, *args)
+    # tarantool.space_block(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
+    def space_block(space_no, *args)
       options = args.pop  if Hash === args.last
       options ||= {}
       fields = args
       fields.flatten!
       primary_key = options[:pk]
       indexes = options[:indexes]
-      SpaceCB.new(self, space_no, fields, primary_key, indexes)
+      SpaceBlock.new(self, space_no, fields, primary_key, indexes)
     end
 
     def close

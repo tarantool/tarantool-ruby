@@ -47,7 +47,7 @@ module EM
       }
       UPDATE_FIELDNO_OP = 'VC'.freeze
 
-      def _select(space_no, index_no, offset, limit, keys, cb, fields=nil, index_fields=nil)
+      def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields)
         keys = Array(keys)
         body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
@@ -104,21 +104,17 @@ module EM
         end
       end
 
-      def _modify_request(type, body, fields, opts, cb)
-        cb = if (ret = opts[:return_tuple])
-               ResponseWithTuples.new(cb, fields, ret != :all)
+      def _modify_request(type, body, fields, ret_tuple, cb)
+        cb = if ret_tuple
+               ResponseWithTuples.new(cb, fields, ret_tuple != :all)
              else
                ResponseWithoutTuples.new(cb)
              end
         _send_request(type, body, cb)
       end
 
-      def _insert(space_no, flags, tuple, fields, cb_or_opts = nil, opts = {}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
-        flags |= BOX_RETURN_TUPLE  if opts[:return_tuple]
+      def _insert(space_no, flags, tuple, fields, cb, ret_tuple)
+        flags |= BOX_RETURN_TUPLE  if ret_tuple
         fields = Array(fields)
 
         tuple = Array(tuple)
@@ -126,15 +122,11 @@ module EM
         body = [space_no, flags].pack(INSERT_HEADER)
         pack_tuple(body, tuple, fields, :space)
 
-        _modify_request(REQUEST_INSERT, body, fields, opts, cb_or_opts || block)
+        _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb)
       end
 
-      def _update(space_no, pk, operations, fields, pk_fields, cb_or_opts = nil, opts = {}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
-        flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
+      def _update(space_no, pk, operations, fields, pk_fields, cb, ret_tuple)
+        flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
         if Array === operations && !(Array === operations.first)
           operations = [operations]
@@ -146,7 +138,7 @@ module EM
 
         _pack_operations(body, operations, fields)
 
-        _modify_request(REQUEST_UPDATE, body, fields, opts, cb_or_opts || block)
+        _modify_request(REQUEST_UPDATE, body, fields, ret_tuple, cb)
       end
 
       def _pack_operations(body, operations, fields)
@@ -210,24 +202,16 @@ module EM
         end
       end
 
-      def _delete(space_no, pk, fields, pk_fields, cb_or_opts = nil, opts = {}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
-        flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
+      def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple)
+        flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
         body = [space_no, flags].pack(DELETE_HEADER)
         pack_tuple(body, pk, pk_fields, 0)
 
-        _modify_request(REQUEST_DELETE, body, fields, opts, cb_or_opts || block)
+        _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb)
       end
 
-      def _call(func_name, values, cb_or_opts = nil, opts={}, &block)
-        if Hash === cb_or_opts
-          opts = cb_or_opts
-          cb_or_opts = nil
-        end
+      def _call(func_name, values, cb, opts={})
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
         opts[:return_tuple] = :all  if opts[:return_tuple]
 
@@ -239,7 +223,7 @@ module EM
         body = [flags, func_name.size, func_name].pack(CALL_HEADER)
         pack_tuple(body, values, value_types, :func_call)
 
-        _modify_request(REQUEST_CALL, body, return_types, opts, cb_or_opts || block)
+        _modify_request(REQUEST_CALL, body, return_types, opts[:return_tuple], cb)
       end
 
       def _detect_types(values)

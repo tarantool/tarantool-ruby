@@ -1,13 +1,12 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe EM::Tarantool::SpaceCB do
+describe EM::Tarantool::SpaceBlock do
   before { clear_db }
 
   let(:tarantool) { EM::Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
-  let(:clear_space) { tarantool.space_cb(0) }
-  let(:space0) { tarantool.space_cb(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
-  let(:space1) { tarantool.space_cb(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
-  let(:space2) { tarantool.space_cb(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
+  let(:space0) { tarantool.space_block(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
+  let(:space1) { tarantool.space_block(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
+  let(:space2) { tarantool.space_block(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
 
   describe "with definition" do
     let(:vasya){ ['vasya', 'petrov', 'eb@lo.com', 5] }
