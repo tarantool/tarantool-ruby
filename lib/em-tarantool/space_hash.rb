@@ -182,24 +182,7 @@ module EM
         if opts[:return_tuple]
           opts[:returns] ||= @field_to_type
           if Hash === opts[:returns]
-            returns = opts[:returns]
-            field_names = []
-            field_types = []
-            returns.each{|name, type|
-              field_names << name
-              field_types << type
-            }
-            if field_names.include?(:_tail)
-              unless field_names.last == :_tail
-                raise ValueError, "_tail should be de declared last"
-              end
-              tail_size = Array(field_types.last).size
-            else
-              tail_size = 1
-            end
-            field_types.flatten!
-            opts[:returns] = field_types
-            cb = ConvertToHash.new(cb, field_names, tail_size)
+            opts[:returns], cb = _parse_hash_definition(opts[:returns], cb)
           end
         end
         

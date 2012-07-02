@@ -13,6 +13,7 @@ module EM
     autoload :SpaceBaseFiber, "em-tarantool/space_base_fiber"
     autoload :SpaceHashBlock, "em-tarantool/space_hash_block"
     autoload :SpaceHashFiber, "em-tarantool/space_hash_fiber"
+    autoload :Query,          "em-tarantool/query"
 
     attr_reader :closed, :connection
     alias closed? closed
@@ -63,6 +64,18 @@ module EM
       primary_key = opts[:pk]
       indexes = opts[:indexes]
       SpaceHashFiber.new(self, space_no, fields, primary_key, indexes)
+    end
+
+    def query
+      @query ||= Query.new(self)
+    end
+
+    def method_missing(name, *args)
+      if name =~ /_(cb|blk|fib)$/ && query.respond_to?(name)
+        query.send(name, *args)
+      else
+        super
+      end
     end
 
     def close

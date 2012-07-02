@@ -154,7 +154,8 @@ module EM
             if (Integer === field_no || field_no =~ /\A\d/)
               unless Symbol === operation[1] && UPDATE_OPS[operation[1]] == 6
                 body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
-                type = fields[field_no] || get_tail_item(fields, field_no, tail)
+                type = fields[field_no] || get_tail_item(fields, field_no, tail) ||
+                  _detect_type(operation[1])
                 pack_field(body, type, operation[1])
                 next
               end
@@ -174,7 +175,7 @@ module EM
               if operation.size == 4 && Symbol === operation.last
                 *operation, type = operation
               else
-                type = get_tail_item(fields, field_no, tail)
+                type = get_tail_item(fields, field_no, tail) || _detect_type(operation[2])
               end
             end
             unless operation.size == 3
@@ -240,8 +241,8 @@ module EM
       end
 
       def _call(func_name, values, cb, opts={})
-        flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
-        opts[:return_tuple] = :all  if opts[:return_tuple]
+        return_tuple = opts[:return_tuple] && :all
+        flags = return_tuple ? BOX_RETURN_TUPLE : 0
         
         values = Array(values)
         value_types = opts[:types] ? Array(opts[:types]) :
@@ -252,13 +253,42 @@ module EM
         body = [flags, func_name.size, func_name].pack(CALL_HEADER)
         pack_tuple(body, values, value_types, :func_call)
 
-        _modify_request(REQUEST_CALL, body, return_types, opts[:return_tuple], cb)
+        _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb)
       end
 
       def _detect_types(values)
         values.map{|v| Integer === v ? :int : :str}
       end
 
+      def _detect_type(value)
+        Integer === v ? :int : :str
+      end
+
+      def _parse_hash_definition(returns, cb)
+        field_names = []
+        field_types = []
+        returns.each{|name, type|
+          field_names << name
+          field_types << type
+        }
+        field_types << if field_names.include?(:_tail)
+            unless field_names.last == :_tail
+              raise ValueError, "_tail should be de declared last"
+            end
+            Array(field_types.last).size
+          else
+            1
+          end
+        field_types.flatten!
+        [field_types, ConvertToHash.new(cb, field_names, field_types.last)]
+      end
+
+      def _fiber_result
+        if Exception === (res = ::Fiber.yield)
+          raise res
+        end
+        res
+      end
     end
 
 
@@ -285,13 +315,6 @@ module EM
 
       def call_blk(func_name, values = [], opts={}, &block)
         call_cb(func_name, values, block, opts)
-      end
-
-      def _fiber_result
-        if Exception === (res = ::Fiber.yield)
-          raise res
-        end
-        res
       end
 
       def insert_fib(tuple, opts={})

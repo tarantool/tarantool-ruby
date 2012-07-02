@@ -21,6 +21,7 @@ module EM
     class WrongVersion  < BadReturnCode; end
     class WalIO         < BadReturnCode; end
     class LuaError      < BadReturnCode; end
+    class TupleExists   < BadReturnCode; end
     CODE_TO_EXCEPTION = {
       0x0401 => TupleReadOnly,
       0x0601 => TupleIsLocked,
@@ -34,6 +35,7 @@ module EM
       0x2602 => WrongVersion,
       0x2702 => WalIO,
       0x3302 => LuaError,
+      0x3702 => TupleExists,
     }
 
     module Response
