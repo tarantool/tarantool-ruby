@@ -13,8 +13,10 @@ class Tarantool
         data.unpack('V')[0]
       when 2
         data.unpack('S')[0]
+      when 0
+        nil
       else
-        raise ValueError.new("Unable to cast field to int: length must be 2, 4 or 8 bytes, field length is #{data.size}")
+        raise ValueError.new("Unable to cast field to int: length must be 0, 2, 4 or 8 bytes, field length is #{data.size}")
       end
     end
 
