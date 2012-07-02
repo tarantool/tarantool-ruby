@@ -1,6 +1,6 @@
 # Em::Tarantool
 
-TODO: Write a gem description
+Low leveler interface for tarantool - fast kv-storage ( http://tarantool.org )
 
 ## Installation
 
