@@ -287,34 +287,41 @@ module EM
         call_cb(func_name, values, block, opts)
       end
 
+      def _fiber_result
+        if Exception === (res = ::Fiber.yield)
+          raise res
+        end
+        res
+      end
+
       def insert_fib(tuple, opts={})
         insert_cb(tuple, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def replace_fib(tuple, opts={})
         replace_cb(tuple, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def update_fib(pk, operations, opts={})
         update_cb(pk, operations, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def delete_fib(pk, opts={})
         delete_cb(pk, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def invoke_fib(func_name, values = [], opts = {})
         invoke_cb(func_name, values, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def call_fib(func_name, values = [], opts = {})
         call_cb(func_name, values, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
     end
   end

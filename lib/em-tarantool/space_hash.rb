@@ -227,21 +227,21 @@ module EM
       # fibered api
       def by_pk_fib(key_array)
         by_pk_cb(key_array, ::Fiber.current)
-        ::Fiber.yield
+        _fiber_result
       end
       def all_fib(keys, opts = {})
         all_cb(keys, ::Fiber.current, opts)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def first_fib(key)
         first_cb(key, ::Fiber.current)
-        ::Fiber.yield
+        _fiber_result
       end
 
       def select_fib(keys, offset, limit)
         select_cb(keys, offset, limit, ::Fiber.current)
-        ::Fiber.yield
+        _fiber_result
       end
     end
   end
