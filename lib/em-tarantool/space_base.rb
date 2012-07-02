@@ -12,7 +12,7 @@ module EM
         @tarantool = tarantool
         @space_no = space_no
         @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
-        indexes = Array(indexes)
+        indexes = Array(indexes).map{|ind| Array(ind)}
         if primary_index
           indexes = [Array(primary_index)].concat(indexes)
           @index_fields = indexes
@@ -30,7 +30,7 @@ module EM
         indexes.map do |index|
           index.map do |i|
             unless Symbol === (field = @fields[i])
-              raise "Wrong index field number: #{index} #{i}"
+              raise ValueError, "Wrong index field number: #{index} #{i}"
             end
             field
           end << :error
@@ -106,28 +106,20 @@ module EM
       end
 
       def invoke_cb(func_name, values, cb, opts = {})
-        values.unshift(@space_no)
-        if opts[:types]
-          opts[:types].unshift(:str) # cause lua could convert it to integer by itself
-        else
-          opts[:types] = TYPES_STR_STR
-        end
+        values, opts = _space_call_fix_values(values, @space_no, opts)
         _call(func_name, values, cb, opts)
       end
 
       def call_cb(func_name, values, cb, opts = {})
-        opts[:return_tuples] = true  if opts[:return_tuple].nil?
+        values, opts = _space_call_fix_values(values, @space_no, opts)
+
+        opts[:return_tuple] = true  if opts[:return_tuple].nil?
         opts[:returns] ||= @fields   if opts[:return_tuple]
 
-        values.unshift(@space_no)
-        if opts[:types]
-          opts[:types].unshift(:str) # cause lua could convert it to integer by itself
-        else
-          opts[:types] = TYPES_STR_STR
-        end
         _call(func_name, values, cb, opts)
       end
 
+      include CommonSpaceAliasMethods
       # callback with block api
       def by_pk_blk(pk, &block)
         by_pk_cb(pk, block)
@@ -147,30 +139,6 @@ module EM
 
       def select_blk(index_no, offset, limit, keys, &block)
         select_cb(index_no, offset, limit, keys, block)
-      end
-
-      def insert_blk(tuple, opts={}, &block)
-        insert_cb(tuple, block, opts)
-      end
-
-      def replace_blk(tuple, opts={}, &block)
-        replace_cb(tuple, block, opts)
-      end
-
-      def update_blk(pk, operations, opts={}, &block)
-        update_cb(pk, operations, block, opts)
-      end
-
-      def delete_blk(pk, opts={}, &block)
-        delete_cb(pk, block, opts)
-      end
-
-      def invoke_blk(func_name, values, opts={}, &block)
-        invoke_cb(func_name, values, block, opts)
-      end
-
-      def call_blk(func_name, values, opts={}, &block)
-        call_cb(func_name, values, block, opts)
       end
 
       # fibered api
@@ -196,36 +164,6 @@ module EM
 
       def select_fib(index_no, offset, limit, keys)
         select_cb(index_no, offset, limit, keys, ::Fiber.current)
-        ::Fiber.yield
-      end
-
-      def insert_fib(tuple, opts={})
-        insert_cb(tuple, ::Fiber.current, opts)
-        ::Fiber.yield
-      end
-
-      def replace_fib(tuple, opts={})
-        replace_cb(tuple, ::Fiber.current, opts)
-        ::Fiber.yield
-      end
-
-      def update_fib(pk, operations, opts={})
-        update_cb(pk, operations, ::Fiber.current, opts)
-        ::Fiber.yield
-      end
-
-      def delete_fib(pk, opts={})
-        delete_cb(pk, ::Fiber.current, opts)
-        ::Fiber.yield
-      end
-
-      def invoke_fib(func_name, values, opts = {})
-        invoke_cb(func_name, values, ::Fiber.current, opts)
-        ::Fiber.yield
-      end
-
-      def call_fib(func_name, values, opts = {})
-        call_cb(func_name, values, ::Fiber.current, opts)
         ::Fiber.yield
       end
     end

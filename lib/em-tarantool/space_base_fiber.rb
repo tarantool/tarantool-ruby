@@ -2,7 +2,7 @@ require "em-tarantool/space_base"
 
 module EM
   class Tarantool
-    class SpaceFiber < SpaceBase
+    class SpaceBaseFiber < SpaceBase
       alias by_pk        by_pk_fib
       alias all_by_key   all_by_key_fib
       alias first_by_key first_by_key_fib

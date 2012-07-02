@@ -1,17 +1,12 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe EM::Tarantool::SpaceBlock do
+describe EM::Tarantool::SpaceBaseBlock do
   before { clear_db }
 
   let(:tarantool) { EM::Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
   let(:clear_space) { tarantool.space_block(0) }
 
   describe "without description" do
-    it "should be got from tarantool" do
-      space0 = tarantool.space_block(0)
-      space0.must_be_kind_of EM::Tarantool::SpaceBlock
-    end
-
     let(:vasya){ %W{vasya petrov eb@lo.com \x05\x00\x00\x00} }
     let(:ilya) { %W{ilya  zimov  il@zi.bot \x0D\x00\x00\x00} }
     let(:fedor){ %W{fedor kuklin ku@kl.in  \x0D\x00\x00\x00} }

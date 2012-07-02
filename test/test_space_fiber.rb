@@ -1,6 +1,6 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe EM::Tarantool::SpaceFiber do
+describe EM::Tarantool::SpaceBaseFiber do
   before { clear_db }
 
   let(:tarantool) { EM::Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
@@ -32,6 +32,7 @@ describe EM::Tarantool::SpaceFiber do
       results[5].must_equal [ilya]
       results[6].must_equal [vasya]
       (results[7] - [ilya, fedor]).must_be_empty
+      ([ilya, fedor] - results[7]).must_be_empty
       results[8].must_equal [ilya]
     end
 
@@ -145,6 +146,17 @@ describe EM::Tarantool::SpaceFiber do
       results[2].must_equal 1
       results[3].must_equal [2, 'medium', 5, 'common', 23]
       results[4].must_equal [1, 'condon', 4]
+      results[5].must_equal ['hi zo', 'pidas', 5]
+      results[6].must_equal 1
+      res = [['hi zo', 'ho zo', 1], ['coma', 'peredoma', 1, 2]]
+      results[7].sort.must_equal res.sort
+    end
+
+    it "should be able to update (2)" do
+      results = fibrun {[
+        space2.update(['hi zo', 'pidas'], [[3, [:+, 1]], [4, [:+, -1]]], return_tuple: true)
+      ]}
+      results[0].must_equal ['hi zo', 'pidas', 1, 4, 4]
     end
 
     it "should be able to delete" do
@@ -170,6 +182,50 @@ describe EM::Tarantool::SpaceFiber do
       (results[2] - [ilya, fedor]).must_be_empty
       ([ilya, fedor] - results[2]).must_be_empty
       results[3].must_equal ['coma', 'peredoma', 2]
+    end
+
+    it "should be able to invoke" do
+      results = fibrun {[
+        space0.invoke('truncate'),
+        space0.by_pk('vasya'),
+        space0.by_pk('ilya')
+      ]}
+      results.must_equal [0, nil, nil]
+    end
+
+    it "should be able to call" do
+      results = fibrun {[
+        space0.call('truncate'),
+        space0.by_pk('vasya'),
+        space0.by_pk('ilya')
+      ]}
+      results.must_equal [[], nil, nil]
+    end
+
+    it "should be able to call (1)" do
+      results = fibrun {[
+        space0.call('func1'),
+        space0.call('func1', [1, 2]),
+        space0.call('func1', ['1', '2']),
+        space0.call('func1', [1, 2], types: [:int, :int]),
+        space0.call('func2', [1, 2], types: [:int, :int], returns: [:str, :int])
+      ]}
+      results.must_equal [
+        [['string', '0'], ['nil'], ['nil']], 
+        [['string', '0'], ['string', '1'], ['string', '2']],
+        [['string', '0'], ['string', '1'], ['string', '2']],
+        [['string', '0'], ['string', "\x01\x00\x00\x00"], ['string', "\x02\x00\x00\x00"]],
+        [['string', 1], ['string', 2]],
+      ]
+    end
+
+    it "should be able to call (2)" do
+      results = fibrun {[
+        space0.call('box.select_range', [0, 2]),
+        space0.call('box.select_range', [0, 1000000, 'ilya'])
+      ]} 
+      results[0].must_equal [fedor, ilya]
+      results[1].must_equal [ilya, vasya]
     end
   end
 end

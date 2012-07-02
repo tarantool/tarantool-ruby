@@ -4,7 +4,7 @@ module EM
       module Packer
       private
         EMPTY = ''.freeze
-        def unpack_int16!(int)
+        def unpack_int16!(data)
           int = data.getbyte(0) + data.getbyte(1) * 256
           data[0, 2] = EMPTY
           data

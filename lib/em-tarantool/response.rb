@@ -20,6 +20,7 @@ module EM
     class Duplicate     < BadReturnCode; end # it is rather useful
     class WrongVersion  < BadReturnCode; end
     class WalIO         < BadReturnCode; end
+    class LuaError      < BadReturnCode; end
     CODE_TO_EXCEPTION = {
       0x0401 => TupleReadOnly,
       0x0601 => TupleIsLocked,
@@ -31,7 +32,8 @@ module EM
       0x1f02 => WrongNumber,
       0x2002 => Duplicate,
       0x2602 => WrongVersion,
-      0x2702 => WalIO
+      0x2702 => WalIO,
+      0x3302 => LuaError,
     }
 
     module Response
@@ -43,6 +45,8 @@ module EM
         else
           if (ret = return_code(data)) == 0
             parse_response(data)
+          elsif klass = CODE_TO_EXCEPTION[ret]
+            cb.call klass.new(data)
           else
             cb.call BadReturnCode.new("Error: #{ret} #{data}")
           end
@@ -106,6 +110,39 @@ module EM
           tuples_affected -= 1
         end
         cb.call first ? tuples[0] : tuples
+      end
+    end
+
+    class ConvertToHash < Struct.new(:cb, :field_names, :tail_size)
+      def map_tuple(tuple, names)
+        i = 0
+        hash = {}
+        tuple_size = tuple.size
+        while i < tuple.size
+          unless (name = names[i]) == :_tail
+            hash[name] = tuple[i]
+          else
+            tail = tuple.slice(i..-1)
+            hash[:_tail] = tail_size == 1 ? tail :
+                           tail.each_slice(tail_size).to_a
+            break
+          end
+          i += 1
+        end
+        hash
+      end
+
+      def call(result)
+        unless Array === result && !result.empty?
+          cb.call(result)
+        else
+          unless Array === result.first
+            cb.call map_tuple(result, field_names)
+          else
+            field_names = field_names()
+            cb.call result.map{|tuple| map_tuple(tuple, field_names)}
+          end
+        end
       end
     end
   end

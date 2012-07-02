@@ -1,6 +1,6 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe EM::Tarantool::SpaceBlock do
+describe EM::Tarantool::SpaceBaseBlock do
   before { clear_db }
 
   let(:tarantool) { EM::Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }

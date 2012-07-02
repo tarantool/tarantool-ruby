@@ -22,6 +22,22 @@ SPACE2 = {
   indexes:[[2]]
 }
 
+HSPACE0 = {
+  fields: {name: :str, surname: :str, email: :str, score: :int},
+  pk: :name,
+  indexes: [%w{surname email}, 'score']
+}
+HSPACE1 = {
+  fields: {id: :int, _tail: [:str, :int]},
+  pk: [:id],
+  indexes: nil
+}
+HSPACE2 = {
+  fields: {first: :str, second: :str, third: :int},
+  pk: %w{first second},
+  indexes: :third
+}
+
 module Helper
   def exec_tarantool(cmd)
     cnf = TCONFIG

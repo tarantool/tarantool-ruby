@@ -2,7 +2,7 @@ require 'em-tarantool/space_base'
 
 module EM
   class Tarantool
-    class SpaceBlock < SpaceBase
+    class SpaceBaseBlock < SpaceBase
       alias by_pk        by_pk_blk
       alias all_by_key   all_by_key_blk
       alias first_by_key first_by_key_blk

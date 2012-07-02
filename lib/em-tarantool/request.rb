@@ -154,7 +154,8 @@ module EM
             if (Integer === field_no || field_no =~ /\A\d/)
               unless Symbol === operation[1] && UPDATE_OPS[operation[1]] == 6
                 body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
-                pack_field(body, fields[field_no], operation[1])
+                type = fields[field_no] || get_tail_item(fields, field_no, tail)
+                pack_field(body, type, operation[1])
                 next
               end
             else
@@ -168,7 +169,7 @@ module EM
           raise ValueError, "Unknown operation #{operation[1]}" unless op
           body << [field_no, op].pack(UPDATE_FIELDNO_OP)
           case op
-          when 0, 7
+          when 0
             if (type = fields[field_no]).nil?
               if operation.size == 4 && Symbol === operation.last
                 *operation, type = operation
@@ -179,7 +180,7 @@ module EM
             unless operation.size == 3
               raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
             end
-            pack_field(body, fields[field_no], operation[2])
+            pack_field(body, type, operation[2])
           when 1, 2, 3, 4
             unless operation.size == 3 && !operation[2].nil?
               raise ValueError, "wrong arguments for integer operation #{operation.inspect}"
@@ -195,6 +196,22 @@ module EM
             pack_field(body, :int, operation[2])
             pack_field(body, :int, operation[3])
             pack_field(body, :str, str)
+          when 7
+            old_field_no = field_no + 
+              (inserted ||= []).count{|i| i <= field_no} -
+              (deleted ||= []).count{|i| i <= field_no}
+            inserted << field_no
+            if (type = fields[old_field_no]).nil?
+              if operation.size == 4 && Symbol === operation.last
+                *operation, type = operation
+              else
+                type = get_tail_item(fields, old_field_no, tail)
+              end
+            end
+            unless operation.size == 3
+              raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
+            end
+            pack_field(body, type, operation[2])
           when 6
             body << "\x00"
             # pass
@@ -211,10 +228,22 @@ module EM
         _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb)
       end
 
+      def _space_call_fix_values(values, space_no, opts)
+        opts = opts.dup
+        values = [space_no].concat(Array(values))
+        if opts[:types]
+          opts[:types] = [:str].concat(Array(opts[:types])) # cause lua could convert it to integer by itself
+        else
+          opts[:types] = TYPES_STR_STR
+        end
+        [values, opts]
+      end
+
       def _call(func_name, values, cb, opts={})
         flags = opts[:return_tuple] ? BOX_RETURN_TUPLE : 0
         opts[:return_tuple] = :all  if opts[:return_tuple]
-
+        
+        values = Array(values)
         value_types = opts[:types] ? Array(opts[:types]) :
                                     _detect_types(values)
         return_types = Array(opts[:returns] || TYPES_STR)
@@ -230,6 +259,63 @@ module EM
         values.map{|v| Integer === v ? :int : :str}
       end
 
+    end
+
+
+    module CommonSpaceAliasMethods
+      def insert_blk(tuple, opts={}, &block)
+        insert_cb(tuple, block, opts)
+      end
+
+      def replace_blk(tuple, opts={}, &block)
+        replace_cb(tuple, block, opts)
+      end
+
+      def update_blk(pk, operations, opts={}, &block)
+        update_cb(pk, operations, block, opts)
+      end
+
+      def delete_blk(pk, opts={}, &block)
+        delete_cb(pk, block, opts)
+      end
+
+      def invoke_blk(func_name, values = [], opts={}, &block)
+        invoke_cb(func_name, values, block, opts)
+      end
+
+      def call_blk(func_name, values = [], opts={}, &block)
+        call_cb(func_name, values, block, opts)
+      end
+
+      def insert_fib(tuple, opts={})
+        insert_cb(tuple, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
+
+      def replace_fib(tuple, opts={})
+        replace_cb(tuple, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
+
+      def update_fib(pk, operations, opts={})
+        update_cb(pk, operations, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
+
+      def delete_fib(pk, opts={})
+        delete_cb(pk, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
+
+      def invoke_fib(func_name, values = [], opts = {})
+        invoke_cb(func_name, values, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
+
+      def call_fib(func_name, values = [], opts = {})
+        call_cb(func_name, values, ::Fiber.current, opts)
+        ::Fiber.yield
+      end
     end
   end
 end
