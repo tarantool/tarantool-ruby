@@ -153,11 +153,11 @@ class Tarantool
           self.default_values = default_values.merge name => params[:default]
         end
         define_method name do
-          attributes[name]
+          @attributes[name]
         end
         define_method "#{name}=" do |v|
-          send("#{name}_will_change!") unless v == attributes[name]
-          attributes[name] = v
+          send("#{name}_will_change!") unless v == @attributes[name]
+          @attributes[name] = v
         end
       end
 
@@ -200,9 +200,7 @@ class Tarantool
       end
 
       def from_server(tuple)
-        h = tuple_to_hash(tuple)
-        h[:__new_record] = false
-        new(h)
+        allocate.init_fetched tuple_to_hash(tuple)
       end
 
       def space
@@ -256,17 +254,26 @@ class Tarantool
 
     attr_accessor :__new_record
     def initialize(attributes = {})
+      @__new_record = true
       run_callbacks(:initialize) do
         init attributes
       end
     end
 
     def init(attributes)
-      @__new_record = attributes.delete(:__new_record)
       @__new_record = true if @__new_record.nil?
+      @attributes = self.class.default_values.dup
       attributes.each do |k, v|
         send("#{k}=", v)
       end      
+    end
+
+    def init_fetched(attributes)
+      @__new_record = false
+      run_callbacks(:initialize) do
+        @attributes = attributes
+      end
+      self
     end
 
     def id
@@ -361,7 +368,7 @@ class Tarantool
     def reload
       tuple = space.select(id).tuple
       return false unless tuple
-      init self.class.tuple_to_hash(tuple).merge __new_record: false
+      init_fetched self.class.tuple_to_hash(tuple)
       self
     end
 
