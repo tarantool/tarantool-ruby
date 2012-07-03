@@ -100,7 +100,7 @@ module EM
             field = fields[i] || get_tail_item(fields, i, tail)
 
             tuple << case field
-              when :int
+              when :int, :integer
                 case field_size
                 when 8
                   unpack_int64!(tuple_str)
