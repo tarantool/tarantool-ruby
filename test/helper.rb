@@ -112,8 +112,31 @@ module Helper
     }
     res
   end
+
+  def blockrun
+    yield
+  end
 end
 
 class MiniTest::Unit::TestCase
   include ::Helper
 end
+
+class << MiniTest::Spec
+  def shared_examples
+    @shared_examples ||= {}
+  end
+end
+
+module MiniTest::Spec::SharedExamples
+  def shared_examples_for(desc, &block)
+    MiniTest::Spec.shared_examples[desc] = block
+  end
+
+  def it_behaves_like(desc)
+    class_eval &MiniTest::Spec.shared_examples.fetch(desc)
+  end
+end
+
+Object.class_eval { include(MiniTest::Spec::SharedExamples) }
+

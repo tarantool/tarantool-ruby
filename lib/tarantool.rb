@@ -18,6 +18,8 @@ module Tarantool
         require 'tarantool/callback_db'
         CallbackDB.new(conf[:host], conf[:port])
       when :block
+        require 'tarantool/block_db'
+        BlockDB.new(conf[:host], conf[:port])
       end
     end
   end
@@ -56,7 +58,7 @@ module Tarantool
     end
 
     def method_missing(name, *args)
-      if name =~ /_(cb|blk|fib)$/ && query.respond_to?(name)
+      if query.respond_to?(name)
         query.send(name, *args)
       else
         super

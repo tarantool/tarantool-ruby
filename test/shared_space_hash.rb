@@ -1,9 +1,8 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe 'Tarantool::FiberDB::SpaceHash' do
+shared_examples_for :blocking_hash_space do
   before { clear_db }
 
-  let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em)) }
   let(:space0) { tarantool.space_hash(0, HSPACE0[:fields], pk: HSPACE0[:pk], indexes: HSPACE0[:indexes])}
   let(:space1) { tarantool.space_hash(1, HSPACE1[:fields], pk: HSPACE1[:pk], indexes: HSPACE1[:indexes])}
   let(:space2) { tarantool.space_hash(2, HSPACE2[:fields], pk: HSPACE2[:pk], indexes: HSPACE2[:indexes])}
@@ -16,7 +15,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   let(:peredoma) { {first: 'coma', second: 'peredoma', third: 2} }
 
   it "should be selectable" do
-    results = fibrun { [
+    results = blockrun { [
       space0.select({name: 'vasya'}, 0, -1),
       space0.select([{name: 'vasya'}], 0, -1),
       space0.select([{name: 'vasya'}, {name: 'ilya'}], 0, -1),
@@ -38,7 +37,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
   
   it "should select tail (and have #all)" do
-    results = fibrun{ [
+    results = blockrun{ [
       space1.all({id: 2}),
       space2.all({third: 1})
     ] }
@@ -48,7 +47,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
   
   it "should react on #by_pk" do
-    results = fibrun{ [
+    results = blockrun{ [
       space0.by_pk('vasya'),
       space1.by_pk([1]),
       space1.by_pk({id: 2}),
@@ -63,7 +62,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
 
   it "should react on #first" do
-    results = fibrun{ [
+    results = blockrun{ [
       space0.first({surname: 'petrov', email: 'eb@lo.com'}),
       space2.first({third: 1})
     ] }
@@ -74,7 +73,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   it "should insert" do
     petr = {name: 'petr', surname: 'kuprin', email: 'zo@na.ru', score: 1000}
     sp1id3 = {id: 3, _tail: [['no', 8], ['more', 9], ['turtles', 10]]}
-    results = fibrun{ [
+    results = blockrun{ [
       space0.insert(petr),
       space0.first(score: 1000),
       space1.insert(sp1id3, return_tuple: true)
@@ -86,7 +85,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
 
   it "should replace" do
     huzo = {first: 'hi zo', second: 'ho zo', third: 6, _tail: [5, 4]}
-    results = fibrun{ [
+    results = blockrun{ [
       space2.replace(huzo),
       space2.by_pk(['hi zo', 'ho zo']),
       space1.replace({id: 2, _tail: []}, return_tuple: true)
@@ -97,7 +96,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
 
   it "should update" do
-    results = fibrun{ [
+    results = blockrun{ [
       space0.update('vasya', {score: 6}),
       space0.by_pk('vasya'),
       space0.update(['ilya'], {email: 'x@y.z', score: [:+, 2]}, return_tuple: true),
@@ -114,7 +113,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
 
   it "should delete" do
-    results = fibrun {[
+    results = blockrun {[
       space0.delete('vasya', return_tuple: true),
       space0.delete(['ilya'], return_tuple: true),
       space0.delete({name: 'fedor'}, return_tuple: true),
@@ -130,7 +129,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
   
   it "should be able to call" do
-    results = fibrun {[
+    results = blockrun {[
       space0.call('box.select_range', [0, 2]),
       space0.call('box.select_range', [0, 1000000, 'ilya']),
       space0.call('func2', [1,2], types: [:int, :int], returns: [:str, :int]),
@@ -143,7 +142,7 @@ describe 'Tarantool::FiberDB::SpaceHash' do
   end
 
   it "should raise error on wrong key" do
-    fibrun {
+    blockrun {
       proc {
         space2.insert(name: 1)
       }.must_raise Tarantool::ValueError

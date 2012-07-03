@@ -1,9 +1,8 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe 'Tarantool::FiberDB::SpaceArray' do
+shared_examples_for :blocking_array_space do
   before { clear_db }
 
-  let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em)) }
   let(:space0) { tarantool.space_array(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
   let(:space1) { tarantool.space_array(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
   let(:space2) { tarantool.space_array(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
@@ -13,7 +12,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     let(:ilya) { ['ilya', 'zimov', 'il@zi.bot', 13] }
     let(:fedor){ ['fedor', 'kuklin', 'ku@kl.in', 13] }
     it "should be selectable" do
-      results = fibrun { [
+      results = blockrun { [
         space0.select(0, 0, -1, 'vasya'),
         space0.select(0, 0, -1, ['vasya']),
         space0.select(0, 0, -1, ['vasya', 'ilya']),
@@ -37,7 +36,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to all_by_keys" do
-      results = fibrun { [
+      results = blockrun { [
         space0.all_by_keys(0, 'vasya'),
         space0.all_by_keys(0, ['vasya']),
         space0.all_by_keys(0, ['vasya', 'ilya']),
@@ -60,7 +59,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to all_by_key" do
-      results = fibrun { [
+      results = blockrun { [
         space0.all_by_key(0, 'vasya'),
         space0.all_by_key(0, ['vasya']),
         space0.all_by_key(2, 13),
@@ -73,7 +72,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to first_by_key" do
-      results = fibrun { [
+      results = blockrun { [
         space0.first_by_key(0, 'vasya'),
         space0.first_by_key(0, ['ilya']),
         space0.first_by_key(2, 13),
@@ -86,7 +85,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to by_pk" do
-      results = fibrun { [
+      results = blockrun { [
         space0.by_pk('vasya'),
         space0.by_pk(['ilya']),
         space2.by_pk(['hi zo', 'ho zo']),
@@ -103,7 +102,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should fetch longer records" do
-      results = fibrun { [
+      results = blockrun { [
         space2.by_pk(['hi zo', 'pidas']),
         space1.by_pk(2),
       ]}
@@ -116,7 +115,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
       qwer = ['qwer', 'qwer', 'qwer', 4, 20, 19]
       zxcv = [4, 'zxcv', 7, 'zxcv', 8]
       xcvb = [5, 'xcvb', 7, 'xcvb', 8]
-      results = fibrun {[
+      results = blockrun {[
         space0.insert(asdf),
         space0.insert(qwer, return_tuple: true),
         space1.insert(zxcv),
@@ -131,7 +130,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to update" do
-      results = fibrun {[
+      results = blockrun {[
         space0.update('vasya', {1 => 'holodov', 3 => [:+, 2]}, return_tuple: true),
         space0.update('ilya', {[2, :set] => 'we@al.hero', 3 => [:&, 7]}, return_tuple: true),
         space1.update(2, [[2, :^, 3], [4, :|, 20]]),
@@ -153,14 +152,14 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to update (2)" do
-      results = fibrun {[
+      results = blockrun {[
         space2.update(['hi zo', 'pidas'], [[3, [:+, 1]], [4, [:+, -1]]], return_tuple: true)
       ]}
       results[0].must_equal ['hi zo', 'pidas', 1, 4, 4]
     end
 
     it "should be able to delete" do
-      results = fibrun {[
+      results = blockrun {[
         space0.delete('vasya', return_tuple: true),
         space1.delete([1], return_tuple: true),
         space2.delete(['hi zo', 'pidas'], return_tuple: true),
@@ -171,7 +170,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to choose index by field numbers" do
-      results = fibrun {[
+      results = blockrun {[
         space0.first_by_key([0], 'vasya'),
         space0.first_by_key([1,2], ['zimov', 'il@zi.bot']),
         space0.all_by_key([3], 13),
@@ -185,7 +184,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to invoke" do
-      results = fibrun {[
+      results = blockrun {[
         space0.invoke('truncate'),
         space0.by_pk('vasya'),
         space0.by_pk('ilya')
@@ -194,7 +193,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to call" do
-      results = fibrun {[
+      results = blockrun {[
         space0.call('truncate'),
         space0.by_pk('vasya'),
         space0.by_pk('ilya')
@@ -203,7 +202,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to call (1)" do
-      results = fibrun {[
+      results = blockrun {[
         space0.call('func1'),
         space0.call('func1', [1, 2]),
         space0.call('func1', ['1', '2']),
@@ -220,7 +219,7 @@ describe 'Tarantool::FiberDB::SpaceArray' do
     end
 
     it "should be able to call (2)" do
-      results = fibrun {[
+      results = blockrun {[
         space0.call('box.select_range', [0, 2]),
         space0.call('box.select_range', [0, 1000000, 'ilya'])
       ]} 
