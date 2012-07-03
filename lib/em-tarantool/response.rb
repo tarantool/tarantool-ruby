@@ -4,7 +4,16 @@ module EM
   class Tarantool
     class Error < StandardError; end
     class ValueError < Error; end
-    class StatusCode < Error; end
+    class StatusCode < Error
+      attr_reader :code
+      def initialize(code, msg)
+        super(msg)
+        @code = code
+      end
+      def to_s
+        "#{super} [#{code}]"
+      end
+    end
     # try again return codes
     class TryAgain < StatusCode; end
     class TupleReadOnly < TryAgain; end
@@ -37,6 +46,7 @@ module EM
       0x3302 => LuaError,
       0x3702 => TupleExists,
     }
+    CODE_TO_EXCEPTION.default = BadReturnCode
 
     module Response
       include EM::Tarantool::Util::Packer
@@ -47,10 +57,8 @@ module EM
         else
           if (ret = return_code(data)) == 0
             parse_response(data)
-          elsif klass = CODE_TO_EXCEPTION[ret]
-            cb.call klass.new(data)
           else
-            cb.call BadReturnCode.new("Error: #{ret} #{data}")
+            cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
           end
         end
       end
