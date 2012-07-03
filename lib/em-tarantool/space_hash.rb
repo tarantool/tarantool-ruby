@@ -49,6 +49,7 @@ module EM
                         [@field_names.first]
         @index_fields = [primary_index].concat(indexes).map{|ind| ind.map{|fld| fld.to_sym}}
         @indexes = _map_indexes(@index_fields)
+        @translators = [TranslateToHash.new(@field_names, @tail_size)].freeze
       end
 
       def _map_indexes(indexes)
@@ -85,8 +86,7 @@ module EM
           keys = keys.first.values_at(*index_names).transpose
         end
 
-        cb = ConvertToHash.new(cb, @field_names, @tail_size)
-        _select(@space_no, index_no, offset, limit, keys, cb, @field_types, index_types)
+        _select(@space_no, index_no, offset, limit, keys, cb, @field_types, index_types, @translators)
       end
 
       def all_cb(keys, cb, opts = {})
@@ -94,13 +94,12 @@ module EM
       end
 
       def first_cb(key, cb)
-        select_cb(key, 0, 1, cb).first = true
+        select_cb(key, 0, :first, cb)
       end
 
       def by_pk_cb(key_array, cb)
         key_array = _prepare_pk(key_array)
-        cb = ConvertToHash.new(cb, @field_names, @tail_size)
-        _select(@space_no, 0, 0, 1, [key_array], cb, @field_types, @indexes[0]).first = true
+        _select(@space_no, 0, 0, :first, [key_array], cb, @field_types, @indexes[0], @translators)
       end
 
       def _prepare_tuple(tuple)
@@ -113,15 +112,13 @@ module EM
       end
 
       def insert_cb(tuple, cb, opts = {})
-        cb = ConvertToHash.new(cb, @field_names, @tail_size)
         _insert(@space_no, BOX_ADD, _prepare_tuple(tuple),
-                @field_types, cb, opts[:return_tuple])
+                @field_types, cb, opts[:return_tuple], @translators)
       end
 
       def replace_cb(tuple, cb, opts = {})
-        cb = ConvertToHash.new(cb, @field_names, @tail_size)
         _insert(@space_no, BOX_REPLACE, _prepare_tuple(tuple),
-                @field_types, cb, opts[:return_tuple])
+                @field_types, cb, opts[:return_tuple], @translators)
       end
 
       def _prepare_pk(pk)
@@ -159,15 +156,13 @@ module EM
             )
           end
         }
-        cb = ConvertToHash.new(cb, @field_names, @tail_size)
         _update(@space_no, pk, opers, @field_types,
-                @indexes[0], cb, opts[:return_tuple])
+                @indexes[0], cb, opts[:return_tuple], @translators)
       end
 
       def delete_cb(pk, cb, opts = {})
-        cb = ConvertToHash.new(cb, @field_names, @tail_size)
         _delete(@space_no, _prepare_pk(pk), @field_types,
-                @indexes[0], cb, opts[:return_tuple])
+                @indexes[0], cb, opts[:return_tuple], @translators)
       end
 
       def invoke_cb(func_name, values, cb, opts = {})
@@ -182,7 +177,8 @@ module EM
         if opts[:return_tuple]
           opts[:returns] ||= @field_to_type
           if Hash === opts[:returns]
-            opts[:returns], cb = _parse_hash_definition(opts[:returns], cb)
+            opts[:returns], *opts[:translators] = 
+              _parse_hash_definition(opts[:returns])
           end
         end
         

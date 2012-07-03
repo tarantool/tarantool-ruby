@@ -48,37 +48,40 @@ module EM
     }
     CODE_TO_EXCEPTION.default = BadReturnCode
 
-    module Response
+    class ResponseWith < Struct.new(:cb, :get_tuples, :fields, :translators)
       include EM::Tarantool::Util::Packer
-
+      include Util::TailGetter
       def call(data)
         if Exception === data
           cb.call(data)
         else
           if (ret = return_code(data)) == 0
-            parse_response(data)
+            cb.call parse_response(data)
           else
             cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
           end
         end
       end
 
-      def return_code(data)
-        unpack_int32!(data)
+      def translators
+        super || (self.translators = [])
       end
-    end
 
-    class ResponseWithoutTuples < Struct.new(:cb)
-      include Response
       def parse_response(data)
-        cb.call unpack_int32(data)
+        unless get_tuples
+          unpack_int32(data)
+        else
+          tuples = unpack_tuples(data)
+          if translators
+            translators.each{|trans|
+              tuples.map!{|tuple| trans.call(tuple)}
+            }
+          end
+          get_tuples == :first ? tuples.first : tuples
+        end
       end
-    end
 
-    class ResponseWithTuples < Struct.new(:cb, :fields, :first)
-      include Response
-      include Util::TailGetter
-      def parse_response(data)
+      def unpack_tuples(data)
         tuples_affected = unpack_int32!(data)
         tuples = []
         fields = fields()
@@ -121,15 +124,20 @@ module EM
           tuples << tuple
           tuples_affected -= 1
         end
-        cb.call first ? tuples[0] : tuples
+        tuples
+      end
+
+      def return_code(data)
+        unpack_int32!(data)
       end
     end
 
-    class ConvertToHash < Struct.new(:cb, :field_names, :tail_size)
-      def map_tuple(tuple, names)
+    class TranslateToHash < Struct.new(:field_names, :tail_size)
+      def call(tuple)
         i = 0
         hash = {}
         tuple_size = tuple.size
+        names = field_names
         while i < tuple.size
           unless (name = names[i]) == :_tail
             hash[name] = tuple[i]
@@ -142,19 +150,6 @@ module EM
           i += 1
         end
         hash
-      end
-
-      def call(result)
-        unless Array === result && !result.empty?
-          cb.call(result)
-        else
-          unless Array === result.first
-            cb.call map_tuple(result, field_names)
-          else
-            field_names = field_names()
-            cb.call result.map{|tuple| map_tuple(tuple, field_names)}
-          end
-        end
       end
     end
   end

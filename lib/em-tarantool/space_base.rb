@@ -50,7 +50,7 @@ module EM
       end
 
       def first_by_key_cb(index_no, key, cb)
-        select_cb(index_no, 0, 1, [key], cb).first = true
+        select_cb(index_no, 0, :first, [key], cb)
       end
 
       def all_by_keys_cb(index_no, keys, cb, opts = {})

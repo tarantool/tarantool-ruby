@@ -18,17 +18,20 @@ module EM
         types = opts[:types] || _detect_types(keys)
         returns = opts[:returns] || TYPES_STR
         if Hash === returns
-          returns, cb = _parse_hash_definition(returns, cb)
+          returns, *translators = _parse_hash_definition(returns)
         end
-        _select(space_no, index_no, offset, limit, keys, cb, returns, types)
+        _select(space_no, index_no, offset, limit, keys, cb, returns,
+                types, translators)
       end
 
       def all_cb(space_no, index_no, keys, cb, opts={})
-        select_cb(space_no, index_no, keys, opts[:offset] || 0, opts[:limit] || -1, cb, opts)
+        select_cb(space_no, index_no, keys,
+                  opts[:offset] || 0, opts[:limit] || -1,
+                  cb, opts)
       end
 
       def first_cb(space_no, index_no, key, cb, opts={})
-        select_cb(space_no, index_no, [key], 0, 1, cb, opts).first = true
+        select_cb(space_no, index_no, [key], 0, :first, cb, opts)
       end
 
       def insert_cb(space_no, tuple, cb, opts={})
@@ -46,9 +49,10 @@ module EM
         pk_types = opts[:pk_types] || _detect_types(pk)
         returns = opts[:returns] || TYPES_STR
         if Hash === returns && opts[:return_tuple]
-          returns, cb = _parse_hash_definition(returns, cb)
+          returns, *translators = _parse_hash_definition(returns)
         end
-        _update(space_no, pk, operations, returns, pk_types, cb, opts[:return_tuple])
+        _update(space_no, pk, operations, returns, pk_types, cb,
+                opts[:return_tuple], translators)
       end
 
       def delete_cb(space_no, pk, cb, opts={})
@@ -56,9 +60,10 @@ module EM
         pk_types = opts[:pk_types] || _detect_types(pk)
         returns = opts[:returns] || TYPES_STR
         if Hash === returns && opts[:return_tuple]
-          returns, cb = _parse_hash_definition(returns, cb)
+          returns, *translators = _parse_hash_definition(returns)
         end
-        _delete(space_no, pk, returns, pk_types, cb, opts[:return_tuple])
+        _delete(space_no, pk, returns, pk_types, cb,
+                opts[:return_tuple], translators)
       end
 
       def invoke_cb(func_name, values, cb, opts={})
@@ -75,7 +80,7 @@ module EM
         opts[:types] ||= _detect_types(values)
         opts[:returns] ||= TYPES_STR
         if Hash === opts[:returns] && opts[:return_tuple]
-          opts[:returns], cb = _parse_hash_definition(opts[:returns], cb)
+          opts[:returns], *opts[:translators] = _parse_hash_definition(opts[:returns])
         end
         _call(func_name, values, cb, opts)
       end

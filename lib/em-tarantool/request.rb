@@ -47,14 +47,16 @@ module EM
       }
       UPDATE_FIELDNO_OP = 'VC'.freeze
 
-      def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields)
+      def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, translators = [])
+        get_tuples = limit == :first ? (limit = 1; :first) : :all
         keys = Array(keys)
         body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
         for key in keys
           pack_tuple(body, key, index_fields, index_no)
         end
-        cb = ResponseWithTuples.new(cb || block, fields, false)
+        #cb = ResponseWithTuples.new(cb || block, fields, false)
+        cb = ResponseWith.new(cb, get_tuples, fields, translators)
         _send_request(REQUEST_SELECT, body, cb)
         cb
       end
@@ -104,16 +106,14 @@ module EM
         end
       end
 
-      def _modify_request(type, body, fields, ret_tuple, cb)
-        cb = if ret_tuple
-               ResponseWithTuples.new(cb, fields, ret_tuple != :all)
-             else
-               ResponseWithoutTuples.new(cb)
-             end
+      def _modify_request(type, body, fields, ret_tuple, cb, translators)
+        cb = ResponseWith.new(cb,
+                             ret_tuple && (ret_tuple != :all ? :first : :all),
+                             fields, translators)
         _send_request(type, body, cb)
       end
 
-      def _insert(space_no, flags, tuple, fields, cb, ret_tuple)
+      def _insert(space_no, flags, tuple, fields, cb, ret_tuple, translators = [])
         flags |= BOX_RETURN_TUPLE  if ret_tuple
         fields = Array(fields)
 
@@ -122,10 +122,10 @@ module EM
         body = [space_no, flags].pack(INSERT_HEADER)
         pack_tuple(body, tuple, fields, :space)
 
-        _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb)
+        _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, translators)
       end
 
-      def _update(space_no, pk, operations, fields, pk_fields, cb, ret_tuple)
+      def _update(space_no, pk, operations, fields, pk_fields, cb, ret_tuple, translators = [])
         flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
         if Array === operations && !(Array === operations.first)
@@ -138,7 +138,7 @@ module EM
 
         _pack_operations(body, operations, fields)
 
-        _modify_request(REQUEST_UPDATE, body, fields, ret_tuple, cb)
+        _modify_request(REQUEST_UPDATE, body, fields, ret_tuple, cb, translators)
       end
 
       def _pack_operations(body, operations, fields)
@@ -220,13 +220,13 @@ module EM
         end
       end
 
-      def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple)
+      def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple, translators = [])
         flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
         body = [space_no, flags].pack(DELETE_HEADER)
         pack_tuple(body, pk, pk_fields, 0)
 
-        _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb)
+        _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb, translators)
       end
 
       def _space_call_fix_values(values, space_no, opts)
@@ -253,7 +253,7 @@ module EM
         body = [flags, func_name.size, func_name].pack(CALL_HEADER)
         pack_tuple(body, values, value_types, :func_call)
 
-        _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb)
+        _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, opts[:translators] || [])
       end
 
       def _detect_types(values)
@@ -264,7 +264,7 @@ module EM
         Integer === v ? :int : :str
       end
 
-      def _parse_hash_definition(returns, cb)
+      def _parse_hash_definition(returns)
         field_names = []
         field_types = []
         returns.each{|name, type|
@@ -280,7 +280,7 @@ module EM
             1
           end
         field_types.flatten!
-        [field_types, ConvertToHash.new(cb, field_names, field_types.last)]
+        [field_types, TranslateToHash.new(field_names, field_types.last)]
       end
 
       def _fiber_result
