@@ -1,11 +1,11 @@
 require 'minitest/spec'
 require 'minitest/autorun'
 
-require 'em-tarantool'
+require 'tarantool'
 
 TCONFIG = { host: '127.0.0.1', port: 33013, admin: 33015 }
 
-DB = EM::Tarantool.new TCONFIG[:host], TCONFIG[:port]
+DB = Tarantool.new TCONFIG[:host], TCONFIG[:port]
 SPACE0 = {
   types:  [:str, :str, :str, :int],
   pk:     [0],

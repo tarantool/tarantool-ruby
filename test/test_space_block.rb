@@ -1,9 +1,9 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe EM::Tarantool::SpaceBaseBlock do
+describe Tarantool::SpaceBaseBlock do
   before { clear_db }
 
-  let(:tarantool) { EM::Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
+  let(:tarantool) { Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
   let(:space0) { tarantool.space_block(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
   let(:space1) { tarantool.space_block(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
   let(:space2) { tarantool.space_block(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
@@ -137,7 +137,7 @@ describe EM::Tarantool::SpaceBaseBlock do
         emrun(1) {
           space0.by_pk(['il','ya']){|res| assert false; emstop }
         }
-      }.must_raise EM::Tarantool::ValueError
+      }.must_raise Tarantool::ValueError
     end
 
     it "should fetch longer records" do

@@ -1,5 +1,3 @@
-module EM
-  class Tarantool
-    VERSION = "0.0.2"
-  end
+class Tarantool
+  VERSION = "0.0.2"
 end

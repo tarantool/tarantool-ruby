@@ -1,9 +1,9 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe EM::Tarantool::SpaceBaseFiber do
+describe Tarantool::SpaceBaseFiber do
   before { clear_db }
 
-  let(:tarantool) { EM::Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
+  let(:tarantool) { Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
   let(:space0) { tarantool.space_fiber(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
   let(:space1) { tarantool.space_fiber(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
   let(:space2) { tarantool.space_fiber(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
@@ -99,7 +99,7 @@ describe EM::Tarantool::SpaceBaseFiber do
     it "should raise on not matched pk" do
       proc {
         space0.by_pk(['il','ya'])
-      }.must_raise EM::Tarantool::ValueError
+      }.must_raise Tarantool::ValueError
     end
 
     it "should fetch longer records" do
