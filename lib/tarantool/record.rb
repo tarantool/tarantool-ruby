@@ -267,7 +267,7 @@ module Tarantool
 
     def reload
       if hash = space.by_pk(id)
-        init_fetched space.by_pk(id)
+        init_fetched hash
       else
         false
       end
