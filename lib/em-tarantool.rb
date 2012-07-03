@@ -7,8 +7,6 @@ require "em-tarantool/space_base"
 
 module EM
   class Tarantool
-    include Request
-    include Response
     autoload :SpaceBaseBlock, "em-tarantool/space_base_block"
     autoload :SpaceBaseFiber, "em-tarantool/space_base_fiber"
     autoload :SpaceHashBlock, "em-tarantool/space_hash_block"
