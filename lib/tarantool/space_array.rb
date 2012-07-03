@@ -4,7 +4,7 @@ require 'tarantool/response'
 require 'tarantool/core-ext'
 
 class Tarantool
-  class SpaceBase
+  class SpaceArray
     include Request
 
     def initialize(tarantool, space_no, fields, primary_index, indexes)

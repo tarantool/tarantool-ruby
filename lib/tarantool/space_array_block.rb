@@ -1,7 +1,7 @@
-require 'tarantool/space_base'
+require 'tarantool/space_array'
 
 class Tarantool
-  class SpaceBaseBlock < SpaceBase
+  class SpaceArrayBlock < SpaceArray
     alias by_pk        by_pk_blk
     alias all_by_key   all_by_key_blk
     alias first_by_key first_by_key_blk

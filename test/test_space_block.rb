@@ -1,6 +1,6 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe Tarantool::SpaceBaseBlock do
+describe Tarantool::SpaceArrayBlock do
   before { clear_db }
 
   let(:tarantool) { Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }

@@ -3,12 +3,10 @@ require "iproto"
 require "tarantool/version"
 require "tarantool/request"
 require "tarantool/response"
-require "tarantool/space_base"
 
 class Tarantool
-  autoload :SpaceBaseBlock, "tarantool/space_base_block"
-  autoload :SpaceBaseFiber, "tarantool/space_base_fiber"
-  autoload :SpaceHash,      "tarantool/space_hash"
+  autoload :SpaceArrayBlock, "tarantool/space_array_block"
+  autoload :SpaceArrayFiber, "tarantool/space_array_fiber"
   autoload :SpaceHashBlock, "tarantool/space_hash_block"
   autoload :SpaceHashFiber, "tarantool/space_hash_fiber"
   autoload :Query,          "tarantool/query"
@@ -40,7 +38,7 @@ class Tarantool
     fields.flatten!
     primary_key = options[:pk]
     indexes = options[:indexes]
-    SpaceBaseBlock.new(self, space_no, fields, primary_key, indexes)
+    SpaceArrayBlock.new(self, space_no, fields, primary_key, indexes)
   end
 
   # returns fibered space, where fields are named by position
@@ -53,7 +51,7 @@ class Tarantool
     fields.flatten!
     primary_key = options[:pk]
     indexes = options[:indexes]
-    SpaceBaseFiber.new(self, space_no, fields, primary_key, indexes)
+    SpaceArrayFiber.new(self, space_no, fields, primary_key, indexes)
   end
 
   def space_hash_block(space_no, fields, opts = {})

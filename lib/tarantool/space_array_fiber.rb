@@ -1,7 +1,7 @@
-require "tarantool/space_base"
+require "tarantool/space_array"
 
 class Tarantool
-  class SpaceBaseFiber < SpaceBase
+  class SpaceArrayFiber < SpaceArray
     alias by_pk        by_pk_fib
     alias all_by_key   all_by_key_fib
     alias first_by_key first_by_key_fib
