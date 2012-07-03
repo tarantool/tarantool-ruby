@@ -138,7 +138,7 @@ module EM
         hash = {}
         tuple_size = tuple.size
         names = field_names
-        while i < tuple.size
+        while i < tuple_size
           unless (name = names[i]) == :_tail
             hash[name] = tuple[i]
           else
