@@ -108,6 +108,8 @@ module EM
                   unpack_int32!(tuple_str)
                 when 2
                   unpack_int16!(tuple_str)
+                when 0
+                  nil # well, it is debatable
                 else
                   raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
                 end
