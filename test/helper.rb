@@ -116,6 +116,10 @@ module Helper
   def blockrun
     yield
   end
+
+  def mock(u, meth, &block)
+    u.define_singleton_method(meth, &block)
+  end
 end
 
 class MiniTest::Unit::TestCase

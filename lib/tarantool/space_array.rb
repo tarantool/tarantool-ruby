@@ -40,6 +40,10 @@ module Tarantool
       @tarantool._send_request(type, body, cb)
     end
 
+    def all_by_pks_cb(keys, cb, opts={})
+      all_by_keys_cb(0, keys, cb, opts)
+    end
+
     def by_pk_cb(pk, cb)
       first_by_key_cb(0, pk, cb)
     end
@@ -120,10 +124,6 @@ module Tarantool
 
     include CommonSpaceBlockMethods
     # callback with block api
-    def by_pk_blk(pk, &block)
-      by_pk_cb(pk, block)
-    end
-
     def all_by_key_blk(index_no, key, opts={}, &block)
       all_by_key_cb(index_no, key, block, opts)
     end

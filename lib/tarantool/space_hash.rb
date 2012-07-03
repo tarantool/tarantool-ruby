@@ -96,6 +96,13 @@ module Tarantool
       select_cb(key, 0, :first, cb)
     end
 
+    def all_by_pks_cb(keys, cb, opts={})
+      keys = Array(keys).map{|key| _prepare_pk(key)}
+      _select(@space_no, 0, 
+              opts[:offset] || 0, opts[:limit] || -1,
+              keys, cb, @field_types, @indexes[0], @translators)
+    end
+
     def by_pk_cb(key_array, cb)
       key_array = _prepare_pk(key_array)
       _select(@space_no, 0, 0, :first, [key_array], cb, @field_types, @indexes[0], @translators)
@@ -186,10 +193,6 @@ module Tarantool
 
     include CommonSpaceBlockMethods
     # callback with block api
-    def by_pk_blk(key_array, &block)
-      by_pk_cb(key_array, block)
-    end
-
     def all_blk(keys, opts = {}, &block)
       all_cb(keys, block, opts)
     end

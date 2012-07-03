@@ -17,6 +17,14 @@ module Tarantool
         @_block_cb ||= method(:_raise_or_return)
       end
 
+      def all_by_pks(pks, opts={})
+        all_by_pks_cb(pks, _block_cb, opts)
+      end
+
+      def by_pk(pk)
+        by_pk_cb(pk, _block_cb)
+      end
+
       def insert(tuple, opts={})
         insert_cb(tuple, _block_cb, opts)
       end
@@ -45,10 +53,6 @@ module Tarantool
     class SpaceArray < ::Tarantool::SpaceArray
       include CommonSpaceBlockMethods
 
-      def by_pk(pk)
-        by_pk_cb(pk, _block_cb)
-      end
-
       def all_by_key(index_no, key, opts={})
         all_by_key_cb(index_no, key, _block_cb, opts)
       end
@@ -69,9 +73,6 @@ module Tarantool
     class SpaceHash < ::Tarantool::SpaceHash
       include CommonSpaceBlockMethods
 
-      def by_pk(key_array)
-        by_pk_cb(key_array, _block_cb)
-      end
       def all(keys, opts = {})
         all_cb(keys, _block_cb, opts)
       end

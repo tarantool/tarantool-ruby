@@ -59,6 +59,7 @@ module Tarantool
       _send_request(REQUEST_SELECT, body, cb)
     end
 
+    class IndexIndexError < StandardError; end
     def pack_tuple(body, key, types, index_no = 0)
       if Integer === types.last
         *types, tail = types
@@ -83,13 +84,18 @@ module Tarantool
         body << INT32_1
         pack_field(body, types[0], key)
       end
-    rescue ValueError => e
+    rescue IndexIndexError => e
       raise ValueError, "tuple #{key} has more entries than index #{index_no}"
     end
 
     def pack_field(body, field_kind, value)
+      if value.nil?
+        puts "NIL PACK"
+        body << ZERO
+        return
+      end
       case field_kind
-      when :int
+      when :int, :integer
         value = value.to_i
         if LEST_INT32 <= value && value < GREATEST_INT32
           body << BER4 << [value].pack(INT32)
@@ -97,10 +103,17 @@ module Tarantool
           body << BER8 << [value].pack(INT64)
         end
       when :error
-        raise ValueError
-      else
+        raise IndexIndexError
+      when :str, :string
         value = value.to_s
         body << [value.bytesize, value].pack(PACK_STRING)
+      else
+        if serializer = Tarantool::Serializers::MAP[field_kind]
+          value = serializer.encode(value)
+          body << [value.bytesize, value].pack(PACK_STRING)
+        else
+          raise ValueError, "Unknown field type #{field.inspect}"
+        end
       end
     end
 
@@ -292,6 +305,14 @@ module Tarantool
   end
 
   module CommonSpaceBlockMethods
+    def all_by_pks_blk(keys, opts={}, &block)
+      all_by_pks_cb(keys, block, opts)
+    end
+
+    def by_pk_blk(key_array, &block)
+      by_pk_cb(key_array, block)
+    end
+
     def insert_blk(tuple, opts={}, &block)
       insert_cb(tuple, block, opts)
     end
@@ -317,64 +338,4 @@ module Tarantool
     end
   end
 
-  module CommonSpaceFiberMethods
-    def insert_fib(tuple, opts={})
-      insert_cb(tuple, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def replace_fib(tuple, opts={})
-      replace_cb(tuple, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def update_fib(pk, operations, opts={})
-      update_cb(pk, operations, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def delete_fib(pk, opts={})
-      delete_cb(pk, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def invoke_fib(func_name, values = [], opts = {})
-      invoke_cb(func_name, values, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def call_fib(func_name, values = [], opts = {})
-      call_cb(func_name, values, ::Fiber.current, opts)
-      _fiber_result
-    end
-  end
-
-  module CommonSpaceBlockMethods
-    def _block_cb
-      @_block_cb ||= method(:_raise_or_return)
-    end
-    def insert(tuple, opts={})
-      insert_cb(tuple, _block_cb, opts)
-    end
-
-    def replace(tuple, opts={})
-      replace_cb(tuple, _block_cb, opts)
-    end
-
-    def update(pk, operations, opts={})
-      update_cb(pk, operations, _block_cb, opts)
-    end
-
-    def delete(pk, opts={})
-      delete_cb(pk, _block_cb, opts)
-    end
-
-    def invoke(func_name, values = [], opts = {})
-      invoke_cb(func_name, values, _block_cb, opts)
-    end
-
-    def call(func_name, values = [], opts = {})
-      call_cb(func_name, values, _block_cb, opts)
-    end
-  end
 end

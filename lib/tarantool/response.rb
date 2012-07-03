@@ -111,12 +111,19 @@ module Tarantool
               when 2
                 unpack_int16!(tuple_str)
               when 0
+                puts "NIL UNPACK"
                 nil # well, it is debatable
               else
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
-            else
+            when :str, :string
               tuple_str.slice!(0, field_size)
+            else
+              if serializer = Tarantool::Serializers::MAP[field]
+                serializer.decode(tuple_str.slice!(0, field_size))
+              else
+                raise ValueError, "Unknown field type #{field.inspect}"
+              end
             end
           i += 1
         end

@@ -4,6 +4,16 @@ require 'tarantool/em_db'
 module Tarantool
   class FiberDB < EMDB
     module CommonSpaceFiberMethods
+      def all_by_pks(pks, opts={})
+        all_by_pks_cb(pk, ::Fiber.current, opts)
+        _fiber_result
+      end
+
+      def by_pk(pk)
+        by_pk_cb(pk, ::Fiber.current)
+        _fiber_result
+      end
+
       def insert(tuple, opts={})
         insert_cb(tuple, ::Fiber.current, opts)
         _fiber_result
@@ -37,12 +47,6 @@ module Tarantool
 
     class SpaceArray < ::Tarantool::SpaceArray
       include CommonSpaceFiberMethods
-      # fibered api
-      def by_pk(pk)
-        by_pk_cb(pk, ::Fiber.current)
-        _fiber_result
-      end
-
       def all_by_key(index_no, key, opts={})
         all_by_key_cb(index_no, key, ::Fiber.current, opts)
         _fiber_result
@@ -67,11 +71,11 @@ module Tarantool
     class SpaceHash < ::Tarantool::SpaceHash
       include CommonSpaceFiberMethods
 
-      # fibered api
       def by_pk(key_array)
         by_pk_cb(key_array, ::Fiber.current)
         _fiber_result
       end
+
       def all(keys, opts = {})
         all_cb(keys, ::Fiber.current, opts)
         _fiber_result

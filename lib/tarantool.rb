@@ -6,6 +6,7 @@ require "tarantool/response"
 require "tarantool/space_array.rb"
 require "tarantool/space_hash.rb"
 require "tarantool/query.rb"
+require "tarantool/serializers.rb"
 
 module Tarantool
   class << self
