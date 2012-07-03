@@ -1,9 +1,9 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe Tarantool::Query do
+describe 'Tarantool::Query' do
   before { clear_db }
 
-  let(:tarantool) { Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
+  let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em)) }
 
   let(:vasya){ ['vasya', 'petrov', 'eb@lo.com', 5] }
   let(:ilya) { ['ilya', 'zimov', 'il@zi.bot', 13] }

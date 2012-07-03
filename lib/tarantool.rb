@@ -3,101 +3,82 @@ require "iproto"
 require "tarantool/version"
 require "tarantool/request"
 require "tarantool/response"
+require "tarantool/space_array.rb"
+require "tarantool/space_hash.rb"
+require "tarantool/query.rb"
 
-class Tarantool
-  autoload :SpaceArrayBlock, "tarantool/space_array_block"
-  autoload :SpaceArrayFiber, "tarantool/space_array_fiber"
-  autoload :SpaceHashBlock, "tarantool/space_hash_block"
-  autoload :SpaceHashFiber, "tarantool/space_hash_fiber"
-  autoload :Query,          "tarantool/query"
-
-  attr_reader :closed, :connection
-  alias closed? closed
-  def initialize(host, port)
-    @host = host
-    @port = port
-    @closed = false
-    @connection_waiters = []
-    EM.schedule do
-      unless @closed
-        @connection = IProto.get_connection(host, port, :em_callback)
-        while waiter = @connection_waiters.shift
-          _send_request(*waiter)
-        end
+module Tarantool
+  class << self
+    def new(conf)
+      case conf[:type] || :block
+      when :em, :em_fiber
+        require 'tarantool/fiber_db'
+        FiberDB.new(conf[:host], conf[:port])
+      when :em_cb, :em_callback
+        require 'tarantool/callback_db'
+        CallbackDB.new(conf[:host], conf[:port])
+      when :block
       end
     end
   end
 
-  # returns regular space, where fields are named by position
-  #
-  # tarantool.space_block(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
-  def space_block(space_no, *args)
-    options = args.pop  if Hash === args.last
-    options ||= {}
-    fields = args
-    fields.flatten!
-    primary_key = options[:pk]
-    indexes = options[:indexes]
-    SpaceArrayBlock.new(self, space_no, fields, primary_key, indexes)
-  end
-
-  # returns fibered space, where fields are named by position
-  #
-  # tarantool.space_fiber(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
-  def space_fiber(space_no, *args)
-    options = args.pop  if Hash === args.last
-    options ||= {}
-    fields = args
-    fields.flatten!
-    primary_key = options[:pk]
-    indexes = options[:indexes]
-    SpaceArrayFiber.new(self, space_no, fields, primary_key, indexes)
-  end
-
-  def space_hash_block(space_no, fields, opts = {})
-    primary_key = opts[:pk]
-    indexes = opts[:indexes]
-    SpaceHashBlock.new(self, space_no, fields, primary_key, indexes)
-  end
-
-  def space_hash_fiber(space_no, fields, opts = {})
-    primary_key = opts[:pk]
-    indexes = opts[:indexes]
-    SpaceHashFiber.new(self, space_no, fields, primary_key, indexes)
-  end
-
-  def query
-    @query ||= Query.new(self)
-  end
-
-  def method_missing(name, *args)
-    if name =~ /_(cb|blk|fib)$/ && query.respond_to?(name)
-      query.send(name, *args)
-    else
-      super
+  class DB
+    attr_reader :closed, :connection
+    alias closed? closed
+    def initialize(host, port)
+      @host = host
+      @port = port
+      @closed = false
+      establish_connection
     end
-  end
 
-  def close
-    EM.schedule do
+    # returns regular space, where fields are named by position
+    #
+    # tarantool.space_block(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
+    def space_array(space_no, *args)
+      options = args.pop  if Hash === args.last
+      options ||= {}
+      fields = args
+      fields.flatten!
+      primary_key = options[:pk]
+      indexes = options[:indexes]
+      self.class::SpaceArray.new(self, space_no, fields, primary_key, indexes)
+    end
+
+    def space_hash(space_no, fields, opts = {})
+      primary_key = opts[:pk]
+      indexes = opts[:indexes]
+      self.class::SpaceHash.new(self, space_no, fields, primary_key, indexes)
+    end
+
+    def query
+      @query ||= self.class::Query.new(self)
+    end
+
+    def method_missing(name, *args)
+      if name =~ /_(cb|blk|fib)$/ && query.respond_to?(name)
+        query.send(name, *args)
+      else
+        super
+      end
+    end
+
+    def close
       @closed = true
-      if @connection
-        @connection.close
-        @connection = nil
-      end
-      unless @connection_waiters.empty?
-        while waiter = @connection_waiters.shift
-          waiter.last.call(::IProto::Disconnected)
-        end
-      end
+      close_connection
     end
-  end
 
-  def _send_request(request_type, body, cb)
-    if @connection
-      @connection.send_request(request_type, body, cb)
-    else
-      @connection_waiters << [request_type, body, cb]
+    def establish_connection
+      raise NoMethodError, "#establish_connection should be redefined"
     end
+
+    def close_connection
+      raise NoMethodError, "#close_connection should be redefined"
+    end
+
+    def _send_request(request_type, body, cb)
+      raise NoMethodError, "#_send_request should be redefined"
+    end
+
   end
 end

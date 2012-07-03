@@ -1,12 +1,12 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe Tarantool::SpaceHashFiber do
+describe 'Tarantool::FiberDB::SpaceHash' do
   before { clear_db }
 
-  let(:tarantool) { Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
-  let(:space0) { tarantool.space_hash_fiber(0, HSPACE0[:fields], pk: HSPACE0[:pk], indexes: HSPACE0[:indexes])}
-  let(:space1) { tarantool.space_hash_fiber(1, HSPACE1[:fields], pk: HSPACE1[:pk], indexes: HSPACE1[:indexes])}
-  let(:space2) { tarantool.space_hash_fiber(2, HSPACE2[:fields], pk: HSPACE2[:pk], indexes: HSPACE2[:indexes])}
+  let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em)) }
+  let(:space0) { tarantool.space_hash(0, HSPACE0[:fields], pk: HSPACE0[:pk], indexes: HSPACE0[:indexes])}
+  let(:space1) { tarantool.space_hash(1, HSPACE1[:fields], pk: HSPACE1[:pk], indexes: HSPACE1[:indexes])}
+  let(:space2) { tarantool.space_hash(2, HSPACE2[:fields], pk: HSPACE2[:pk], indexes: HSPACE2[:indexes])}
 
   let(:vasya) { {name: 'vasya', surname: 'petrov', email: 'eb@lo.com', score: 5} }
   let(:ilya)  { {name: 'ilya', surname: 'zimov', email: 'il@zi.bot', score: 13} }

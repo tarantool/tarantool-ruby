@@ -1,12 +1,12 @@
 require File.expand_path('../helper.rb', __FILE__)
 
-describe Tarantool::SpaceArrayFiber do
+describe 'Tarantool::FiberDB::SpaceArray' do
   before { clear_db }
 
-  let(:tarantool) { Tarantool.new(TCONFIG[:host], TCONFIG[:port]) }
-  let(:space0) { tarantool.space_fiber(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
-  let(:space1) { tarantool.space_fiber(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
-  let(:space2) { tarantool.space_fiber(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
+  let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em)) }
+  let(:space0) { tarantool.space_array(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
+  let(:space1) { tarantool.space_array(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
+  let(:space2) { tarantool.space_array(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
 
   describe "with definition" do
     let(:vasya){ ['vasya', 'petrov', 'eb@lo.com', 5] }

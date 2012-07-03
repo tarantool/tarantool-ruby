@@ -1,6 +1,6 @@
 require 'tarantool/util'
 
-class Tarantool
+module Tarantool
   class Error < StandardError; end
   class ValueError < Error; end
   class StatusCode < Error

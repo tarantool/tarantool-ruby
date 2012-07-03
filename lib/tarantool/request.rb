@@ -1,6 +1,6 @@
 require 'tarantool/util'
 
-class Tarantool
+module Tarantool
   module Request
     include Util::Packer
     include Util::TailGetter
@@ -55,10 +55,8 @@ class Tarantool
       for key in keys
         pack_tuple(body, key, index_fields, index_no)
       end
-      #cb = ResponseWithTuples.new(cb || block, fields, false)
       cb = ResponseWith.new(cb, get_tuples, fields, translators)
       _send_request(REQUEST_SELECT, body, cb)
-      cb
     end
 
     def pack_tuple(body, key, types, index_no = 0)
@@ -284,15 +282,16 @@ class Tarantool
     end
 
     def _fiber_result
-      if Exception === (res = ::Fiber.yield)
-        raise res
-      end
+      _raise_or_return ::Fiber.yield
+    end
+
+    def _raise_or_return(res)
+      raise res  if Exception == res
       res
     end
   end
 
-
-  module CommonSpaceAliasMethods
+  module CommonSpaceBlockMethods
     def insert_blk(tuple, opts={}, &block)
       insert_cb(tuple, block, opts)
     end
@@ -316,7 +315,9 @@ class Tarantool
     def call_blk(func_name, values = [], opts={}, &block)
       call_cb(func_name, values, block, opts)
     end
+  end
 
+  module CommonSpaceFiberMethods
     def insert_fib(tuple, opts={})
       insert_cb(tuple, ::Fiber.current, opts)
       _fiber_result
@@ -345,6 +346,35 @@ class Tarantool
     def call_fib(func_name, values = [], opts = {})
       call_cb(func_name, values, ::Fiber.current, opts)
       _fiber_result
+    end
+  end
+
+  module CommonSpaceBlockMethods
+    def _block_cb
+      @_block_cb ||= method(:_raise_or_return)
+    end
+    def insert(tuple, opts={})
+      insert_cb(tuple, _block_cb, opts)
+    end
+
+    def replace(tuple, opts={})
+      replace_cb(tuple, _block_cb, opts)
+    end
+
+    def update(pk, operations, opts={})
+      update_cb(pk, operations, _block_cb, opts)
+    end
+
+    def delete(pk, opts={})
+      delete_cb(pk, _block_cb, opts)
+    end
+
+    def invoke(func_name, values = [], opts = {})
+      invoke_cb(func_name, values, _block_cb, opts)
+    end
+
+    def call(func_name, values = [], opts = {})
+      call_cb(func_name, values, _block_cb, opts)
     end
   end
 end

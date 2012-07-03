@@ -3,7 +3,7 @@ require 'tarantool/request'
 require 'tarantool/response'
 require 'tarantool/core-ext'
 
-class Tarantool
+module Tarantool
   class SpaceArray
     include Request
 
@@ -118,7 +118,7 @@ class Tarantool
       _call(func_name, values, cb, opts)
     end
 
-    include CommonSpaceAliasMethods
+    include CommonSpaceBlockMethods
     # callback with block api
     def by_pk_blk(pk, &block)
       by_pk_cb(pk, block)
@@ -138,32 +138,6 @@ class Tarantool
 
     def select_blk(index_no, offset, limit, keys, &block)
       select_cb(index_no, offset, limit, keys, block)
-    end
-
-    # fibered api
-    def by_pk_fib(pk)
-      by_pk_cb(pk, ::Fiber.current)
-      _fiber_result
-    end
-
-    def all_by_key_fib(index_no, key, opts={})
-      all_by_key_cb(index_no, key, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def first_by_key_fib(index_no, key)
-      first_by_key_cb(index_no, key, ::Fiber.current)
-      _fiber_result
-    end
-
-    def all_by_keys_fib(index_no, key, opts={})
-      all_by_keys_cb(index_no, key, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def select_fib(index_no, offset, limit, keys)
-      select_cb(index_no, offset, limit, keys, ::Fiber.current)
-      _fiber_result
     end
   end
 end

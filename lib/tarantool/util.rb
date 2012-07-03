@@ -1,4 +1,4 @@
-class Tarantool
+module Tarantool
   module Util
     module Packer
     private

@@ -1,7 +1,7 @@
 require 'tarantool/request'
 require 'tarantool/response'
 
-class Tarantool
+module Tarantool
   class Query
     include Request
     def initialize(tarantool)
@@ -118,51 +118,6 @@ class Tarantool
 
     def call_blk(func_name, values, opts={}, &block)
       call_cb(func_name, values, block, opts)
-    end
-
-    def select_fib(space_no, index_no, keys, offset, limit, opts={})
-      select_cb(space_no, index_no, keys, offset, limit, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def all_fib(space_no, index_no, keys, opts={})
-      all_cb(space_no, index_no, keys, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def first_fib(space_no, index_no, key, opts={})
-      first_cb(space_no, index_no, key, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def insert_fib(space_no, tuple, opts={})
-      insert_cb(space_no, tuple, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def replace_fib(space_no, tuple, opts={})
-      replace_cb(space_no, tuple, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def update_fib(space_no, pk, operation, opts={})
-      update_cb(space_no, pk, operation, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def delete_fib(space_no, pk, opts={})
-      delete_cb(space_no, pk, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def invoke_fib(func_name, values, opts={})
-      invoke_cb(func_name, values, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def call_fib(func_name, values, opts={})
-      call_cb(func_name, values, ::Fiber.current, opts)
-      _fiber_result
     end
   end
 end

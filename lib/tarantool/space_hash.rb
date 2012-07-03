@@ -3,7 +3,7 @@ require 'tarantool/request'
 require 'tarantool/response'
 require 'tarantool/core-ext'
 
-class Tarantool
+module Tarantool
   class SpaceHash
     include Request
 
@@ -184,7 +184,7 @@ class Tarantool
       _call(func_name, values, cb, opts)
     end
 
-    include CommonSpaceAliasMethods
+    include CommonSpaceBlockMethods
     # callback with block api
     def by_pk_blk(key_array, &block)
       by_pk_cb(key_array, block)
@@ -200,26 +200,6 @@ class Tarantool
 
     def select_blk(keys, offset, limit, &block)
       select_cb(keys, offset, limit, block)
-    end
-
-    # fibered api
-    def by_pk_fib(key_array)
-      by_pk_cb(key_array, ::Fiber.current)
-      _fiber_result
-    end
-    def all_fib(keys, opts = {})
-      all_cb(keys, ::Fiber.current, opts)
-      _fiber_result
-    end
-
-    def first_fib(key)
-      first_cb(key, ::Fiber.current)
-      _fiber_result
-    end
-
-    def select_fib(keys, offset, limit)
-      select_cb(keys, offset, limit, ::Fiber.current)
-      _fiber_result
     end
   end
 end
