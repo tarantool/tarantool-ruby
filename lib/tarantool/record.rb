@@ -368,7 +368,8 @@ class Tarantool
     def reload
       tuple = space.select(id).tuple
       return false unless tuple
-      init_fetched self.class.tuple_to_hash(tuple)
+      @attributes = self.class.tuple_to_hash(tuple)
+      old_record!
       self
     end
 
