@@ -218,11 +218,15 @@ module Tarantool
       }
     end
 
-    def save
+    def save(and_reload = true)
       _in_callbacks do
         if valid?
           if new_record?
-            @attributes = space.insert(@attributes, return_tuple: true)
+            if and_reload
+              @attributes = space.insert(@attributes, return_tuple: true)
+            else
+              space.insert(@attributes)
+            end
           else
             return true if changed.size == 0
             ops = {}
@@ -230,7 +234,11 @@ module Tarantool
               k = k.to_sym
               ops[k] = attributes[k]
             end
-            @attributes = space.update id, ops, return_tuple: true
+            if and_reload
+              @attributes = space.update id, ops, return_tuple: true
+            else
+              space.update id, ops
+            end
           end
           @previously_changed = changes
           @changed_attributes.clear
