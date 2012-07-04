@@ -156,9 +156,8 @@ describe 'Tarantool::Record' do
     it "should run before / after create callbackss in right places" do
       user_class.before_create :action_before_create
       user_class.after_create :action_after_create      
-      u = u()
-      mock(u, :action_before_create) { u.new_record?.must_equal true }
-      mock(u, :action_after_create) { u.new_record?.must_equal false }
+      mock(u).action_before_create { u.new_record?.must_equal true }
+      mock(u).action_after_create { u.new_record?.must_equal false }
       u.save
     end
 

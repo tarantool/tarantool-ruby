@@ -267,7 +267,9 @@ module Tarantool
 
     def reload
       if hash = space.by_pk(id)
-        init_fetched hash
+        @__new_record = false
+        @attributes = hash
+        self
       else
         false
       end

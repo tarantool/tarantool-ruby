@@ -1,5 +1,6 @@
 require 'minitest/spec'
 require 'minitest/autorun'
+require 'rr'
 
 require 'tarantool'
 
@@ -124,6 +125,7 @@ end
 
 class MiniTest::Unit::TestCase
   include ::Helper
+  include RR::Adapters::MiniTest
 end
 
 class << MiniTest::Spec
