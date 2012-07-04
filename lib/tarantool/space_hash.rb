@@ -191,10 +191,17 @@ module Tarantool
 
       opts[:return_tuple] = true  if opts[:return_tuple].nil?
       if opts[:return_tuple]
-        opts[:returns] ||= @field_to_type
-        if Hash === opts[:returns]
-          opts[:returns], *opts[:translators] = 
-            _parse_hash_definition(opts[:returns])
+        if opts[:returns]
+          if Hash === opts[:returns]
+            opts[:returns], *opts[:translators] =
+                _parse_hash_definition(opts[:returns])
+          end
+        else
+          types = @field_to_type.values
+          types << Array(types.last).size
+          types.flatten!
+          opts[:returns] = types.flatten
+          opts[:translators] = @translators
         end
       end
       

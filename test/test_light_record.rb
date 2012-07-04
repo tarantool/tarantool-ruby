@@ -143,5 +143,34 @@ describe 'Tarantool::LightRecord' do
       v = user_class.call('box.delete', 'prepor', returns: {a: :str, b: :str, c: :str, d: :int})
       v.must_equal [{a: 'prepor', b: 'Andrew', c: 'ceo@prepor.ru', d: 0}]
     end
+
+    describe "auto_space" do
+      let(:auto_space){ user_class.auto_space }
+      it "should return records on search" do
+        #p = auto_space.by_pk('prepor')
+        #p.must_be_instance_of user_class
+        #p.attributes.must_equal prepor.merge(apples_count: 0)
+
+        p = auto_space.all_by_pks(['petro', {login: 'prepor'}])
+        p[0].must_be_instance_of user_class
+        p[1].must_be_instance_of user_class
+        p.map(&:email).sort.must_equal %w[ceo@prepor.ru petro@gmail.com]
+
+        p = auto_space.select({name: 'Andrew', email: 'rudenkoco@gmail.com'}, 0, 1)
+        p[0].must_be_instance_of user_class
+        p[0].attributes.must_equal ruden.merge(apples_count: 0)
+
+        p = auto_space.call('box.select_range', [0, 1000])
+        p.each{|o| o.must_be_instance_of user_class}
+        p.map(&:login).sort.must_equal %w{petro prepor ruden}
+
+        p = auto_space.insert({name: 'a', login: 'b', email: 'r', apples_count: 100}, return_tuple: true)
+        p.must_be_instance_of user_class
+        p.name.must_equal 'a'
+        p.login.must_equal 'b'
+        p.email.must_equal 'r'
+        p.apples_count.must_equal 100
+      end
+    end
   end
 end
