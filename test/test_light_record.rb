@@ -147,9 +147,9 @@ describe 'Tarantool::LightRecord' do
     describe "auto_space" do
       let(:auto_space){ user_class.auto_space }
       it "should return records on search" do
-        #p = auto_space.by_pk('prepor')
-        #p.must_be_instance_of user_class
-        #p.attributes.must_equal prepor.merge(apples_count: 0)
+        p = auto_space.by_pk('prepor')
+        p.must_be_instance_of user_class
+        p.attributes.must_equal prepor.merge(apples_count: 0)
 
         p = auto_space.all_by_pks(['petro', {login: 'prepor'}])
         p[0].must_be_instance_of user_class
