@@ -15,6 +15,7 @@ module Tarantool
     INT32_1 = "\x01\x00\x00\x00".freeze
     BER4 = "\x04".freeze
     BER8 = "\x08".freeze
+    ZERO = "\x00".freeze
     PACK_STRING = 'wa*'.freeze
     LEST_INT32 = -(2**31)
     GREATEST_INT32 = 2**32
@@ -225,7 +226,7 @@ module Tarantool
           end
           pack_field(body, type, operation[2])
         when 6
-          body << "\x00"
+          body << ZERO
           # pass
         end
       end
