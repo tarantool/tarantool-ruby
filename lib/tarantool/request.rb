@@ -242,11 +242,14 @@ module Tarantool
 
     def _space_call_fix_values(values, space_no, opts)
       opts = opts.dup
-      values = [space_no].concat(Array(values))
-      if opts[:types]
-        opts[:types] = [:str].concat(Array(opts[:types])) # cause lua could convert it to integer by itself
-      else
-        opts[:types] = TYPES_STR_STR
+      space_no = opts[:space_no]  if opts.has_key?(:space_no)
+      if space_no
+        values = [space_no].concat(Array(values))
+        if opts[:types]
+          opts[:types] = [:str].concat(Array(opts[:types])) # cause lua could convert it to integer by itself
+        else
+          opts[:types] = TYPES_STR_STR
+        end
       end
       [values, opts]
     end

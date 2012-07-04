@@ -136,11 +136,22 @@ module Tarantool
         space.invoke(proc_naem, args)
       end
 
+      # Call stored procedure. By default, it prepends +space_no+ to arguments.
+      # To avoid prepending, set +space_no: nil+ in options.
+      #
+      #   MyRecord.call('box.select_range', offset, limit)
+      #   MyRecord.call('myfunction', arg1, arg2, space_no: nil)
+      #
+      # You could recieve arbitarry arrays or hashes instead of instances of
+      # record, if you pass +:returns+ argument. See documentation for +SpaceHash+
+      # for this.
       def call(proc_name, *args)
         opts = Hash === args.last ? args.pop.dup : {}
-        space.call(proc_name, args, opts).map{|hash|
-          from_server(hash)
-        }
+        if Array === (res = space.call(proc_name, args, opts)) && !opts[:returns]
+          res.map{|hash| from_server(hash) }
+        else
+          res
+        end
       end
 
       def create(attributes = {})
