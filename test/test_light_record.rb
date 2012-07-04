@@ -115,5 +115,33 @@ describe 'Tarantool::LightRecord' do
       user_class.delete(login: 'ruden').must_equal 1
       user_class.by_pk('ruden').must_be_nil
     end
+
+    it "should invoke" do
+      user_class.by_pk('ruden').attributes.must_equal ruden.merge(apples_count: 0)
+      user_class.invoke('box.delete', 'ruden').must_equal 1
+      user_class.by_pk('ruden').must_be_nil
+
+      user_class.by_pk('petro').attributes.must_equal petro.merge(apples_count: 0)
+      user_class.invoke('box.delete', user_class.space_no, 'petro', space_no: nil).must_equal 1
+      user_class.by_pk('petro').must_be_nil
+    end
+
+    it "should call" do
+      user_class.by_pk('ruden').attributes.must_equal ruden.merge(apples_count: 0)
+      user_class.call('box.delete', 'ruden')[0].attributes.must_equal ruden.merge(apples_count: 0)
+      user_class.by_pk('ruden').must_be_nil
+
+      user_class.by_pk('petro').attributes.must_equal petro.merge(apples_count: 0)
+      user_class.call('box.delete', user_class.space_no, 'petro', space_no: nil)[0].
+        attributes.must_equal petro.merge(apples_count: 0)
+      user_class.by_pk('petro').must_be_nil
+    end
+
+    it "should call with custom returns" do
+      v = user_class.call('box.delete', 'ruden', returns: [:str, :str, :str, :int])
+      v.must_equal [ruden.values + [0]]
+      v = user_class.call('box.delete', 'prepor', returns: {a: :str, b: :str, c: :str, d: :int})
+      v.must_equal [{a: 'prepor', b: 'Andrew', c: 'ceo@prepor.ru', d: 0}]
+    end
   end
 end

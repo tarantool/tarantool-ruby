@@ -264,14 +264,14 @@ module Tarantool
 
       def invoke(proc_name, *args)
         opts = Hash === args.last ? args.pop : {}
-        space.call(proc_name, args, opts)
+        space.invoke(proc_name, args, opts)
       end
 
       def call(proc_name, *args)
         opts = Hash === args.last ? args.pop : {}
         res = space.call(proc_name, args, opts)
         if Array === res && !opts[:returns]
-          res.map{|hash| from_server(hash) }
+          res.map{|hash| from_fetched(hash) }
         else
           res
         end
