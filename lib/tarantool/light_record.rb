@@ -137,11 +137,13 @@ module Tarantool
       end
 
       def field(name, type, params = {})
-        if Class === type
+        unless Symbol === type
           if type == Integer
             type = :integer
           elsif type == String
             type = :string
+          elsif type.respond_to?(:encode) && type.respond_to?(:decode)
+            # then all good
           elsif sr = Serializers::MAP.rassoc(type)
             type = sr[0]
           else

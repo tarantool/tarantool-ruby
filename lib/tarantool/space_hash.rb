@@ -20,12 +20,19 @@ module Tarantool
         k = k.to_sym
         unless k == :_tail
           raise ValueError, ":_tail field should be defined last"  if field_to_pos[:_tail]
-          last_type = t = t.to_sym
+          t = t.to_sym  unless t.respond_to?(:encode) && t.respond_to?(:decode)
+          last_type = t
           field_to_pos[k] = i
           field_to_type[k] = t
           field_types << t
         else
-          t = Array(t).map{|tt| tt.to_sym}
+          t = Array(t).map{|tt|
+            unless t.respond_to?(:encode) && t.respond_to?(:decode)
+              tt.to_sym
+            else
+              tt
+            end
+          }
           field_to_pos[:_tail] = i
           field_to_type[:_tail] = t
           field_types.concat t

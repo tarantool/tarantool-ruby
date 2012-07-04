@@ -121,7 +121,8 @@ module Tarantool
             when :str, :string
               tuple_str.slice!(0, field_size)
             else
-              if serializer = Tarantool::Serializers::MAP[field]
+              if serializer = field.respond_to?(:decode) ? field :
+                              Tarantool::Serializers::MAP[field]
                 serializer.decode(tuple_str.slice!(0, field_size))
               else
                 raise ValueError, "Unknown field type #{field.inspect}"

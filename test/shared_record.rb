@@ -83,7 +83,7 @@ shared_examples_for :record do
     describe "with nils" do
       before do
         user_class.field :score, :integer
-        user_class.field :info, :bson
+        user_class.field :info, Tarantool::Serializers::BSON #:bson
       end
       it "should work properly with nils values" do
         u = user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru', apples_count: 1

@@ -109,7 +109,8 @@ module Tarantool
         value = value.to_s
         body << [value.bytesize, value].pack(PACK_STRING)
       else
-        if serializer = Tarantool::Serializers::MAP[field_kind]
+        if serializer = field_kind.respond_to?(:encode) ? field_kind :
+                        Tarantool::Serializers::MAP[field_kind]
           value = serializer.encode(value)
           body << [value.bytesize, value].pack(PACK_STRING)
         else
