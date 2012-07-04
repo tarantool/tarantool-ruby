@@ -294,10 +294,6 @@ module Tarantool
       [field_types, TranslateToHash.new(field_names, field_types.last)]
     end
 
-    def _fiber_result
-      _raise_or_return ::Fiber.yield
-    end
-
     def _raise_or_return(res)
       raise res  if Exception == res
       res
