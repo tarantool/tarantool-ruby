@@ -57,6 +57,7 @@ module Tarantool
             raise "Unknown serializer #{type}"
           end
         end
+
         self.fields = fields.merge name => { type: type, field_no: fields.size, params: params }
         self.field_keys = self.fields.keys.freeze
 

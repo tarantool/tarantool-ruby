@@ -73,16 +73,26 @@ module Tarantool
     def save
       if @new_record
         self.class.insert(@attributes)
+        @new_record = false
       else
         self.class.replace(@attributes)
       end
       self
     end
 
+    # update record in db first, reload it then
+    #
+    #   record.update({:state => 'sleep', :sleep_count => [:+, 1]})
+    #   record.update([[:state, 'sleep'], [:sleep_count, :+, 1]])
     def update(ops)
       raise UpdateNewRecord, "Could not call update on new record"  if @new_record
-      @arguments = self.class.update(name, ops, true)
+      @attributes = space.update(id, ops, return_tuple: true)
       self
+    end
+
+    def increment(field, by = 1)
+      raise UpdateNewRecord, "Could not call update on new record"  if @new_record
+      update([[field.to_sym, :+, by]])
     end
 
     def destroy
@@ -90,7 +100,7 @@ module Tarantool
     end
 
     def reload
-      if hash = self.class.by_pk(id)
+      if hash = space.by_pk(id)
         @new_record = false
         @attributes = hash
         self
@@ -103,21 +113,19 @@ module Tarantool
       other.class == self.class && id == other.id
     end
 
-    class FieldDef < Struct.new(:type, :field_no, :param); end
+    class_attribute :fields, instance_reader: false, instance_writer: false
+    self.fields = {}.freeze
+
+    class_attribute :default_values, instance_reader: false, instance_writer: false
+    self.default_values = {}.freeze
+
+    class_attribute :indexes, instance_reader: false, instance_writer: false
+    self.indexes = [].freeze
+
+    class_attribute :space_no, instance_reader: false, instance_writer: false
+    class_attribute :tarantool, instance_reader: false, instance_writer: false
 
     class << self
-      class_attribute :field_types
-      self.field_types = {}.freeze
-
-      class_attribute :default_values
-      self.default_values = {}.freeze
-
-      class_attribute :indexes
-      self.indexes = [].freeze
-
-      class_attribute :space_no
-      class_attribute :tarantool
-      
       alias set_space_no space_no=
       alias set_tarantool tarantool=
 
@@ -141,14 +149,14 @@ module Tarantool
           end
         end
 
-        self.field_types = field_types.merge(name => type).freeze
+        self.fields = fields.merge(name => type).freeze
         index name  if indexes.empty?
 
         if params[:default]
-          self.defaults_values = default_values.merge(name=>params[:default]).freeze
+          self.default_values = default_values.merge(name=>params[:default]).freeze
         end
 
-        generated_attribute_methods.class_eval <<-"EOF", __FILE__, __LINE__
+        generated_attribute_methods.class_eval <<-"EOF", __FILE__, __LINE__ - 1
           def #{name}
             @attributes[:"#{name}"]
           end
@@ -175,7 +183,7 @@ module Tarantool
       def space
         @space ||= begin
             pk, *indexes = indexes()
-            tarantool.space_hash(space_no, field_types, pk: pk, indexes: indexes)
+            tarantool.space_hash(space_no, fields.dup, pk: pk, indexes: indexes)
           end
       end
 
@@ -189,7 +197,7 @@ module Tarantool
 
       def by_pk(pk)
         if Hash === (res = space.by_pk(pk))
-          from_fecthed(res)
+          from_fetched(res)
         end
       end
 
@@ -197,8 +205,16 @@ module Tarantool
         space.all_by_pks(pks).map{|hash| from_fetched(hash)}
       end
 
+      def find(*args)
+        if args.size == 1
+          by_pk(args[0])
+        else
+          by_pks(args)
+        end
+      end
+
       def create(attrs)
-        insert(attrs, true)
+        new(attrs).save
       end
 
       def first(cond)
@@ -212,6 +228,7 @@ module Tarantool
         res.map!{|hash| from_fetched(hash)}
         res
       end
+      alias all select
 
       def insert(hash, ret_tuple = false)
         if ret_tuple
@@ -223,9 +240,9 @@ module Tarantool
 
       def replace(hash, ret_tuple = false)
         if ret_tuple
-          from_fetched space.insert(hash, return_tuple: true)
+          from_fetched space.replace(hash, return_tuple: true)
         else
-          space.insert(hash)
+          space.replace(hash)
         end
       end
 
@@ -234,6 +251,14 @@ module Tarantool
           from_fetched space.update(pk, ops, return_tuple: true)
         else
           space.update(pk, ops)
+        end
+      end
+
+      def delete(pk, ret_tuple=false)
+        if ret_tuple
+          from_fetched space.delete(pk, return_tuple: true)
+        else
+          space.delete(pk)
         end
       end
 
@@ -253,7 +278,7 @@ module Tarantool
       end
 
       def from_fetched(hash)
-        allocate.__fetched(hash)
+        hash && allocate.__fetched(hash)
       end
     end
   end

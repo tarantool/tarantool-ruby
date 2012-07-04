@@ -9,6 +9,9 @@ require "tarantool/query.rb"
 require "tarantool/serializers.rb"
 
 module Tarantool
+  autoload :Record, 'tarantool/record'
+  autoload :LightRecord, 'tarantool/light_record'
+
   class << self
     def new(conf)
       case conf[:type] || :block

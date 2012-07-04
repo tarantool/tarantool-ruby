@@ -299,7 +299,7 @@ module Tarantool
     end
 
     def _raise_or_return(res)
-      raise res  if Exception == res
+      raise res  if Exception === res
       res
     end
   end
