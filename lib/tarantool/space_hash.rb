@@ -51,6 +51,16 @@ module Tarantool
       @translators = [TranslateToHash.new(@field_names, @tail_size)].freeze
     end
 
+    def _add_translator(v)
+      @translators += [v]
+    end
+
+    def with_translator(cb = nil, &block)
+      copy = dup
+      copy._add_translator(cb || block)
+      copy
+    end
+
     def _map_indexes(indexes)
       indexes.map do |index|
         index.map do |name|

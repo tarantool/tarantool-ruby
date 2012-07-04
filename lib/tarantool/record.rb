@@ -146,8 +146,9 @@ module Tarantool
       # record, if you pass +:returns+ argument. See documentation for +SpaceHash+
       # for this.
       def call(proc_name, *args)
-        opts = Hash === args.last ? args.pop.dup : {}
-        if Array === (res = space.call(proc_name, args, opts)) && !opts[:returns]
+        opts = Hash === args.last ? args.pop : {}
+        res = space.call(proc_name, args, opts)
+        if Array === res && !opts[:returns]
           res.map{|hash| from_server(hash) }
         else
           res
