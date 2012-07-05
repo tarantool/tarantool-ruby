@@ -1,9 +1,8 @@
 require 'active_model'
-require 'tarantool'
-require 'tarantool/record/select'
+require 'tarantool/base_record'
 
 module Tarantool
-  class Record
+  class Record < BaseRecord
     extend ActiveModel::Naming
     include ActiveModel::AttributeMethods
     include ActiveModel::Validations
@@ -16,20 +15,6 @@ module Tarantool
 
     define_model_callbacks :save, :create, :update, :destroy
     define_model_callbacks :initialize, :only => :after
-
-    class_attribute :fields, :field_keys
-    self.fields = {}
-    self.field_keys = [].freeze
-
-    class_attribute :default_values    
-    self.default_values = {}
-
-    class_attribute :primary_index    
-    class_attribute :indexes
-    self.indexes = []
-
-    class_attribute :space_no
-    class_attribute :tarantool
 
     class << self
       def set_space_no(val)
@@ -45,184 +30,67 @@ module Tarantool
         end
       end
 
-      def field(name, type, params = {})
-        if Class === type
-          if type == Integer
-            type = :integer
-          elsif type == String
-            type = :string
-          elsif sr = Serializers::MAP.rassoc(type)
-            type = sr[0]
-          else
-            raise "Unknown serializer #{type}"
-          end
-        end
-
-        self.fields = fields.merge name => { type: type, field_no: fields.size, params: params }
-        self.field_keys = self.fields.keys.freeze
-
-        unless self.primary_index
-          index name, primary: true
-        end
-
-        if params[:default]
-          self.default_values = default_values.merge name => params[:default]
-        end
-
-        convert_code = case type
-           when :int, :integer
-             "v = v.to_i  if String === v"
-           when :str, :string
-             ""
-           else
-             if serializer = Serializers::MAP[type]
-               "v = Serializers::MAP[#{type.inspect}].decode(v)  if String === v"
-             else
-               raise ValueError, "unknown field type #{type.inspect}"
-             end
-           end
-        define_attribute_method name
-        generated_attribute_methods.class_eval <<-"EOF"
+      def define_field_accessor(name, type)
+        generated_attribute_methods.class_eval <<-"EOF", __FILE__, __LINE__ - 1
           def #{name}
             @attributes[:"#{name}"]
           end
-        
-          def #{name}=(v)
-            #{convert_code}
-            #{name}_will_change!  unless v == @attributes[:"#{name}"] || new_record?
-            @attributes[:"#{name}"] = v
-          end
         EOF
-      end
 
-      def index(*fields)
-        options = {}
-        options = fields.pop if Hash === fields.last
-        if options[:primary]
-          self.indexes = indexes.dup.tap{|ind| ind[0] = fields}
-          self.primary_index = fields
+        if Symbol === type
+          convert_code = case type
+             when :int, :integer
+               "v = v.to_i  if String === v"
+             when :str, :string
+               ""
+             else
+               if serializer = Serializers::MAP[type]
+                 "v = Serializers::MAP[#{type.inspect}].decode(v)  if String === v"
+               else
+                 raise ValueError, "unknown field type #{type.inspect}"
+               end
+             end
+
+          generated_attribute_methods.class_eval <<-"EOF", __FILE__, __LINE__ - 1
+            def #{name}=(v)
+              #{convert_code}
+              #{name}_will_change!  unless v == @attributes[:"#{name}"] || new_record?
+              @attributes[:"#{name}"] = v
+            end
+          EOF
         else
-          self.indexes += [fields]
-        end
-      end
-
-      def find(*keys)
-        res = space.all_by_pks(keys)
-        if keys.size == 1 && res.size <= 1
-          unless res.empty?
-            from_server res.first
-          else
-            nil
+          generated_attribute_methods.class_eval do
+            define_method("#{name}=") do |v|
+              v = type.decode(v)  if String === v
+              send(:"#{name}_will_change!") unless v == @attributes[name]
+              @attributes[name] = v
+            end
           end
-        else
-          res.tuples.map { |hash| from_server hash }
         end
-      end
-
-      def select
-        Select.new(self)
-      end
-
-      %w{where limit offset}.each do |v|
-        define_method v do |*args|
-          select.send(v, *args)
-        end
-      end
-
-      def first(key)
-        find(key)
-      end
-
-      def invoke(proc_name, *args)
-        space.invoke(proc_naem, args)
-      end
-
-      # Call stored procedure. By default, it prepends +space_no+ to arguments.
-      # To avoid prepending, set +space_no: nil+ in options.
-      #
-      #   MyRecord.call('box.select_range', offset, limit)
-      #   MyRecord.call('myfunction', arg1, arg2, space_no: nil)
-      #
-      # You could recieve arbitarry arrays or hashes instead of instances of
-      # record, if you pass +:returns+ argument. See documentation for +SpaceHash+
-      # for this.
-      def call(proc_name, *args)
-        opts = Hash === args.last ? args.pop : {}
-        res = space.call(proc_name, args, opts)
-        if Array === res && !opts[:returns]
-          res.map{|hash| from_server(hash) }
-        else
-          res
-        end
-      end
-
-      def create(attributes = {})
-        new(attributes).tap { |o| o.save }
-      end
-
-      def from_server(hash)
-        allocate.init_fetched(hash)
-      end
-
-      def space
-        @space ||= begin
-            fields_def = {}
-            fields.each{|name, desc| fields_def[name.to_sym] = desc[:type]}
-            pk = primary_index
-            indexes = indexes()[1..-1]
-            tarantool.space_hash(space_no, fields_def, pk: pk, indexes: indexes)
-          end
+        define_attribute_method name
       end
     end
 
-    attr_accessor :__new_record
     def initialize(attributes = {})
       @__new_record = true
+      @attributes = self.class.default_values.dup
       run_callbacks(:initialize) do
         init attributes
       end
     end
 
     def init(attributes)
-      @attributes = self.class.default_values.dup
-      attributes.each do |k, v|
-        send("#{k}=", v)
-      end      
+      set_attributes(attributes)
     end
 
-    def init_fetched(attributes)
+    def __fetched(attributes)
       @__new_record = false
+      # well, initalize callback could call #attributes
+      @attributes = self.class.default_values.dup
       run_callbacks(:initialize) do
         @attributes = attributes
       end
       self
-    end
-
-    def id
-      primary = self.class.primary_index
-      primary.size == 1 ?
-        @attributes[primary[0]] : 
-        @attributes.values_at(*primary)
-    end
-
-    def space
-      self.class.space
-    end
-
-    def new_record?
-      @__new_record
-    end
-
-    def attributes
-      @attributes ||= self.class.default_values.dup
-    end
-
-    def new_record!
-      @__new_record = true
-    end
-
-    def old_record!
-      @__new_record = false
     end
 
     def _in_callbacks(&blk)
@@ -263,41 +131,11 @@ module Tarantool
       end
     end
 
-    def update_attribute(field, value)
-      self.send("#{field}=", value)
-      save
-    end
-
-    def update_attributes(attributes)
-      attributes.each do |k, v|
-        self.send("#{k}=", v)
-      end
-      save
-    end
-
-    def increment(field, by = 1)
-      space.update id, [[field.to_sym, :add, by]]
-    end
-
     def destroy
       run_callbacks :destroy do
-        space.delete id
+        self.class.delete id
         true
       end
-    end
-
-    def reload
-      if hash = space.by_pk(id)
-        @__new_record = false
-        @attributes = hash
-        self
-      else
-        false
-      end
-    end
-
-    def ==(other)
-      self.id == other.id
     end
   end
 end

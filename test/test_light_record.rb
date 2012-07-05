@@ -78,10 +78,6 @@ describe 'Tarantool::LightRecord' do
       proc {
         user_class.insert(zuma)
       }.must_raise Tarantool::TupleExists
-      proc {
-        # missed field apples_count, which is referenced in index
-        user_class.insert(vova)
-      }.must_raise Tarantool::IllegalParams
       user = user_class.insert(_lila, true)
       user.must_be_instance_of user_class
       user.attributes.must_equal _lila

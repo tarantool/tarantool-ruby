@@ -1,5 +1,5 @@
 module Tarantool
-  class Record
+  class BaseRecord
     class Select
       include Enumerable
 
@@ -16,7 +16,7 @@ module Tarantool
       def results
         @results ||= begin
             raise "Condition is not set"  unless @params[:where]
-            to_records @record.space.select(
+            @record.auto_space.select(
               @params[:where],
               @params[:offset] || 0,
               @params[:limit] || -1
@@ -50,11 +50,9 @@ module Tarantool
       end
 
       def first
-        limit(1).results.first
-      end
-
-      def to_records(hashes)
-        hashes.map{ |hash| @record.from_server(hash) }
+        @record.auto_space.
+          select(@params[:where], @params[:offset] || 0, 1).
+          first
       end
     end
   end
