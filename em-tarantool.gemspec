@@ -15,5 +15,5 @@ Gem::Specification.new do |gem|
   gem.name          = "tarantool"
   gem.require_paths = ["lib"]
   gem.version       = Tarantool::VERSION
-  gem.add_dependency "iproto", [">= 0.3.2"]
+  gem.add_dependency "iproto", [">= 0.3.3"]
 end

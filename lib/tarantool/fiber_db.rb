@@ -1,4 +1,4 @@
-require 'tarantool/core-ext'
+require 'iproto/core-ext'
 require 'tarantool/em_db'
 
 module Tarantool
