@@ -14,6 +14,7 @@ module Tarantool
       alias delete       delete_blk
       alias invoke       invoke_blk
       alias call         call_blk
+      alias ping         ping_blk
     end
 
     class SpaceHash < ::Tarantool::SpaceHash
@@ -27,6 +28,7 @@ module Tarantool
       alias delete  delete_blk
       alias invoke  invoke_blk
       alias call    call_blk
+      alias ping    ping_blk
     end
 
     class Query < ::Tarantool::Query
@@ -39,6 +41,7 @@ module Tarantool
       alias delete  delete_blk
       alias invoke  invoke_blk
       alias call    call_blk
+      alias ping    ping_blk
     end
   end
 end

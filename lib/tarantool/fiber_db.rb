@@ -43,6 +43,11 @@ module Tarantool
         call_cb(func_name, values, ::Fiber.current, opts)
         _raise_or_return ::Fiber.yield
       end
+
+      def ping
+        ping_cb(::Fiber.current)
+        _raise_or_return ::Fiber.yield
+      end
     end
 
     class SpaceArray < ::Tarantool::SpaceArray
@@ -135,6 +140,11 @@ module Tarantool
 
       def call(func_name, values, opts={})
         call_cb(func_name, values, ::Fiber.current, opts)
+        _raise_or_return ::Fiber.yield
+      end
+
+      def ping
+        ping_cb(::Fiber.current)
         _raise_or_return ::Fiber.yield
       end
     end

@@ -48,6 +48,10 @@ module Tarantool
       def call(func_name, values = [], opts = {})
         call_cb(func_name, values, _block_cb, opts)
       end
+
+      def ping
+        ping_cb(_block_cb)
+      end
     end
 
     class SpaceArray < ::Tarantool::SpaceArray
@@ -121,6 +125,10 @@ module Tarantool
 
       def call(func_name, values, opts={})
         call_cb(func_name, values, _block_cb, opts)
+      end
+
+      def ping
+        ping_cb(_block_cb)
       end
     end
   end

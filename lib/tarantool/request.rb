@@ -16,6 +16,7 @@ module Tarantool
     BER4 = "\x04".freeze
     BER8 = "\x08".freeze
     ZERO = "\x00".freeze
+    EMPTY = "".freeze
     PACK_STRING = 'wa*'.freeze
     LEST_INT32 = -(2**31)
     GREATEST_INT32 = 2**32
@@ -272,6 +273,11 @@ module Tarantool
       _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, opts[:translators] || [])
     end
 
+    def _ping(cb)
+      _send_request(REQUEST_PING, EMPTY, cb)
+    end
+    alias ping_cb ping
+
     def _detect_types(values)
       values.map{|v| Integer === v ? :int : :str}
     end
@@ -336,6 +342,10 @@ module Tarantool
 
     def call_blk(func_name, values = [], opts={}, &block)
       call_cb(func_name, values, block, opts)
+    end
+
+    def ping_blk(&block)
+      ping_cb(block)
     end
   end
 
