@@ -131,6 +131,23 @@ module Tarantool
       end
     end
 
+    # update record in db first, reload updated fileds then
+    # (Contrasting with LightRecord, where it reloads all fields)
+    # Consider that update operation does not count changes made by
+    # attr setters in your code, only field values in DB.
+    #
+    #   record.update({:state => 'sleep', :sleep_count => [:+, 1]})
+    #   record.update([[:state, 'sleep'], [:sleep_count, :+, 1]])
+    def update(ops)
+      raise UpdateNewRecord, "Could not call update on new record"  if @__new_record
+      new_attrs = space.update(id, ops, return_tuple: true)
+      for op in ops
+        field = op.flatten.first
+        @attributes[field] = new_attrs[field]
+      end
+      self
+    end
+
     def destroy
       run_callbacks :destroy do
         self.class.delete id

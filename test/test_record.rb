@@ -82,21 +82,5 @@ describe 'Tarantool::Record' do
       u = user_class.create h
       u.as_json.must_equal({ 'user' => h.merge(apples_count: 0) })
     end
-
-    describe "fields serilizers" do
-      before do
-        user_class.field :info, :bson
-      end
-
-      it "should serialise and deserialize info field" do
-        info = { 'bio' => "hi!", 'age' => 23, 'hobbies' => ['mufa', 'tuka'] }
-        u = user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru', info: info
-        u.info['hobbies'].must_equal ['mufa', 'tuka']
-        u.reload
-        u.info['hobbies'].must_equal ['mufa', 'tuka']
-        u = user_class.find u.login
-        u.info['hobbies'].must_equal ['mufa', 'tuka']
-      end
-    end
   end
 end
