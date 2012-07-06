@@ -276,7 +276,7 @@ module Tarantool
     def _ping(cb)
       _send_request(REQUEST_PING, EMPTY, cb)
     end
-    alias ping_cb ping
+    alias ping_cb _ping
 
     def _detect_types(values)
       values.map{|v| Integer === v ? :int : :str}

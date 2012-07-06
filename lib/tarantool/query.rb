@@ -119,5 +119,9 @@ module Tarantool
     def call_blk(func_name, values, opts={}, &block)
       call_cb(func_name, values, block, opts)
     end
+
+    def ping_blk(&block)
+      ping_cb(block)
+    end
   end
 end
