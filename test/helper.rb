@@ -39,19 +39,22 @@ HSPACE2 = {
 }
 
 module Helper
-  def exec_tarantool(cmd)
-    cnf = TCONFIG
-    tarant = %W{tarantool -p #{cnf[:port]} -m #{cnf[:admin]}}
-    tarant = [{}, *tarant, :err => [:child, :out]]
+  def tarantool_pipe
+    $tarantool_pipe ||= begin
+        cnf = TCONFIG
+        tarant = %W{tarantool -p #{cnf[:port]} -m #{cnf[:admin]}}
+        tarant = [{}, *tarant, :err => [:child, :out]]
+        IO.popen(tarant, 'w+').tap{|p| p.sync = true}
+    end
+  end
+
+  def exec_tarantool(cmd, lines_to_read)
     cmd = cmd.gsub(/^\s+/, '')
-    #puts cmd
-    ret = IO.popen(tarant, 'w+'){|io|
-      io.write(cmd)
-      io.close_write
-      io.read
-    }
-    #puts "tarantool printed #{ret}"
-    assert $?.success?, "Tarantool command line failed: #{ret}"
+    tarantool_pipe.puts(cmd)
+    tarantool_pipe.flush
+    lines_to_read.times do
+      tarantool_pipe.gets
+    end
   end
 
   def truncate
@@ -59,11 +62,11 @@ module Helper
        lua truncate(0)
        lua truncate(1)
        lua truncate(2)
-    "
+    ", 9
   end
 
   def seed
-    exec_tarantool <<-EOF
+    exec_tarantool "
       insert into t0 values ('vasya', 'petrov', 'eb@lo.com', 5)
       insert into t0 values ('ilya', 'zimov', 'il@zi.bot', 13)
       insert into t0 values ('fedor', 'kuklin', 'ku@kl.in', 13)
@@ -72,7 +75,7 @@ module Helper
       insert into t2 values ('hi zo', 'ho zo', 1)
       insert into t2 values ('hi zo', 'pidas', 1, 3, 5)
       insert into t2 values ('coma', 'peredoma', 2)
-    EOF
+    ", 16
   end
 
   def clear_db
