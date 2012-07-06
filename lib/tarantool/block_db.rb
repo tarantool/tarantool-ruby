@@ -12,7 +12,7 @@ module Tarantool
       cb.call @connection.send_request(request_type, body)
     end
 
-    module CommonSpaceBlockMethods
+    module CommonSpaceBlockingMethods
       def _block_cb
         @_block_cb ||= method(:_raise_or_return)
       end
@@ -55,7 +55,7 @@ module Tarantool
     end
 
     class SpaceArray < ::Tarantool::SpaceArray
-      include CommonSpaceBlockMethods
+      include CommonSpaceBlockingMethods
 
       def all_by_key(index_no, key, opts={})
         all_by_key_cb(index_no, key, _block_cb, opts)
@@ -75,7 +75,7 @@ module Tarantool
     end
 
     class SpaceHash < ::Tarantool::SpaceHash
-      include CommonSpaceBlockMethods
+      include CommonSpaceBlockingMethods
 
       def all(keys, opts = {})
         all_cb(keys, _block_cb, opts)
