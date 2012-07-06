@@ -90,6 +90,7 @@ module Tarantool
       raise ArgumentError, "tuple #{key} has more entries than index #{index_no}"
     end
 
+    MAX_BYTE_SIZE = 1024 * 1024
     def pack_field(body, field_kind, value)
       if value.nil?
         puts "NIL PACK"
@@ -104,15 +105,17 @@ module Tarantool
         else
           body << BER8 << [value].pack(INT64)
         end
+      when :str, :string, :bytes
+        value = value.to_s
+        raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
+        body << [value.bytesize, value].pack(PACK_STRING)
       when :error
         raise IndexIndexError
-      when :str, :string
-        value = value.to_s
-        body << [value.bytesize, value].pack(PACK_STRING)
       else
         if serializer = field_kind.respond_to?(:encode) ? field_kind :
                         Tarantool::Serializers::MAP[field_kind]
-          value = serializer.encode(value)
+          value = serializer.encode(value).to_s
+          raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
           body << [value.bytesize, value].pack(PACK_STRING)
         else
           raise ArgumentError, "Unknown field type #{field.inspect}"

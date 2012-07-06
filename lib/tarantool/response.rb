@@ -72,7 +72,9 @@ module Tarantool
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
             when :str, :string
-              tuple_str.slice!(0, field_size)
+              tuple_str.slice!(0, field_size).force_encoding('utf-8')
+            when :bytes
+              typle_str.slice!(0, field_size)
             else
               if serializer = field.respond_to?(:decode) ? field :
                               Tarantool::Serializers::MAP[field]

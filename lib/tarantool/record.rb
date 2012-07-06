@@ -41,9 +41,7 @@ module Tarantool
           convert_code = case type
              when :int, :integer
                "v = v.to_i  if String === v"
-             when :bytes
-               ""
-             when :str, :string
+             when :str, :string, :bytes
                ""
              else
                if serializer = Serializers::MAP[type]
