@@ -145,28 +145,28 @@ shared_examples_for :blocking_hash_space do
     blockrun {
       proc {
         space2.insert(name: 1)
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.by_pk(third: 1)
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.first(name: 1)
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.all(name: 1)
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.select([name: 1], 0, 1)
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.update({third: 1}, {first: 'haha'})
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.update({first: 'haha'}, {first: 'haha'})
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
       proc {
         space2.update({first: 'haha', second: 'hoho'}, {name: 'haha'})
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
     }
   end
 end

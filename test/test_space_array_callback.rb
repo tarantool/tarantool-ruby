@@ -137,7 +137,7 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
         emrun(1) {
           space0.by_pk(['il','ya']){|res| assert false; emstop }
         }
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
     end
 
     it "should fetch longer records" do

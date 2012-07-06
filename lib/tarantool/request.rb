@@ -87,7 +87,7 @@ module Tarantool
         pack_field(body, types[0], key)
       end
     rescue IndexIndexError => e
-      raise ValueError, "tuple #{key} has more entries than index #{index_no}"
+      raise ArgumentError, "tuple #{key} has more entries than index #{index_no}"
     end
 
     def pack_field(body, field_kind, value)
@@ -115,7 +115,7 @@ module Tarantool
           value = serializer.encode(value)
           body << [value.bytesize, value].pack(PACK_STRING)
         else
-          raise ValueError, "Unknown field type #{field.inspect}"
+          raise ArgumentError, "Unknown field type #{field.inspect}"
         end
       end
     end
@@ -181,7 +181,7 @@ module Tarantool
 
         op = operation[1]
         op = UPDATE_OPS[op]  unless Integer === op
-        raise ValueError, "Unknown operation #{operation[1]}" unless op
+        raise ArgumentError, "Unknown operation #{operation[1]}" unless op
         body << [field_no, op].pack(UPDATE_FIELDNO_OP)
         case op
         when 0
@@ -193,17 +193,17 @@ module Tarantool
             end
           end
           unless operation.size == 3
-            raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
+            raise ArgumentError, "wrong arguments for set or insert operation #{operation.inspect}"
           end
           pack_field(body, type, operation[2])
         when 1, 2, 3, 4
           unless operation.size == 3 && !operation[2].nil?
-            raise ValueError, "wrong arguments for integer operation #{operation.inspect}"
+            raise ArgumentError, "wrong arguments for integer operation #{operation.inspect}"
           end
           pack_field(body, :int, operation[2])
         when 5
           unless operation.size == 5 && !operation[2].nil? && !operation[3].nil?
-            raise ValueError, "wrong arguments for slice operation #{operation.inspect}"
+            raise ArgumentError, "wrong arguments for slice operation #{operation.inspect}"
           end
 
           str = operation[4].to_s
@@ -224,7 +224,7 @@ module Tarantool
             end
           end
           unless operation.size == 3
-            raise ValueError, "wrong arguments for set or insert operation #{operation.inspect}"
+            raise ArgumentError, "wrong arguments for set or insert operation #{operation.inspect}"
           end
           pack_field(body, type, operation[2])
         when 6
@@ -295,7 +295,7 @@ module Tarantool
       }
       field_types << if field_names.include?(:_tail)
           unless field_names.last == :_tail
-            raise ValueError, "_tail should be de declared last"
+            raise ArgumentError, "_tail should be de declared last"
           end
           Array(field_types.last).size
         else

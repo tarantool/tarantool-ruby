@@ -29,7 +29,7 @@ module Tarantool
       indexes.map do |index|
         index.map do |i|
           unless Symbol === (field = @fields[i])
-            raise ValueError, "Wrong index field number: #{index} #{i}"
+            raise ArgumentError, "Wrong index field number: #{index} #{i}"
           end
           field
         end << :error
@@ -72,19 +72,19 @@ module Tarantool
 
     def select_cb(index_no, offset, limit, keys, cb)
       if Array === index_no
-        raise ValueError, "Has no defined indexes to search index #{index_no}"  unless @index_fields
+        raise ArgumentError, "Has no defined indexes to search index #{index_no}"  unless @index_fields
         index_fields = index_no
         index_no = @index_fields.index{|fields| fields.take(index_fields.size) == index_fields}
         unless index_no || index_fields.size == 1
           index_no, keys = _fix_index_fields(index_fields, keys)
           unless index_no
-             raise(ValueError, "Not found index with field numbers #{index_no}, " +
+             raise(ArgumentError, "Not found index with field numbers #{index_no}, " +
                                "(defined indexes #{@index_fields})")
           end
         end
       end
       unless index_types = (@index_fields ? @indexes[index_no] : TYPES_FALLBACK)
-        raise ValueError, "No index ##{index_no}"
+        raise ArgumentError, "No index ##{index_no}"
       end
 
       _select(@space_no, index_no, offset, limit, keys, cb, @fields, index_types)

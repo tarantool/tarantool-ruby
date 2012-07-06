@@ -98,7 +98,7 @@ shared_examples_for :blocking_array_space do
     it "should raise on not matched pk" do
       proc {
         space0.by_pk(['il','ya'])
-      }.must_raise Tarantool::ValueError
+      }.must_raise Tarantool::ArgumentError
     end
 
     it "should fetch longer records" do

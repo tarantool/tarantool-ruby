@@ -172,7 +172,7 @@ shared_examples_for :record do
       end
 
       it "should raise an error for wrong index" do
-        proc{ user_class.where(namee: "Andrew").all }.must_raise Tarantool::ValueError
+        proc{ user_class.where(namee: "Andrew").all }.must_raise Tarantool::ArgumentError
       end
 
       describe "with limit 1" do

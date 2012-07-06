@@ -19,7 +19,7 @@ module Tarantool
       for k, t in fields_def
         k = k.to_sym
         unless k == :_tail
-          raise ValueError, ":_tail field should be defined last"  if field_to_pos[:_tail]
+          raise ArgumentError, ":_tail field should be defined last"  if field_to_pos[:_tail]
           t = t.to_sym  unless t.respond_to?(:encode) && t.respond_to?(:decode)
           last_type = t
           field_to_pos[k] = i
@@ -91,7 +91,7 @@ module Tarantool
         index_no = @index_fields.index{|fields|
           fields.take(index_names.size).sort == index_names
         }
-        raise ValueError, "Could not find index for keys #{index_names}"  unless index_no
+        raise ArgumentError, "Could not find index for keys #{index_names}"  unless index_no
         index_names = @index_fields[index_no].take(index_names.size)
       end
       index_types = @indexes[index_no]
@@ -127,7 +127,7 @@ module Tarantool
 
     def _prepare_tuple(tuple)
       unless (exc = (tuple.keys - @field_names)).empty?
-        raise ValueError, "wrong keys #{exc} for tuple"
+        raise ArgumentError, "wrong keys #{exc} for tuple"
       end
       tuple_ar = @field_names.map{|fld| tuple[fld] }
       tuple_ar.flatten!
@@ -149,9 +149,9 @@ module Tarantool
         pk_fields = pk.keys
         unless (pindex = @index_fields[0]) == pk_fields
           if !(exc = (pk_fields - pindex)).empty?
-            raise ValueError, "Wrong keys #{exc} for primary index"
+            raise ArgumentError, "Wrong keys #{exc} for primary index"
           elsif !(exc = (pindex - pk_fields)).empty?
-            raise ValueError, "you should provide values for all keys of primary index (missed #{exc})"
+            raise ArgumentError, "you should provide values for all keys of primary index (missed #{exc})"
           end
         end
         pk.values_at *pindex
@@ -171,11 +171,11 @@ module Tarantool
         when Integer
           opers << oper[1..-1].unshift(oper[0] + @tail_pos)
         when :_tail
-          raise ValueError, "_tail update should be array with operations" unless Array === oper[1]
+          raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1]
           oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
         else
           opers << oper[1..-1].unshift(
-            @field_to_pos[oper[0]]  || raise(ValueError, "Not defined field name #{oper[0]}")
+            @field_to_pos[oper[0]]  || raise(ArgumentError, "Not defined field name #{oper[0]}")
           )
         end
       }

@@ -41,13 +41,15 @@ module Tarantool
           convert_code = case type
              when :int, :integer
                "v = v.to_i  if String === v"
+             when :bytes
+               ""
              when :str, :string
                ""
              else
                if serializer = Serializers::MAP[type]
                  "v = Serializers::MAP[#{type.inspect}].decode(v)  if String === v"
                else
-                 raise ValueError, "unknown field type #{type.inspect}"
+                 raise ArgumentError, "unknown field type #{type.inspect}"
                end
              end
 
