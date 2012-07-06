@@ -6,16 +6,18 @@ describe 'Tarantool::Record' do
   let(:base_class){ Tarantool::Record }
   it_behaves_like :record
 
-  describe "increment" do
-    let(:user) { user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru' }
-    it "should increment apples count by 1" do
-      user.increment :apples_count
-      user.reload.apples_count.must_equal 1
-    end
 
-    it "should increment apples count by 3" do
-      user.increment :apples_count, 3
-      user.reload.apples_count.must_equal 3
+  describe "update" do
+    let(:user) { user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru' }
+    it "should not reload fields not reffered in operations" do
+      user.name = "Petr"
+      user.update(email: "prepor@ceo.ru")
+      user.name.must_equal "Petr"
+      user.email.must_equal "prepor@ceo.ru"
+
+      fetched = user_class.by_pk('prepor')
+      fetched.name.must_equal "Andrew"
+      fetched.email.must_equal "prepor@ceo.ru"
     end
   end
 
