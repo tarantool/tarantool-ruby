@@ -22,7 +22,13 @@ DB = Tarantool.new host: 'locahost', port: 33013
 space = DB.space 0
 ```
 
-The driver internals can work in two modes: block via TCPSocket and non block via EventMachine and fibers. By default it uses block mode.
+The driver internals can work in three modes:
+- blocking via TCPSocket
+- callback style via EventMachine
+- EM::Synchrony like via EventMachine and fibers, so that control flow is visually
+  blocked, but eventloop is not (see EM::Synchrony)
+
+By default it uses block mode.
 
 
 ```ruby
