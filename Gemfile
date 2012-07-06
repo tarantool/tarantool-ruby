@@ -1,7 +1,14 @@
 source 'https://rubygems.org'
 
+group :development do
+  gem "debugger"
+end
+
 group :test do
   gem "rr"
+  gem "activesupport"
+  gem "activemodel"
+  gem "yajl-ruby"
   gem "bson"
   gem "bson_ext"
 end
