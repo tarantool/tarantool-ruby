@@ -50,6 +50,8 @@ module Tarantool
       indexes = options[:indexes]
       self.class::SpaceArray.new(self, space_no, fields, primary_key, indexes)
     end
+    # alias space_array to space for backward compatibility
+    alias space space_array
 
     def space_hash(space_no, fields, opts = {})
       primary_key = opts[:pk]
