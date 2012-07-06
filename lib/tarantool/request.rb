@@ -93,7 +93,6 @@ module Tarantool
     MAX_BYTE_SIZE = 1024 * 1024
     def pack_field(body, field_kind, value)
       if value.nil?
-        puts "NIL PACK"
         body << ZERO
         return
       end
