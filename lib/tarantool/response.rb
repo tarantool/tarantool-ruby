@@ -29,6 +29,7 @@ module Tarantool
   class WrongVersion  < BadReturnCode; end
   class WalIO         < BadReturnCode; end
   class LuaError      < BadReturnCode; end
+  class StoredProcedureNotDefined < BadReturnCode; end
   class TupleExists   < BadReturnCode; end
   class TupleDoesntExists < BadReturnCode; end
   CODE_TO_EXCEPTION = {
@@ -44,6 +45,7 @@ module Tarantool
     0x2602 => WrongVersion,
     0x2702 => WalIO,
     0x3102 => TupleDoesntExists,
+    0x3202 => StoredProcedureNotDefined,
     0x3302 => LuaError,
     0x3702 => TupleExists,
   }
