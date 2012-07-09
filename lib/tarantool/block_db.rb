@@ -1,15 +1,73 @@
 module Tarantool
   class BlockDB < DB
-    def establish_connection
-      @connection = IProto.get_connection(@host, @port, :block)
+    IPROTO_CONNECTION_TYPE = :block
+
+    class Concatter < Struct.new(:result)
+      def call(array)
+        if Array === array
+          result.concat array
+        elsif Exception === array
+          raise array
+        else
+          result << array
+        end
+      end
     end
 
-    def close_connection
-      @connection.close
+    def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
+      concatter = Concatter.new([])
+      for shard in shard_numbers
+        _send_to_one_shard(shard, read_write, request_type, body, cb)
+      end
+      cb.call concatter.result
     end
 
-    def _send_request(request_type, body, cb)
-      cb.call @connection.send_request(request_type, body)
+    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
+      if (replicas = _shard(shard_number)).size == 1
+        cb.call replicas[0].send_request(request, body)
+      else
+        case read_write
+        when :read
+          _one_shard_read(replicas, request_type, body, cb)
+        when :write
+          _one_shard_write(replicas, request_type, body, cb)
+        end
+      end
+    end
+
+    def _one_shard_read(replicas, request_type, body, cb)
+      replicas = replicas.shuffle if @shard_strategy == :round_robin
+      for conn in replicas
+        if conn.could_be_connected?
+          begin
+            res = conn.send_request(request_type, body)
+          rescue ::IProto::Disconnected, ::IProto::CouldNotConnect
+            # pass
+          else
+            return cb.call(res)
+          end
+        end
+      end
+      raise ::IProto::Disconnected, "no available connections"
+    end
+
+    def _one_shard_write(replicas, request_type, body, cb)
+      i = replicas.size
+      while i > 0
+        conn = replicas[0]
+        if conn.could_be_connected?
+          begin
+            res = conn.send_request(request_type, body)
+          rescue ::IProto::Disconnected, ::IProto::CouldNotConnect
+            # pass
+          else
+            return cb.call(res)
+          end
+        end
+        replicas.rotate!
+        i -= 1
+      end
+      raise ::IProto::Disconnected, "no available connections"
     end
 
     module CommonSpaceBlockingMethods

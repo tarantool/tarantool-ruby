@@ -41,7 +41,7 @@ HSPACE2 = {
 module Helper
   def tarantool_pipe
     $tarantool_pipe ||= begin
-        cnf = TCONFIG
+        cnf = {port: 33013, admin: 33015} #TCONFIG
         tarant = %W{tarantool -p #{cnf[:port]} -m #{cnf[:admin]}}
         tarant = [{}, *tarant, :err => [:child, :out]]
         IO.popen(tarant, 'w+').tap{|p| p.sync = true}
