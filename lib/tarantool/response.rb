@@ -12,6 +12,7 @@ module Tarantool
         if (ret = return_code(data)) == 0
           cb.call parse_response(data)
         else
+          data.gsub!("\x00", "")
           cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
         end
       end
