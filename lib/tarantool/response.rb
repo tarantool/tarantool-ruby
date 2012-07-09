@@ -2,7 +2,7 @@ require 'tarantool/util'
 require 'tarantool/exceptions'
 
 module Tarantool
-  class ResponseWith < Struct.new(:cb, :get_tuples, :fields, :translators)
+  class Response < Struct.new(:cb, :get_tuples, :fields, :translators)
     include Util::Packer
     include Util::TailGetter
     def call(data)

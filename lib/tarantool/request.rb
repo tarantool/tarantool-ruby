@@ -57,7 +57,7 @@ module Tarantool
       for key in keys
         pack_tuple(body, key, index_fields, index_no)
       end
-      cb = ResponseWith.new(cb, get_tuples, fields, translators)
+      cb = Response.new(cb, get_tuples, fields, translators)
       _send_request(REQUEST_SELECT, body, cb)
     end
 
@@ -123,9 +123,8 @@ module Tarantool
     end
 
     def _modify_request(type, body, fields, ret_tuple, cb, translators)
-      cb = ResponseWith.new(cb,
-                           ret_tuple && (ret_tuple != :all ? :first : :all),
-                           fields, translators)
+      cb = Response.new(cb, ret_tuple && (ret_tuple != :all ? :first : :all),
+                            fields, translators)
       _send_request(type, body, cb)
     end
 
