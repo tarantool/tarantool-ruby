@@ -141,11 +141,23 @@ module Tarantool
                       shard_numbers, read_write, request_type, body, cb
                    )
           else
-            shard_numbers = shard_numbers.first
+            shard_numbers = shard_numbers[0]
           end
         end
         _send_to_one_shard(shard_numbers, read_write, request_type, body, cb)
       end
     end
+
+    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
+      if (replicas = _shard(shard_number)).size == 1
+        replicas[0].send_request(request_type, body, cb)
+      elsif read_write == :read
+        replicas = replicas.shuffle  if @shard_strategy == :round_robin
+        _one_shard_read(replicas, request_type, body, cb)
+      else
+        _one_shard_write(replicas, request_type, body, cb)
+      end
+    end
+
   end
 end

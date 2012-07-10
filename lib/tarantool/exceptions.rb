@@ -1,4 +1,8 @@
 module Tarantool
+  # this is one class which is not derived from TarantoolError
+  class ConnectionError < ::IProto::Disconnected; end
+  class NoMasterError < ConnectionError; end
+
   class TarantoolError < StandardError; end
   class ValueError < TarantoolError; end
   class ArgumentError < TarantoolError; end
