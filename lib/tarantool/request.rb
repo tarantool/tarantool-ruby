@@ -70,7 +70,7 @@ module Tarantool
       end
       case key
       when Array
-        if nili = key.index(nil)
+        if index_no != :space && nili = key.index(nil)
           key = key.slice(0, nili)
         end
         body << [key_size = key.size].pack(INT32)
