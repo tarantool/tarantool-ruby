@@ -76,7 +76,9 @@ module Tarantool
             when :bytes
               typle_str.slice!(0, field_size)
             else
-              if serializer = field.respond_to?(:decode) ? field :
+              if field_size == 0
+                nil
+              elsif serializer = field.respond_to?(:decode) ? field :
                               Tarantool::Serializers::MAP[field]
                 serializer.decode(tuple_str.slice!(0, field_size))
               else

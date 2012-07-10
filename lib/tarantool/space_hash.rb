@@ -44,7 +44,7 @@ module Tarantool
       field_to_type[:_tail] ||= [last_type]
       @field_to_pos = field_to_pos
       @field_to_type = field_to_type
-      @field_names = field_to_pos.keys
+      @field_names = field_to_pos.keys - [:_tail]
       @field_types = field_types
       @tail_pos  = field_to_pos[:_tail]
       @tail_size = field_to_type[:_tail].size
@@ -129,7 +129,8 @@ module Tarantool
       unless (exc = (tuple.keys - @field_names)).empty?
         raise ArgumentError, "wrong keys #{exc} for tuple"
       end
-      tuple_ar = @field_names.map{|fld| tuple[fld] }
+      tuple_ar = tuple.values_at(*@field_names)
+      tuple_ar << tuple[:_tail]  if tuple[:_tail]
       tuple_ar.flatten!
       tuple_ar
     end
