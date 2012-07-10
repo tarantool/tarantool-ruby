@@ -7,11 +7,15 @@ module Tarantool
   class SpaceArray
     include Request
 
-    def initialize(tarantool, space_no, fields, primary_index, indexes)
+    def initialize(tarantool, space_no, fields, primary_index, indexes, shard_fields = nil, shard_proc = nil)
       @tarantool = tarantool
       @space_no = space_no
       @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
       indexes = Array(indexes).map{|ind| Array(ind)}
+      @shard_fields = shard_fields || primary_index
+      unless @shard_fields || @tarantool.shards_count == 1
+        raise ArgumentError, "You could not use space without specifying primary key or shard fields when shards count is greater than 1"
+      end
       if primary_index
         indexes = [Array(primary_index)].concat(indexes)
         @index_fields = indexes
@@ -23,7 +27,8 @@ module Tarantool
         @index_fields = nil
         @indexes = [TYPES_FALLBACK]
       end
-      @pk_positions = @index_fields && @index_fields[0] || [0]
+      @shard_positions = @shard_fields
+      _init_shard_vars(shard_proc)
     end
 
     def _map_indexes(indexes)
@@ -84,25 +89,32 @@ module Tarantool
         raise ArgumentError, "No index ##{index_no}"
       end
 
-      _select(@space_no, index_no, offset, limit, keys, cb, @fields, index_types)
+      shard_nums = _get_shard_nums { _detect_shards_for_keys(keys, index_no) }
+
+      _select(@space_no, index_no, offset, limit, keys, cb, @fields, shard_nums, index_types)
     end
 
     def insert_cb(tuple, cb, opts = {})
-      _insert(@space_no, BOX_ADD, tuple, @fields, cb, opts[:return_tuple])
+      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      _insert(@space_no, BOX_ADD, tuple, @fields, cb, opts[:return_tuple], shard_nums)
     end
 
     def replace_cb(tuple, cb, opts = {})
-      _insert(@space_no, BOX_REPLACE, tuple, @fields, cb, opts[:return_tuple])
+      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      _insert(@space_no, BOX_REPLACE, tuple, @fields,
+              cb, opts[:return_tuple], shard_nums)
     end
 
     def update_cb(pk, operations, cb, opts = {})
+      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
       _update(@space_no, pk, operations, @fields,
-              @indexes[0], cb, opts[:return_tuple])
+              @indexes[0], cb, opts[:return_tuple],
+              shard_nums)
     end
 
     def delete_cb(pk, cb, opts = {})
-      _delete(@space_no, pk, @fields,
-              @indexes[0], cb, opts[:return_tuple])
+      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
+      _delete(@space_no, pk, @fields, @indexes[0], cb, opts[:return_tuple], shard_nums)
     end
 
     def invoke_cb(func_name, values, cb, opts = {})

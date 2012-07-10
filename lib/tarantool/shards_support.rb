@@ -1,14 +1,62 @@
 module Tarantool
   module Request
-    def _init_shard_vars
-      @shards_count = @tarantool.shards_count
-      @default_shard = 0
-      @_shard_callback = nil
+    class DefaultShardProc
+      def call(shard_values, shards_count, this)
+        this.default_shard_proc(shard_values, shards_count)
+      end
     end
 
-    def _detect_shards_by_positions(keys, pos)
-      pos.map!{|i| i || 2**30}
-      _flat_uniq keys.map{|key| detect_shard(key.values_at(*pos)) }
+    class ModuloShardProc
+      def call(shard_values, shards_count, this)
+        if value = (Array === shard_values ? shard_values[0] : shard_values)
+          value % shards_count
+        else
+          this.all_shards
+        end
+      end
+    end
+
+    def _init_shard_vars(shard_proc)
+      @shard_by_index = @index_fields.index{|index| index == @shard_fields}
+      @shard_for_index = @index_fields.map{|index|
+          if (pos = @shard_fields.map{|name| index.index(name)}).any?
+            pos.map{|i| i || 2**30}
+          end
+      }
+
+      @shards_count = @tarantool.shards_count
+      @default_shard = 0
+      @shard_proc = case shard_proc
+                    when nil, :default
+                      DefaultShardProc.new
+                    when :modulo, :module
+                      ModuloShardProc.new
+                    else
+                      unless shard_proc.respond_to?(:call)
+                        raise ArgumentError, "Wrong sharding proc object #{shard_proc.inspect}"
+                      end
+                      shard_proc
+                    end
+    end
+
+    def _detect_shards_for_keys(keys, index_no)
+      if index_no == @shard_by_index
+        _flat_uniq keys.map{|key| detect_shard(key)}
+      elsif pos = @shard_for_index[index_no]
+        _flat_uniq keys.map{|key| detect_shard(key.values_at(*pos)) }
+      else
+        all_shards
+      end
+    end
+
+    def _detect_shards_for_key(key, index)
+      if index_no == @shard_by_index
+        detect_shard(key)
+      elsif pos = @shard_for_index[index_no]
+        detect_shard(key.values_at(*pos))
+      else
+        all_shards
+      end
     end
 
     def _detect_shards(keys)
@@ -28,21 +76,23 @@ module Tarantool
     end
 
     # methods for override
-    def detect_shard(pk)
-      if @_shard_callback
-        @_shard_callback.call(pk, @shards_count, self)
-      elsif Array === pk
-        if pk.size == 1 && Integer === pk[0]
-          pk[0] % @shards_count
-        elsif pk.all?
-          pk.hash % @shards_count
+    def detect_shard(shard_values)
+      @shard_proc.call(shard_values, @shards_count, self)
+    end
+
+    def default_shard_proc(shard_values, shards_count)
+      if Array === shard_values
+        if shard_values.size == 1 && Integer === shard_values[0]
+          shard_values[0] % shards_count
+        elsif shard_values.all?
+          shard_values.hash % shards_count
         else
           all_shards
         end
-      elsif Integer === pk
-        pk % @shards_count
+      elsif Integer === shard_values
+        shard_values % shards_count
       else
-        [pk].hash % @shards_count
+        [shard_values].hash % shards_count
       end
     end
 
@@ -64,13 +114,6 @@ module Tarantool
             @default_shard = shard_number
             self
           end
-    end
-
-    def shard_by(callback = nil, &block)
-      clone.instance_exec do
-        @_shard_callback = callback || block
-        self
-      end
     end
   end
 end

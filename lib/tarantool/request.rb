@@ -262,9 +262,9 @@ module Tarantool
       end
       # scheck for shards hints
       opts[:shards] ||= _get_shard_nums {
-          opts[:pks] ? _detect_shards(opts[:pks], shards_count) :
-          opts[:pk]  ?  detect_shard (opts[:pk],  shards_count) :
-                        all_shards
+          opts[:shard_keys] ? _detect_shards(opts[:shard_keys]) :
+          opts[:shard_key]  ?  detect_shard (opts[:shard_key]) :
+                               all_shards
         }
       [values, opts]
     end
