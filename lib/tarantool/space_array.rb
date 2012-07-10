@@ -23,6 +23,7 @@ module Tarantool
         @index_fields = nil
         @indexes = [TYPES_FALLBACK]
       end
+      @pk_positions = @index_fields && @index_fields[0] || [0]
     end
 
     def _map_indexes(indexes)
@@ -34,10 +35,6 @@ module Tarantool
           field
         end << :error
       end
-    end
-
-    def _send_request(type, body, cb)
-      @tarantool._send_request(type, body, cb)
     end
 
     def all_by_pks_cb(keys, cb, opts={})

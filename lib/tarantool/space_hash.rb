@@ -55,17 +55,16 @@ module Tarantool
                       [@field_names.first]
       @index_fields = [primary_index].concat(indexes).map{|ind| ind.map{|fld| fld.to_sym}}
       @indexes = _map_indexes(@index_fields)
+      @pk_positions = @index_fields[0].map{|name| @field_to_pos[name]}
       @translators = [TranslateToHash.new(@field_names, @tail_size)].freeze
-    end
-
-    def _add_translator(v)
-      @translators += [v]
+      _init_shard_vars
     end
 
     def with_translator(cb = nil, &block)
-      copy = dup
-      copy._add_translator(cb || block)
-      copy
+      clone.intance_exec do
+        @translators += [cb || block]
+        self
+      end
     end
 
     def _map_indexes(indexes)
@@ -74,10 +73,6 @@ module Tarantool
           @field_to_type[name.to_sym] or raise "Wrong index field name: #{index} #{name}"
         end << :error
       end
-    end
-
-    def _send_request(type, body, cb)
-      @tarantool._send_request(type, body, cb)
     end
 
     def select_cb(keys, offset, limit, cb)
@@ -102,7 +97,17 @@ module Tarantool
         keys = keys.first.values_at(*index_names).transpose
       end
 
-      _select(@space_no, index_no, offset, limit, keys, cb, @field_types, index_types, @translators)
+      shard_nums = _get_shard_nums {
+          if index_no == 0
+            _detect_shards(keys)
+          elsif (pos = @index_fields[0].map{|name| index_names.index(name)}).any?
+            _detect_shards_by_positions(keys, positions)
+          else
+            all_shards
+          end
+      }
+
+      _select(@space_no, index_no, offset, limit, keys, cb, @field_types, index_types, shard_nums, @translators)
     end
 
     def all_cb(keys, cb, opts = {})
@@ -114,15 +119,17 @@ module Tarantool
     end
 
     def all_by_pks_cb(keys, cb, opts={})
-      keys = Array(keys).map{|key| _prepare_pk(key)}
+      keys = (Hash === keys ? [keys] : Array(keys)).map{|key| _prepare_pk(key)}
+      shard_nums = _get_shard_nums{ _detect_shards(keys) }
       _select(@space_no, 0, 
               opts[:offset] || 0, opts[:limit] || -1,
-              keys, cb, @field_types, @indexes[0], @translators)
+              keys, cb, @field_types, @indexes[0], shard_nums, @translators)
     end
 
     def by_pk_cb(key_array, cb)
       key_array = _prepare_pk(key_array)
-      _select(@space_no, 0, 0, :first, [key_array], cb, @field_types, @indexes[0], @translators)
+      shard_nums = _get_shard_nums{ detect_shard(key_array) }
+      _select(@space_no, 0, 0, :first, [key_array], cb, @field_types, @indexes[0], shard_nums, @translators)
     end
 
     def _prepare_tuple(tuple)
@@ -135,13 +142,17 @@ module Tarantool
     end
 
     def insert_cb(tuple, cb, opts = {})
-      _insert(@space_no, BOX_ADD, _prepare_tuple(tuple),
-              @field_types, cb, opts[:return_tuple], @translators)
+      tuple = _prepare_tuple(tuple)
+      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@pk_positions)) }
+      _insert(@space_no, BOX_ADD, tuple, @field_types, cb, opts[:return_tuple],
+              shard_nums, @translators)
     end
 
     def replace_cb(tuple, cb, opts = {})
-      _insert(@space_no, BOX_REPLACE, _prepare_tuple(tuple),
-              @field_types, cb, opts[:return_tuple], @translators)
+      tuple = _prepare_tuple(tuple)
+      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@pk_positions)) }
+      _insert(@space_no, BOX_REPLACE, tuple, @field_types, cb, opts[:return_tuple],
+              shard_nums, @translators)
     end
 
     def _prepare_pk(pk)
@@ -179,13 +190,16 @@ module Tarantool
           )
         end
       }
-      _update(@space_no, pk, opers, @field_types,
-              @indexes[0], cb, opts[:return_tuple], @translators)
+      shard_nums = _get_shard_nums{ detect_shard(pk, shards_count) }
+      _update(@space_no, pk, opers, @field_types, @indexes[0], cb, opts[:return_tuple],
+              shard_nums, @translators)
     end
 
     def delete_cb(pk, cb, opts = {})
-      _delete(@space_no, _prepare_pk(pk), @field_types,
-              @indexes[0], cb, opts[:return_tuple], @translators)
+      pk = _prepare_pk(pk)
+      shard_nums = _get_shard_nums{ detect_shard(pk, shards_count) }
+      _delete(@space_no, pk, @field_types, @indexes[0], cb, opts[:return_tuple],
+              shard_nums, @translators)
     end
 
     def invoke_cb(func_name, values, cb, opts = {})

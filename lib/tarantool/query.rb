@@ -8,10 +8,6 @@ module Tarantool
       @tarantool = tarantool
     end
 
-    def _send_request(type, body, cb)
-      @tarantool._send_request(type, body, cb)
-    end
-
     def select_cb(space_no, index_no, keys, offset, limit, cb, opts={})
       keys = Array(keys)
       types = opts[:types] || _detect_types(keys)
