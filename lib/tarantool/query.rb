@@ -6,6 +6,7 @@ module Tarantool
     include Request
     def initialize(tarantool)
       @tarantool = tarantool
+      _init_shard_vars(nil, false)
     end
 
     def select_cb(space_no, index_no, keys, offset, limit, cb, opts={})
@@ -15,8 +16,9 @@ module Tarantool
       if Hash === returns
         returns, *translators = _parse_hash_definition(returns)
       end
+      shard_nums = _get_shard_nums{ all_shards }
       _select(space_no, index_no, offset, limit, keys, cb, returns,
-              types, translators)
+              types, shard_nums, translators)
     end
 
     def all_cb(space_no, index_no, keys, cb, opts={})
@@ -31,12 +33,14 @@ module Tarantool
 
     def insert_cb(space_no, tuple, cb, opts={})
       types = opts[:types] || _detect_types(tuple)
-      _insert(space_no, BOX_ADD, tuple, types, cb, opts[:return_tuple])
+      shard_nums = _get_shard_nums{ all_shards }
+      _insert(space_no, BOX_ADD, tuple, types, cb, opts[:return_tuple], shard_nums)
     end
 
     def replace_cb(space_no, tuple, cb, opts={})
       types = opts[:types] || _detect_types(tuple)
-      _insert(space_no, BOX_REPLACE, tuple, types, cb, opts[:return_tuple])
+      shard_nums = _get_shard_nums{ all_shards }
+      _insert(space_no, BOX_REPLACE, tuple, types, cb, opts[:return_tuple], shard_nums)
     end
 
     def update_cb(space_no, pk, operations, cb, opts={})
@@ -46,8 +50,9 @@ module Tarantool
       if Hash === returns && opts[:return_tuple]
         returns, *translators = _parse_hash_definition(returns)
       end
+      shard_nums = _get_shard_nums{ all_shards }
       _update(space_no, pk, operations, returns, pk_types, cb,
-              opts[:return_tuple], translators)
+              opts[:return_tuple], shard_nums, translators)
     end
 
     def delete_cb(space_no, pk, cb, opts={})
@@ -57,8 +62,9 @@ module Tarantool
       if Hash === returns && opts[:return_tuple]
         returns, *translators = _parse_hash_definition(returns)
       end
+      shard_nums = _get_shard_nums{ all_shards }
       _delete(space_no, pk, returns, pk_types, cb,
-              opts[:return_tuple], translators)
+              opts[:return_tuple], shard_nums, translators)
     end
 
     def invoke_cb(func_name, values, cb, opts={})

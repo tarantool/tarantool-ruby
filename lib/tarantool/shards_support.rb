@@ -16,17 +16,14 @@ module Tarantool
       end
     end
 
-    def _init_shard_vars(shard_proc)
-      if @index_fields
+    def _init_shard_vars(shard_proc, init_shard_for_index = true)
+      if init_shard_for_index
         @shard_by_index = @index_fields.index{|index| index == @shard_fields}
         @shard_for_index = @index_fields.map{|index|
             if (pos = @shard_fields.map{|name| index.index(name)}).any?
               pos.map{|i| i || 2**30}
             end
         }
-
-        @shards_count = @tarantool.shards_count
-        @default_shard = 0
         @shard_proc = case shard_proc
                       when nil, :default
                         DefaultShardProc.new
@@ -39,6 +36,9 @@ module Tarantool
                         shard_proc
                       end
       end
+
+      @shards_count = @tarantool.shards_count
+      @default_shard = 0
     end
 
     def _detect_shards_for_keys(keys, index_no)
