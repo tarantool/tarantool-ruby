@@ -76,7 +76,9 @@ module Tarantool
             when :bytes
               typle_str.slice!(0, field_size)
             else
-              if serializer = field.respond_to?(:decode) ? field :
+              if field_size == 0
+                nil
+              elsif serializer = field.respond_to?(:decode) ? field :
                               Tarantool::Serializers::MAP[field]
                 serializer.decode(tuple_str.slice!(0, field_size))
               else
@@ -96,6 +98,7 @@ module Tarantool
     end
   end
 
+  # note that :_tail should not be in field_names
   class TranslateToHash < Struct.new(:field_names, :tail_size)
     def call(tuple)
       i = 0
@@ -103,7 +106,7 @@ module Tarantool
       tuple_size = tuple.size
       names = field_names
       while i < tuple_size
-        unless (name = names[i]) == :_tail
+        if name = names[i]
           hash[name] = tuple[i]
         else
           tail = tuple.slice(i..-1)

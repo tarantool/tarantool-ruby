@@ -55,7 +55,7 @@ module Tarantool
                       [@field_names.first]
       @index_fields = [primary_index].concat(indexes).map{|ind| ind.map{|fld| fld.to_sym}}
       @indexes = _map_indexes(@index_fields)
-      @translators = [TranslateToHash.new(@field_names, @tail_size)].freeze
+      @translators = [TranslateToHash.new(@field_names - [:_tail], @tail_size)].freeze
 
       @shard_fields = shard_fields || @index_fields[0]
       @shard_positions = @shard_fields.map{|name| @field_to_pos[name]}
@@ -130,7 +130,8 @@ module Tarantool
       unless (exc = (tuple.keys - @field_names)).empty?
         raise ArgumentError, "wrong keys #{exc} for tuple"
       end
-      tuple_ar = @field_names.map{|fld| tuple[fld] }
+      tuple_ar = tuple.values_at(*@field_names)
+      tuple_ar.pop  if tuple_ar[-1].nil?
       tuple_ar.flatten!
       tuple_ar
     end

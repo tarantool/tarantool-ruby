@@ -75,7 +75,7 @@ module Tarantool
       end
       case key
       when Array
-        if nili = key.index(nil)
+        if index_no != :space && nili = key.index(nil)
           key = key.slice(0, nili)
         end
         body << [key_size = key.size].pack(INT32)
@@ -312,6 +312,7 @@ module Tarantool
           unless field_names.last == :_tail
             raise ArgumentError, "_tail should be de declared last"
           end
+          field_names.pop
           Array(field_types.last).size
         else
           1

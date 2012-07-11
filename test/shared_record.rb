@@ -23,6 +23,21 @@ shared_examples_for :record do
     end
   end
 
+  let(:second_class) do
+    Class.new(base_class) do
+      set_tarantool DB
+      set_space_no 1
+
+      def self.name # For naming
+        "Second"
+      end
+
+      field :id, :int
+      field :count1, :int
+      field :count2, :int
+    end
+  end
+
   let(:user) { user_class.new }
 
   it "should set and get attributes" do
@@ -286,6 +301,20 @@ shared_examples_for :record do
       user.must_be_instance_of user_class
       user.attributes.must_equal _lila
       user.attributes.wont_be_same_as _lila
+    end
+
+    it "should insert with nil" do
+      second_class.insert(id: 100).must_equal 1
+      obj = second_class.by_pk(100)
+      obj.attributes.must_equal({id: 100, count1: nil, count2: nil})
+      tuple = DB.space(1, [:int, :int, :int], pk: 0).by_pk(100)
+      tuple.must_equal([100, nil, nil])
+
+      second_class.insert(id: 101, count2: 102).must_equal 1
+      obj = second_class.by_pk(101)
+      obj.attributes.must_equal({id: 101, count1: nil, count2: 102})
+      tuple = DB.space(1, [:int, :int, :int], pk: 0).by_pk(101)
+      tuple.must_equal([101, nil, 102])
     end
 
     it "should replace" do
