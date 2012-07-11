@@ -1,8 +1,9 @@
 module Tarantool
+  class ArgumentError < ::ArgumentError; end
+  class StringTooLong < ArgumentError; end
+
   class TarantoolError < StandardError; end
   class ValueError < TarantoolError; end
-  class ArgumentError < TarantoolError; end
-  class StringTooLong < ArgumentError; end
   class StatusCode < TarantoolError
     attr_reader :code
     def initialize(code, msg)
