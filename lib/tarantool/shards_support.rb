@@ -107,8 +107,19 @@ module Tarantool
     end
 
     def shard(shard_number)
-      if shard_number >= @shards_count
-        raise ArgumentError, "There is no shard #{shard_number}, amount of shards is #{@shards_count}"
+      case shard_number
+      when Integer
+        if shard_number >= @shards_count
+          raise ArgumentError, "There is no shard #{shard_number}, amount of shards is #{@shards_count}"
+        end
+      when Array
+        shard_number.each do|i|
+          if i >= @shards_count
+            raise ArgumentError, "There is no shard #{i}, amount of shards is #{@shards_count}"
+          end
+        end
+      else
+        raise ArgumentError, "Shard number should be integer or array of integers"
       end
       (@_fixed_shards ||= {})[shard_number] ||=
           clone.instance_exec do
