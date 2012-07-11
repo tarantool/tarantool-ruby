@@ -24,10 +24,11 @@ module Tarantool
         @indexes = [TYPES_FALLBACK]
       end
 
-      @shard_fields = shard_fields || primary_index
-      unless @shard_fields || @tarantool.shards_count == 1
+      shard_fields ||= primary_index
+      unless shard_fields || @tarantool.shards_count == 1
         raise ArgumentError, "You could not use space without specifying primary key or shard fields when shards count is greater than 1"
       else
+        @shard_fields = Array(shard_fields)
         @shard_positions = @shard_fields
         _init_shard_vars(shard_proc)
       end

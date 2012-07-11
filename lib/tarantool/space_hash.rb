@@ -57,7 +57,7 @@ module Tarantool
       @indexes = _map_indexes(@index_fields)
       @translators = [TranslateToHash.new(@field_names - [:_tail], @tail_size)].freeze
 
-      @shard_fields = shard_fields || @index_fields[0]
+      @shard_fields = Array(shard_fields || @index_fields[0])
       @shard_positions = @shard_fields.map{|name| @field_to_pos[name]}
       _init_shard_vars(shard_proc)
     end
