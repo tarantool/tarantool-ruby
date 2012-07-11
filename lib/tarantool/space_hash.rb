@@ -125,8 +125,9 @@ module Tarantool
       _select(@space_no, 0, 0, :first, [key_array], cb, @field_types, @indexes[0], @translators)
     end
 
+    TAIL_AR = [:_tail].freeze
     def _prepare_tuple(tuple)
-      unless (exc = (tuple.keys - @field_names)).empty?
+      unless (exc = (tuple.keys - @field_names - TAIL_AR)).empty?
         raise ArgumentError, "wrong keys #{exc} for tuple"
       end
       tuple_ar = tuple.values_at(*@field_names)

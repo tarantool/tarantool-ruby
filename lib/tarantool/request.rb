@@ -298,6 +298,7 @@ module Tarantool
           unless field_names.last == :_tail
             raise ArgumentError, "_tail should be de declared last"
           end
+          field_names.pop
           Array(field_types.last).size
         else
           1

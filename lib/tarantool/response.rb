@@ -105,7 +105,7 @@ module Tarantool
       tuple_size = tuple.size
       names = field_names
       while i < tuple_size
-        unless (name = names[i]) == :_tail
+        if name = names[i]
           hash[name] = tuple[i]
         else
           tail = tuple.slice(i..-1)
