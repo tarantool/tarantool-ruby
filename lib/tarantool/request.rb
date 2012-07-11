@@ -263,7 +263,7 @@ module Tarantool
       # scheck for shards hints
       opts[:shards] ||= _get_shard_nums {
           opts[:shard_keys] ? _detect_shards(opts[:shard_keys]) :
-          opts[:shard_key]  ?  detect_shard (opts[:shard_key]) :
+          opts[:shard_key]  ?  detect_shard( opts[:shard_key]) :
                                all_shards
         }
       [values, opts]
@@ -282,7 +282,7 @@ module Tarantool
       body = [flags, func_name.size, func_name].pack(CALL_HEADER)
       pack_tuple(body, values, value_types, :func_call)
 
-      shard_nums = opts[:shards] || _get_shards_nums{ all_shards }
+      shard_nums = opts[:shards] || _get_shard_nums{ all_shards }
       read_write = opts[:readonly] ? :read : :write
 
       _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, shard_nums, read_write, opts[:translators] || [])

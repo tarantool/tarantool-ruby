@@ -63,7 +63,7 @@ module Tarantool
     end
 
     def with_translator(cb = nil, &block)
-      clone.intance_exec do
+      clone.instance_exec do
         @translators += [cb || block]
         self
       end

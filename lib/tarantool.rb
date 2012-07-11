@@ -17,7 +17,7 @@ module Tarantool
   class << self
     def new(conf)
       if conf[:host]
-        shards = [ [ _fix_connection(conn) ] ]
+        shards = [ [ _fix_connection(conf) ] ]
       else
         shards = conf[:servers]
         unless shards.is_a? Array
@@ -53,7 +53,7 @@ module Tarantool
     private
     def _fix_connection(conn)
       if conn.is_a? Hash
-        conn = [conf[:host], conf[:port]].compact.join(':')
+        conn = [conn[:host], conn[:port]].compact.join(':')
       end
       if conn.is_a? String
         host, port = conn.split(':')
@@ -147,17 +147,5 @@ module Tarantool
         _send_to_one_shard(shard_numbers, read_write, request_type, body, cb)
       end
     end
-
-    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
-      if (replicas = _shard(shard_number)).size == 1
-        replicas[0].send_request(request_type, body, cb)
-      elsif read_write == :read
-        replicas = replicas.shuffle  if @shard_strategy == :round_robin
-        _one_shard_read(replicas, request_type, body, cb)
-      else
-        _one_shard_write(replicas, request_type, body, cb)
-      end
-    end
-
   end
 end

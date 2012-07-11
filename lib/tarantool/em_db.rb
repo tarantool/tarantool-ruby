@@ -1,11 +1,23 @@
 module Tarantool
   class EMDB < DB
     IPROTO_CONNECTION_TYPE = :em_callback
+    INITIAL = Object.new.freeze
+
+    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
+      if (replicas = _shard(shard_number)).size == 1
+        replicas[0].send_request(request_type, body, cb)
+      elsif read_write == :read
+        replicas = replicas.shuffle  if @shard_strategy == :round_robin
+        _one_shard_read(replicas, request_type, body, cb)
+      else
+        _one_shard_write(replicas, request_type, body, cb)
+      end
+    end
 
     class OneShardRead
-      def initialize(replicas, i, request_type, body, cb)
+      def initialize(replicas, request_type, body, cb)
         @replicas = replicas
-        @i = i
+        @i = -1
         @request_type = request_type
         @body = body
         @cb = cb
@@ -13,11 +25,13 @@ module Tarantool
 
       def call(result)
         case result
-        when ::IProto::ConnectionError
-          if (@i += 1) == @replicas.size
-            @cb.call(ConnectionError.new("no available connections"))
-          end
-          @replicas[@i].send_request(@request_type, @body, self)
+        when INITIAL, ::IProto::ConnectionError
+          begin
+            if (@i += 1) >= @replicas.size
+              return @cb.call(ConnectionError.new("no available connections"))
+            end
+          end until (repl = @replicas[@i]).could_be_connected?
+          repl.send_request(@request_type, @body, self)
         else
           @cb.call(result)
         end
@@ -25,27 +39,31 @@ module Tarantool
     end
 
     def _one_shard_read(replicas, request_type, body, cb)
-      replicas[0].send_request(request_type, body, 
-                               OneShardRead.new(replicas, 0, request_type, body, cb))
+      OneShardRead.new(replicas, request_type, body, cb).call(INITIAL)
     end
 
     class OneShardWrite
-      def initialize(replicas, i, request_type, body, cb)
+      def initialize(replicas, request_type, body, cb)
         @replicas = replicas
-        @i = i
+        @i = replicas.size
         @request_type = request_type
         @body = body
         @cb = cb
       end
 
+      def rotate!
+        if (@i -= 1) <= 0
+          return @cb.call(NoMasterError.new("no available master connections"))
+        end
+        @replicas.rotate!
+      end
+
       def call(result)
         case result
-        when ::IProto::ConnectionError, ::Tarantool::NonMaster
-          @replicas.rotate!
-          if (@i -= 1) == 0
-            @cb.call(NoMasterError.new("no available master connections"))
-          end
-          @replicas[@i].send_request(@request_type, @body, self)
+        when INITIAL, ::IProto::ConnectionError, ::Tarantool::NonMaster
+          rotate!  if Exception === result
+          rotate!  until (repl = @replicas[0]).could_be_connected?
+          repl.send_request(@request_type, @body, self)
         else
           @cb.call(result)
         end
@@ -53,8 +71,7 @@ module Tarantool
     end
 
     def _one_shard_write(replicas, request_type, body, cb)
-      replicas[0].send_request(request_type, body,
-                               OneShardWrite.new(replicas, replicas.size, request_type, body, cb))
+       OneShardWrite.new(replicas, replicas.size, request_type, body, cb).call(INITIAL)
     end
 
     class Concatter

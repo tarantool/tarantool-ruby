@@ -12,10 +12,6 @@ module Tarantool
       @space_no = space_no
       @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
       indexes = Array(indexes).map{|ind| Array(ind)}
-      @shard_fields = shard_fields || primary_index
-      unless @shard_fields || @tarantool.shards_count == 1
-        raise ArgumentError, "You could not use space without specifying primary key or shard fields when shards count is greater than 1"
-      end
       if primary_index
         indexes = [Array(primary_index)].concat(indexes)
         @index_fields = indexes
@@ -24,11 +20,17 @@ module Tarantool
         @index_fields = [[]] + indexes
         @indexes = [TYPES_FALLBACK] + _map_indexes(indexes)
       else
-        @index_fields = nil
+        @index_fields = []
         @indexes = [TYPES_FALLBACK]
       end
-      @shard_positions = @shard_fields
-      _init_shard_vars(shard_proc)
+
+      @shard_fields = shard_fields || primary_index
+      unless @shard_fields || @tarantool.shards_count == 1
+        raise ArgumentError, "You could not use space without specifying primary key or shard fields when shards count is greater than 1"
+      else
+        @shard_positions = @shard_fields
+        _init_shard_vars(shard_proc)
+      end
     end
 
     def _map_indexes(indexes)
@@ -74,7 +76,7 @@ module Tarantool
 
     def select_cb(index_no, offset, limit, keys, cb)
       if Array === index_no
-        raise ArgumentError, "Has no defined indexes to search index #{index_no}"  unless @index_fields
+        raise ArgumentError, "Has no defined indexes to search index #{index_no}"  if @index_fields.empty?
         index_fields = index_no
         index_no = @index_fields.index{|fields| fields.take(index_fields.size) == index_fields}
         unless index_no || index_fields.size == 1
@@ -85,13 +87,13 @@ module Tarantool
           end
         end
       end
-      unless index_types = (@index_fields ? @indexes[index_no] : TYPES_FALLBACK)
+      unless index_types = (@index_fields.empty? ? TYPES_FALLBACK : @indexes[index_no])
         raise ArgumentError, "No index ##{index_no}"
       end
 
       shard_nums = _get_shard_nums { _detect_shards_for_keys(keys, index_no) }
 
-      _select(@space_no, index_no, offset, limit, keys, cb, @fields, shard_nums, index_types)
+      _select(@space_no, index_no, offset, limit, keys, cb, @fields, index_types, shard_nums)
     end
 
     def insert_cb(tuple, cb, opts = {})

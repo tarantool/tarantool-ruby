@@ -2,7 +2,20 @@ module Tarantool
   class BlockDB < DB
     IPROTO_CONNECTION_TYPE = :block
 
-    def _one_shard_read(replicas, request_type, body, cb)
+    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
+      cb.call(
+        if (replicas = _shard(shard_number)).size == 1
+          replicas[0].send_request(request_type, body)
+        elsif read_write == :read
+          replicas = replicas.shuffle  if @shard_strategy == :round_robin
+          _one_shard_read(replicas, request_type, body)
+        else
+          _one_shard_write(replicas, request_type, body)
+        end
+      )
+    end
+
+    def _one_shard_read(replicas, request_type, body)
       for conn in replicas
         if conn.could_be_connected?
           begin
@@ -10,14 +23,14 @@ module Tarantool
           rescue ::IProto::ConnectionError
             # pass
           else
-            return cb.call(res)
+            return res
           end
         end
       end
       raise ConnectionError, "no available connections"
     end
 
-    def _one_shard_write(replicas, request_type, body, cb)
+    def _one_shard_write(replicas, request_type, body)
       i = replicas.size
       while i > 0
         conn = replicas[0]
@@ -27,7 +40,7 @@ module Tarantool
           rescue ::IProto::ConnectionError, ::Tarantool::NonMaster
             # pass
           else
-            return cb.call(res)
+            return res
           end
         end
         replicas.rotate!
@@ -51,6 +64,9 @@ module Tarantool
         else
           results << res
         end
+      end
+      if Integer === results.first
+        results = results.inject(0){|s, i| s + i}
       end
       cb.call results
     end

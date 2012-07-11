@@ -17,26 +17,28 @@ module Tarantool
     end
 
     def _init_shard_vars(shard_proc)
-      @shard_by_index = @index_fields.index{|index| index == @shard_fields}
-      @shard_for_index = @index_fields.map{|index|
-          if (pos = @shard_fields.map{|name| index.index(name)}).any?
-            pos.map{|i| i || 2**30}
-          end
-      }
+      if @index_fields
+        @shard_by_index = @index_fields.index{|index| index == @shard_fields}
+        @shard_for_index = @index_fields.map{|index|
+            if (pos = @shard_fields.map{|name| index.index(name)}).any?
+              pos.map{|i| i || 2**30}
+            end
+        }
 
-      @shards_count = @tarantool.shards_count
-      @default_shard = 0
-      @shard_proc = case shard_proc
-                    when nil, :default
-                      DefaultShardProc.new
-                    when :modulo, :module
-                      ModuloShardProc.new
-                    else
-                      unless shard_proc.respond_to?(:call)
-                        raise ArgumentError, "Wrong sharding proc object #{shard_proc.inspect}"
+        @shards_count = @tarantool.shards_count
+        @default_shard = 0
+        @shard_proc = case shard_proc
+                      when nil, :default
+                        DefaultShardProc.new
+                      when :modulo, :module
+                        ModuloShardProc.new
+                      else
+                        unless shard_proc.respond_to?(:call)
+                          raise ArgumentError, "Wrong sharding proc object #{shard_proc.inspect}"
+                        end
+                        shard_proc
                       end
-                      shard_proc
-                    end
+      end
     end
 
     def _detect_shards_for_keys(keys, index_no)
