@@ -44,7 +44,7 @@ module Tarantool
       field_to_type[:_tail] ||= [last_type]
       @field_to_pos = field_to_pos
       @field_to_type = field_to_type
-      @field_names = field_to_pos.keys - [:_tail]
+      @field_names = field_to_pos.keys
       @field_types = field_types
       @tail_pos  = field_to_pos[:_tail]
       @tail_size = field_to_type[:_tail].size
@@ -55,7 +55,7 @@ module Tarantool
                       [@field_names.first]
       @index_fields = [primary_index].concat(indexes).map{|ind| ind.map{|fld| fld.to_sym}}
       @indexes = _map_indexes(@index_fields)
-      @translators = [TranslateToHash.new(@field_names, @tail_size)].freeze
+      @translators = [TranslateToHash.new(@field_names - [:_tail], @tail_size)].freeze
     end
 
     def _add_translator(v)
@@ -125,13 +125,12 @@ module Tarantool
       _select(@space_no, 0, 0, :first, [key_array], cb, @field_types, @indexes[0], @translators)
     end
 
-    TAIL_AR = [:_tail].freeze
     def _prepare_tuple(tuple)
-      unless (exc = (tuple.keys - @field_names - TAIL_AR)).empty?
+      unless (exc = (tuple.keys - @field_names)).empty?
         raise ArgumentError, "wrong keys #{exc} for tuple"
       end
       tuple_ar = tuple.values_at(*@field_names)
-      tuple_ar << tuple[:_tail]  if tuple[:_tail]
+      tuple_ar.pop  if tuple_ar[-1].nil?
       tuple_ar.flatten!
       tuple_ar
     end

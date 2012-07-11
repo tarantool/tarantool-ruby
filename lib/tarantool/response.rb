@@ -98,6 +98,7 @@ module Tarantool
     end
   end
 
+  # note that :_tail should not be in field_names
   class TranslateToHash < Struct.new(:field_names, :tail_size)
     def call(tuple)
       i = 0
