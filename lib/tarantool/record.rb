@@ -102,6 +102,7 @@ module Tarantool
     def save(and_reload = true)
       _in_callbacks do
         if valid?
+          changes = changes()
           if new_record?
             if and_reload
               @attributes = space.insert(@attributes, return_tuple: true)
@@ -109,16 +110,19 @@ module Tarantool
               space.insert(@attributes)
             end
           else
-            return true if changed.size == 0
+            return true if changes.size == 0
             ops = {}
-            changed.each do |k|
-              k = k.to_sym
-              ops[k] = attributes[k]
+            changes.each do |k, (old, new)|
+              ops[k.to_sym] = new
             end
             if and_reload
-              @attributes = space.update id, ops, return_tuple: true
+              unless new_attrs = space.update(id, ops, return_tuple: true)
+                _raise_doesnt_exists
+              end
             else
-              space.update id, ops
+              if space.update(id, ops) == 0
+                _raise_doesnt_exists
+              end
             end
           end
           @previously_changed = changes
@@ -140,7 +144,9 @@ module Tarantool
     #   record.update([[:state, 'sleep'], [:sleep_count, :+, 1]])
     def update(ops)
       raise UpdateNewRecord, "Could not call update on new record"  if @__new_record
-      new_attrs = space.update(id, ops, return_tuple: true)
+      unless new_attrs = space.update(id, ops, return_tuple: true)
+        _raise_doesnt_exists
+      end
       for op in ops
         field = op.flatten.first
         @attributes[field] = new_attrs[field]

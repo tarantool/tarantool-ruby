@@ -3,10 +3,10 @@ require 'tarantool/record/select'
 require 'active_support/core_ext/class/attribute'
 
 module Tarantool
-  class BaseRecord
-    class RecordError < StandardError; end
-    class UpdateNewRecord < RecordError; end
+  class RecordError < StandardError; end
+  class UpdateNewRecord < RecordError; end
 
+  class BaseRecord
     class_attribute :fields, instance_reader: false, instance_writer: false
     self.fields = {}.freeze
 
@@ -255,7 +255,7 @@ module Tarantool
           @attributes = hash
           self
         else
-          false
+          _raise_doesnt_exists("reload")
         end
       end
 
@@ -269,13 +269,20 @@ module Tarantool
       #   record.update([[:state, 'sleep'], [:sleep_count, :+, 1]])
       def update(ops)
         raise UpdateNewRecord, "Could not call update on new record"  if @__new_record
-        @attributes = space.update(id, ops, return_tuple: true)
+        unless new_attrs = space.update(id, ops, return_tuple: true)
+          _raise_doesnt_exists
+        end
+        @attributes = new_attrs
+
         self
       end
 
       def increment(field, by = 1)
-        raise UpdateNewRecord, "Could not call update on new record"  if @__new_record
         update([[field.to_sym, :+, by]])
+      end
+
+      def _raise_doesnt_exists(action = "update")
+        raise TupleDoesntExists.new(0x3102, "Record which you wish to #{action}, doesn't exists")
       end
     end
     include InstanceMethods
