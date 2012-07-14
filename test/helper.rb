@@ -4,6 +4,16 @@ require 'rr'
 
 require 'tarantool'
 
+class ArrayPackSerializer
+  def encode(arr)
+    arr.pack("N*")
+  end
+
+  def decode(str)
+    str.unpack("N*")
+  end
+end
+
 TCONFIG = { host: '127.0.0.1', port: 33013, admin: 33015 }
 
 SPACE0 = {
@@ -18,6 +28,10 @@ SPACE2 = {
   types:  [:str, :str, :int],
   keys:   [[0,1], 2]
 }
+SPACE3 = {
+  types:  [:int, ArrayPackSerializer.new],
+  keys:   [0, 1]
+}
 
 HSPACE0 = {
   fields: {name: :str, surname: :str, email: :str, score: :int},
@@ -30,6 +44,10 @@ HSPACE1 = {
 HSPACE2 = {
   fields: {first: :str, second: :str, third: :int},
   keys:   [%w{first second}, :third]
+}
+HSPACE3 = {
+  fields: {id: :int, scores: ArrayPackSerializer.new},
+  keys:   [:id, :scores]
 }
 
 module Helper
@@ -56,7 +74,8 @@ module Helper
        lua truncate(0)
        lua truncate(1)
        lua truncate(2)
-    ", 9
+       lua truncate(3)
+    ", 12
   end
 
   def seed

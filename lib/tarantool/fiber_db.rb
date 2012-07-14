@@ -5,7 +5,7 @@ module Tarantool
   class FiberDB < EMDB
     module CommonSpaceFiberMethods
       def all_by_pks(pks, opts={})
-        all_by_pks_cb(pk, ::Fiber.current, opts)
+        all_by_pks_cb(pks, ::Fiber.current, opts)
         _raise_or_return ::Fiber.yield
       end
 

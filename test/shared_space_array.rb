@@ -6,6 +6,7 @@ shared_examples_for :blocking_array_space do
   let(:space0) { tarantool.space_array(0, SPACE0[:types], keys: SPACE0[:keys])}
   let(:space1) { tarantool.space_array(1, SPACE1[:types], keys: SPACE1[:keys])}
   let(:space2) { tarantool.space_array(2, SPACE2[:types], keys: SPACE2[:keys])}
+  let(:space3) { tarantool.space_array(3, SPACE3[:types], keys: SPACE3[:keys])}
 
   describe "with definition" do
     let(:vasya){ ['vasya', 'petrov', 'eb@lo.com', 5] }
@@ -225,6 +226,59 @@ shared_examples_for :blocking_array_space do
       ]} 
       results[0].must_equal [fedor, ilya]
       results[1].must_equal [ilya, vasya]
+    end
+
+    describe "Array Serializer" do
+      it "should be able to save" do
+        results = blockrun {[
+          space3.insert([1, [1,2,3,4]], return_tuple: true),
+          space3.insert([2, []], return_tuple: true),
+          space3.insert([3, nil], return_tuple: true),
+          space3.all_by_pks([1,2,3])
+        ]}
+        results[0].must_equal [1, [1,2,3,4]]
+        results[1].must_equal [2, nil]
+        results[2].must_equal [3, nil]
+        results[3].sort.must_equal [[1, [1,2,3,4]], [2, nil], [3, nil]]
+      end
+      
+      it "should be able to update" do
+        results = blockrun {[
+          space3.insert([1, [1,2,3,4]], return_tuple: true),
+          space3.update(1, [1, :set, [4,3,2,1]], return_tuple: true)
+        ]}
+        results.must_equal [[1, [1,2,3,4]], [1,[4,3,2,1]]]
+      end
+
+      it "should be able to save tail with same type" do
+        results = blockrun {[
+          space3.insert([1, [1,2,3,4], [4,3,2,1], [2,1]], return_tuple: true),
+          space3.by_pk(1)
+        ]}
+        results[0].must_equal [1, [1,2,3,4], [4,3,2,1], [2,1]]
+        results[1].must_equal [1, [1,2,3,4], [4,3,2,1], [2,1]]
+      end
+
+      it "should be able to update tail with same type" do
+        results = blockrun {[
+          space3.insert([1, [1,2,3,4], [4,3,2,1], [2,1]], return_tuple: true),
+          space3.update(1, [3, :set, [3,2,1]], return_tuple: true)
+        ]}
+        results[0].must_equal [1, [1,2,3,4], [4,3,2,1], [2,1]]
+        results[1].must_equal [1, [1,2,3,4], [4,3,2,1], [3,2,1]]
+      end
+
+      it "should be able to search by serialized value" do
+        results = blockrun {[
+          space3.insert([5, [1,2,3]]),
+          space3.insert([6, [3,2,1]]),
+          space3.first_by_key(1, [[1,2,3]]),
+          space3.first_by_key(1, [[3,2,1]]),
+        ]}
+        results[0..1].must_equal [1,1]
+        results[2].must_equal [5, [1,2,3]]
+        results[3].must_equal [6, [3,2,1]]
+      end
     end
   end
 end

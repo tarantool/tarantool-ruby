@@ -163,6 +163,8 @@ module Tarantool
       operations.each{|oper|
         if Array === oper[0]
           oper = oper[0] + oper.drop(1)
+        elsif Array === oper[1] && oper.size == 2 && UPDATE_OPS[oper[1][0]]
+          oper = [oper[0]] + oper[1]
         end
         case oper[0]
         when Integer
