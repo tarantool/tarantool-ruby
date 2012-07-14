@@ -35,6 +35,7 @@ shared_examples_for :record do
       field :id, :int
       field :count1, :int
       field :count2, :int
+      _tail :str, :int
     end
   end
 
@@ -147,6 +148,32 @@ shared_examples_for :record do
         user.increment :apples_count, 3
         user.apples_count.must_equal 3
       end
+    end
+  end
+
+  describe "tail" do
+    let(:attrs){ {:id => 100, :count1 => 1, :count2 => 2,
+                  :_tail => [['hello', 23], ['world', 42]]} }
+    it "should insert with tail" do
+      obj = second_class.insert(attrs, true)
+      obj.attributes.must_equal attrs
+      second_class.by_pk(100).attributes.must_equal attrs
+    end
+
+    it "should create with tail" do
+      obj = second_class.create(attrs)
+      obj.attributes.must_equal attrs
+      second_class.by_pk(100).attributes.must_equal attrs
+    end
+
+    it "should save tail" do
+      iron_tail = [['i',1],['am',2],['irontail',3]]
+      obj = second_class.create(attrs)
+      obj._tail = iron_tail
+      obj.save
+      obj = second_class.by_pk(100)
+      obj.attributes.must_equal attrs.merge(:_tail => iron_tail)
+      obj._tail.must_equal iron_tail
     end
   end
 

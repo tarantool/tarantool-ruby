@@ -168,16 +168,28 @@ module Tarantool
         when Integer
           opers << oper[1..-1].unshift(oper[0] + @tail_pos)
         when :_tail
-          if @tail_size == 1
-            raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1]
-            oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
-          else
-            raise ArgumentError, "_tail update should be array of arrays with operations" unless Array === oper[1] && Array === oper[1][0]
-            oper[1].each_with_index{|ops, i|
-              ops.each_with_index{|op, j|
-                opers << [i*@tail_size + j + @tail_pos, op]
+          if UPDATE_OPS[oper[1]] == 0
+            tail = oper[2]
+            unless Array === tail[0] && @tail_size > 1
+              tail.each_with_index{|val, i| opers << [i + @tail_pos, :set, val]}
+            else
+              tail.each_with_index{|vals, i|
+                vals.each_with_index{|val, j|
+                  opers << [i*@tail_size + j + @tail_pos, :set, val]
+                }
               }
-            }
+            end
+          else
+            raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1] && Array === oper[1][0]
+            if @tail_size == 1 || !(Array === oper[1][0][0])
+              oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
+            else
+              oper[1].each_with_index{|ops, i|
+                ops.each_with_index{|op, j|
+                  opers << [i*@tail_size + j + @tail_pos, op]
+                }
+              }
+            end
           end
         else
           opers << oper[1..-1].unshift(

@@ -28,6 +28,7 @@ module Tarantool
       def field(name, type, params = {})
         type = Serializers.check_type(type)
 
+        raise ArgumentError, "_tail should be last declaration"  if fields.include?(:_tail)
         self.fields = fields.merge(name => type)
         index name  if indexes.empty?
 
@@ -36,6 +37,15 @@ module Tarantool
         end
 
         define_field_accessor(name, type)
+      end
+
+      def _tail(*types)
+        types = types.map{|type| Serializers.check_type(type)}
+
+        raise ArgumentError, "double _tail declaration"  if fields.include?(:_tail)
+        self.fields = fields.merge(:_tail => types)
+
+        define_field_accessor(:_tail, types)
       end
 
       def index(*fields)
