@@ -71,8 +71,7 @@ module Tarantool
     end
 
     def select_cb(keys, offset, limit, cb)
-      keys = Hash === keys ? [keys] : [*keys]
-      index_names = keys.first.keys
+      index_names = Hash === keys ? keys.keys : keys.first.keys
       index_no = @index_fields.index{|fields|
         fields.take(index_names.size) == index_names
       }
@@ -86,10 +85,21 @@ module Tarantool
       end
       index_types = @indexes[index_no]
 
-      unless Array === keys.first.first.last
+      unless Hash === keys
         keys = keys.map{|key| key.values_at(*index_names)}
       else
-        keys = keys.first.values_at(*index_names).transpose
+        keys = keys.values_at(*index_names)
+        if keys.all?{|v| Array === v}
+          if (max_size = keys.map{|v| v.size}.max) > 1
+            keys.map!{|v| v.size == max_size ? v :
+                          v.size == 1        ? v*max_size :
+                          raise(ArgumentError, "size of array keys ought to be 1 or equal to others")
+            }
+          end
+          keys = keys.transpose
+        else
+          keys = [keys]
+        end
       end
 
       _select(@space_no, index_no, offset, limit, keys, cb, @field_types, index_types, @translators)
@@ -100,7 +110,7 @@ module Tarantool
     end
 
     def first_cb(key, cb)
-      select_cb(key, 0, :first, cb)
+      select_cb([key], 0, :first, cb)
     end
 
     def all_by_pks_cb(keys, cb, opts={})
