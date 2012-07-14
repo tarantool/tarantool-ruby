@@ -160,7 +160,16 @@ module Tarantool
         tail = 1
       end
       for operation in operations
-        operation = operation.flatten
+        if Array === operation[0]
+          operation = operation[0] + operation.drop(1)
+        elsif Array === operation[1]
+          if operation.size == 2
+            operation = [operation[0]] + operation[1]
+          else
+            raise ArgumentError, "Could not understand operation #{operation}"
+          end
+        end
+
         field_no = operation[0]
         if operation.size == 2
           if (Integer === field_no || field_no =~ /\A\d/)
@@ -171,9 +180,11 @@ module Tarantool
               pack_field(body, type, operation[1])
               next
             end
-          else
+          elsif String === field_no
             operation.insert(1, field_no.slice(0, 1))
             field_no = field_no.slice(1..-1).to_i
+          else
+            raise ArgumentError, "Could not understand field number #{field_no.inspect}"
           end
         end
 
