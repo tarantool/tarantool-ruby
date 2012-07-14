@@ -53,7 +53,7 @@ module Tarantool
 
     def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, translators = [])
       get_tuples = limit == :first ? (limit = 1; :first) : :all
-      keys = Array(keys)
+      keys = [*keys]
       body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
       for key in keys
@@ -127,9 +127,9 @@ module Tarantool
 
     def _insert(space_no, flags, tuple, fields, cb, ret_tuple, translators = [])
       flags |= BOX_RETURN_TUPLE  if ret_tuple
-      fields = Array(fields)
+      fields = [*fields]
 
-      tuple = Array(tuple)
+      tuple = [*tuple]
       tuple_size = tuple.size
       body = [space_no, flags].pack(INSERT_HEADER)
       pack_tuple(body, tuple, fields, :space)
@@ -245,9 +245,9 @@ module Tarantool
       opts = opts.dup
       space_no = opts[:space_no]  if opts.has_key?(:space_no)
       if space_no
-        values = [space_no].concat(Array(values))
+        values = [space_no].concat([*values])
         if opts[:types]
-          opts[:types] = [:str].concat(Array(opts[:types])) # cause lua could convert it to integer by itself
+          opts[:types] = [:str].concat([*opts[:types]]) # cause lua could convert it to integer by itself
         else
           opts[:types] = TYPES_STR_STR
         end
@@ -259,10 +259,10 @@ module Tarantool
       return_tuple = opts[:return_tuple] && :all
       flags = return_tuple ? BOX_RETURN_TUPLE : 0
       
-      values = Array(values)
-      value_types = opts[:types] ? Array(opts[:types]) :
+      values = [*values]
+      value_types = opts[:types] ? [*opts[:types]] :
                                   _detect_types(values)
-      return_types = Array(opts[:returns] || TYPES_STR)
+      return_types = [*opts[:returns] || TYPES_STR]
 
       func_name = func_name.to_s
       body = [flags, func_name.size, func_name].pack(CALL_HEADER)
@@ -296,7 +296,7 @@ module Tarantool
             raise ArgumentError, "_tail should be de declared last"
           end
           field_names.pop
-          Array(field_types.last).size
+          [*field_types.last].size
         else
           1
         end

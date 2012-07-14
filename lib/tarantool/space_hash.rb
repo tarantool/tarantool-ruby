@@ -71,7 +71,7 @@ module Tarantool
     end
 
     def select_cb(keys, offset, limit, cb)
-      keys = Hash === keys ? [keys] : Array(keys)
+      keys = Hash === keys ? [keys] : [*keys]
       index_names = keys.first.keys
       index_no = @index_fields.index{|fields|
         fields.take(index_names.size) == index_names
@@ -104,7 +104,7 @@ module Tarantool
     end
 
     def all_by_pks_cb(keys, cb, opts={})
-      keys = Array(keys).map{|key| _prepare_pk(key)}
+      keys = [*keys].map{|key| _prepare_pk(key)}
       _select(@space_no, 0, 
               opts[:offset] || 0, opts[:limit] || -1,
               keys, cb, @field_types, @indexes[0], @translators)
@@ -147,7 +147,7 @@ module Tarantool
         end
         pk.values_at *pindex
       else
-        Array(pk)
+        [*pk]
       end
     end
 
@@ -196,7 +196,7 @@ module Tarantool
           end
         else
           types = @field_to_type.values
-          types << Array(types.last).size
+          types << [*types.last].size
           types.flatten!
           opts[:returns] = types.flatten
           opts[:translators] = @translators

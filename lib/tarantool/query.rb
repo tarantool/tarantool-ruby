@@ -13,7 +13,7 @@ module Tarantool
     end
 
     def select_cb(space_no, index_no, keys, offset, limit, cb, opts={})
-      keys = Array(keys)
+      keys = [*keys]
       types = opts[:types] || _detect_types(keys)
       returns = opts[:returns] || TYPES_STR
       if Hash === returns
@@ -44,7 +44,7 @@ module Tarantool
     end
 
     def update_cb(space_no, pk, operations, cb, opts={})
-      pk = Array(pk)
+      pk = [*pk]
       pk_types = opts[:pk_types] || _detect_types(pk)
       returns = opts[:returns] || TYPES_STR
       if Hash === returns && opts[:return_tuple]
@@ -55,7 +55,7 @@ module Tarantool
     end
 
     def delete_cb(space_no, pk, cb, opts={})
-      pk = Array(pk)
+      pk = [*pk]
       pk_types = opts[:pk_types] || _detect_types(pk)
       returns = opts[:returns] || TYPES_STR
       if Hash === returns && opts[:return_tuple]
@@ -67,14 +67,14 @@ module Tarantool
 
     def invoke_cb(func_name, values, cb, opts={})
       opts = opts.dup
-      values = Array(values)
+      values = [*values]
       opts[:types] ||= _detect_types(values)
       _call(func_name, values, cb, opts)
     end
 
     def call_cb(func_name, values, cb, opts={})
       opts = opts.dup
-      values = Array(values)
+      values = [*values]
       opts[:return_tuple] = true  if opts[:return_tuple].nil?
       opts[:types] ||= _detect_types(values)
       opts[:returns] ||= TYPES_STR

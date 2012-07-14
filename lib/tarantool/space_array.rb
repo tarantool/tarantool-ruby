@@ -69,7 +69,7 @@ module Tarantool
       if index_no = @index_fields.index{|fields| fields.take(index_fields.size).sort == sorted}
         real_fields = @index_fields[index_no]
         permutation = index_fields.map{|i| real_fields.index(i)}
-        keys = Array(keys).map{|v| Array(v).values_at(*permutation)}
+        keys = [*keys].map{|v| [*v].values_at(*permutation)}
         [index_no, keys]
       end
     end
