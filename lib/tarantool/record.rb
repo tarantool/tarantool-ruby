@@ -111,9 +111,9 @@ module Tarantool
             end
           else
             return true if changes.size == 0
-            ops = {}
+            ops = []
             changes.each do |k, (old, new)|
-              ops[k.to_sym] = [:set, new]
+              ops << [k.to_sym, :set, new]
             end
             if and_reload
               unless new_attrs = space.update(id, ops, return_tuple: true)

@@ -120,8 +120,14 @@ module Tarantool
         raise ArgumentError, "wrong keys #{exc} for tuple"
       end
       tuple_ar = tuple.values_at(*@field_names)
-      tuple_ar.pop  if tuple_ar[-1].nil?
-      tuple_ar.flatten!
+      case tail = tuple_ar.pop
+      when Array
+        tail = tail.flatten(1)  if @tail_size > 1
+        tuple_ar.concat tail
+      when nil
+      else
+        raise ArgumentError, "_tail ought to be an array, but it == #{tail.inspect}"
+      end
       tuple_ar
     end
 
@@ -156,14 +162,23 @@ module Tarantool
       opers = []
       operations.each{|oper|
         if Array === oper[0]
-          oper = oper[1..-1].unshift(*oper[0])
+          oper = oper[0] + oper.drop(1)
         end
         case oper[0]
         when Integer
           opers << oper[1..-1].unshift(oper[0] + @tail_pos)
         when :_tail
-          raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1]
-          oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
+          if @tail_size == 1
+            raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1]
+            oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
+          else
+            raise ArgumentError, "_tail update should be array of arrays with operations" unless Array === oper[1] && Array === oper[1][0]
+            oper[1].each_with_index{|ops, i|
+              ops.each_with_index{|op, j|
+                opers << [i*@tail_size + j + @tail_pos, op]
+              }
+            }
+          end
         else
           opers << oper[1..-1].unshift(
             @field_to_pos[oper[0]]  || raise(ArgumentError, "Not defined field name #{oper[0]}")
