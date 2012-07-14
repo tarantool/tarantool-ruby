@@ -65,8 +65,7 @@ module Tarantool
 
       def space
         @space ||= begin
-            pk, *indexes = indexes()
-            tarantool.space_hash(space_no, fields.dup, pk: pk, indexes: indexes)
+            tarantool.space_hash(space_no, fields.dup, keys: indexes)
           end
       end
 

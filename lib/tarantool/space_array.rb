@@ -13,9 +13,11 @@ module Tarantool
       @tarantool = tarantool
       @space_no = space_no
 
-      @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
-      (Integer === @fields[-1] ? @fields[0...-1] : @fields).
-          each{|type| check_type(type)}
+      fields = ([*fields].empty? ? TYPES_STR : fields).dup
+      tail_size = Integer === fields.last ? fields.pop : 1
+      fields.map!{|type| check_type(type)}
+      fields << tail_size
+      @fields = fields
 
       indexes = [*indexes].map{|ind| frozen_array(ind) }.freeze
       if !indexes.empty?
@@ -29,13 +31,13 @@ module Tarantool
 
     def _map_indexes(indexes)
       indexes.map do |index|
-        index.map do |i|
+        (index.map do |i|
           unless (field = @fields[i]) && !field.is_a?(Integer)
             raise ArgumentError, "Wrong index field number: #{index} #{i}"
           end
           field
-        end << :error
-      end
+        end << :error).freeze
+      end.freeze
     end
 
     def _send_request(type, body, cb)

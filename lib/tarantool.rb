@@ -49,9 +49,8 @@ module Tarantool
     alias space space_array
 
     def space_hash(space_no, fields, opts = {})
-      primary_key = opts[:pk]
-      indexes = opts[:indexes]
-      self.class::SpaceHash.new(self, space_no, fields, primary_key, indexes)
+      indexes = opts[:keys] || opts[:indexes]
+      self.class::SpaceHash.new(self, space_no, fields, indexes)
     end
 
     def query

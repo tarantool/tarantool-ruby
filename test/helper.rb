@@ -21,18 +21,15 @@ SPACE2 = {
 
 HSPACE0 = {
   fields: {name: :str, surname: :str, email: :str, score: :int},
-  pk: :name,
-  indexes: [%w{surname email}, 'score']
+  keys:   [:name, %w{surname email}, 'score']
 }
 HSPACE1 = {
   fields: {id: :int, _tail: [:str, :int]},
-  pk: [:id],
-  indexes: nil
+  keys:   :id
 }
 HSPACE2 = {
   fields: {first: :str, second: :str, third: :int},
-  pk: %w{first second},
-  indexes: :third
+  keys:   [%w{first second}, :third]
 }
 
 module Helper

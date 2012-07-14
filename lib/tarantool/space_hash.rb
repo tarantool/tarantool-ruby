@@ -7,7 +7,7 @@ module Tarantool
   class SpaceHash
     include Request
 
-    def initialize(tarantool, space_no, fields_def, primary_index, indexes)
+    def initialize(tarantool, space_no, fields_def, indexes)
       @tarantool = tarantool
       @space_no = space_no
 
@@ -20,19 +20,13 @@ module Tarantool
         k = k.to_sym
         unless k == :_tail
           raise ArgumentError, ":_tail field should be defined last"  if field_to_pos[:_tail]
-          t = t.to_sym  unless t.respond_to?(:encode) && t.respond_to?(:decode)
+          t = check_type(t)
           last_type = t
           field_to_pos[k] = i
           field_to_type[k] = t
           field_types << t
         else
-          t = Array(t).map{|tt|
-            unless t.respond_to?(:encode) && t.respond_to?(:decode)
-              tt.to_sym
-            else
-              tt
-            end
-          }
+          t = [*t].map{|tt| check_type(tt)}
           field_to_pos[:_tail] = i
           field_to_type[:_tail] = t
           field_types.concat t
@@ -49,11 +43,7 @@ module Tarantool
       @tail_pos  = field_to_pos[:_tail]
       @tail_size = field_to_type[:_tail].size
 
-      indexes = Array(indexes).map{|ind| Array(ind)}
-      primary_index = primary_index ?
-                      Array(primary_index) :
-                      [@field_names.first]
-      @index_fields = [primary_index].concat(indexes).map{|ind| ind.map{|fld| fld.to_sym}}
+      @index_fields = [*indexes].map{|ind| [*ind].map{|fld| fld.to_sym}.freeze}.freeze
       @indexes = _map_indexes(@index_fields)
       @translators = [TranslateToHash.new(@field_names - [:_tail], @tail_size)].freeze
     end
@@ -70,10 +60,10 @@ module Tarantool
 
     def _map_indexes(indexes)
       indexes.map do |index|
-        index.map do |name|
+        (index.map do |name|
           @field_to_type[name.to_sym] or raise "Wrong index field name: #{index} #{name}"
-        end << :error
-      end
+        end << :error).freeze
+      end.freeze
     end
 
     def _send_request(type, body, cb)

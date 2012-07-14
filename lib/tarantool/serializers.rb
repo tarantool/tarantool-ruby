@@ -3,6 +3,7 @@ module Tarantool
     MAP = {}
 
     def check_type(type)
+      type = type.to_sym  if String === type
       case type
       when :int, :integer, :str, :string, :bytes
         # pass
@@ -15,7 +16,7 @@ module Tarantool
           raise ArgumentError, "Wrong serializer object #{type.inspect} (must respond to #encode and #decode)"
         end
       end
-      true
+      type
     end
 
     def get_serializer(type)
