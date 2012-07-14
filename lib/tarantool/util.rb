@@ -63,5 +63,11 @@ module Tarantool
           array[array.size - tail + (index - array.size) % tail]
       end
     end
+
+    module Array
+      def frozen_array(obj)
+        (Array === obj ? obj.dup : [*obj]).freeze
+      end
+    end
   end
 end

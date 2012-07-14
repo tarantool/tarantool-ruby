@@ -1,10 +1,12 @@
 require 'tarantool/util'
 require 'tarantool/exceptions'
+require 'tarantool/serializers'
 
 module Tarantool
   class Response < Struct.new(:cb, :get_tuples, :fields, :translators)
     include Util::Packer
     include Util::TailGetter
+    include Serializers
     def call(data)
       if Exception === data
         cb.call(data)
@@ -78,11 +80,8 @@ module Tarantool
             else
               if field_size == 0
                 nil
-              elsif serializer = field.respond_to?(:decode) ? field :
-                              Tarantool::Serializers::MAP[field]
-                serializer.decode(tuple_str.slice!(0, field_size))
               else
-                raise ArgumentError, "Unknown field type #{field.inspect}"
+                get_serializer(field).decode(tuple_str.slice!(0, field_size))
               end
             end
           i += 1

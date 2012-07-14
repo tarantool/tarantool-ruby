@@ -8,18 +8,15 @@ TCONFIG = { host: '127.0.0.1', port: 33013, admin: 33015 }
 
 SPACE0 = {
   types:  [:str, :str, :str, :int],
-  pk:     [0],
-  indexes:[[1,2], [3]]
+  keys:   [0, [1,2], 3]
 }
 SPACE1 = {
   types:  [:int, :str, :int, 2],
-  pk:     [0],
-  indexes:[]
+  keys:   0
 }
 SPACE2 = {
   types:  [:str, :str, :int],
-  pk:     [0,1],
-  indexes:[[2]]
+  keys:   [[0,1], 2]
 }
 
 HSPACE0 = {

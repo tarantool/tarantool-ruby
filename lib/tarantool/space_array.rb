@@ -1,24 +1,26 @@
 require 'tarantool/util'
 require 'tarantool/request'
 require 'tarantool/response'
+require 'tarantool/serializers'
 require 'tarantool/core-ext'
 
 module Tarantool
   class SpaceArray
     include Request
+    include Util::Array
 
-    def initialize(tarantool, space_no, fields, primary_index, indexes)
+    def initialize(tarantool, space_no, fields, indexes)
       @tarantool = tarantool
       @space_no = space_no
+
       @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
-      indexes = Array(indexes).map{|ind| Array(ind)}
-      if primary_index
-        indexes = [Array(primary_index)].concat(indexes)
+      (Integer === @fields[-1] ? @fields[0...-1] : @fields).
+          each{|type| check_type(type)}
+
+      indexes = [*indexes].map{|ind| frozen_array(ind) }.freeze
+      if !indexes.empty?
         @index_fields = indexes
         @indexes = _map_indexes(indexes)
-      elsif !indexes.empty?
-        @index_fields = [[]] + indexes
-        @indexes = [TYPES_FALLBACK] + _map_indexes(indexes)
       else
         @index_fields = nil
         @indexes = [TYPES_FALLBACK]
@@ -28,7 +30,7 @@ module Tarantool
     def _map_indexes(indexes)
       indexes.map do |index|
         index.map do |i|
-          unless Symbol === (field = @fields[i])
+          unless (field = @fields[i]) && !field.is_a?(Integer)
             raise ArgumentError, "Wrong index field number: #{index} #{i}"
           end
           field

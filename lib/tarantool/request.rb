@@ -1,9 +1,11 @@
 require 'tarantool/util'
+require 'tarantool/serializers'
 
 module Tarantool
   module Request
     include Util::Packer
     include Util::TailGetter
+    include Serializers
     INT32 = 'V'.freeze
     INT64 = 'Q<'.freeze
     SELECT_HEADER = 'VVVVV'.freeze
@@ -111,14 +113,9 @@ module Tarantool
       when :error
         raise IndexIndexError
       else
-        if serializer = field_kind.respond_to?(:encode) ? field_kind :
-                        Tarantool::Serializers::MAP[field_kind]
-          value = serializer.encode(value).to_s
-          raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
-          body << [value.bytesize, value].pack(PACK_STRING)
-        else
-          raise ArgumentError, "Unknown field type #{field.inspect}"
-        end
+        value = get_serializer(field_kind).encode(value).to_s
+        raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
+        body << [value.bytesize, value].pack(PACK_STRING)
       end
     end
 
