@@ -95,32 +95,6 @@ shared_examples_for :record do
       u.name.must_equal 'Petr'
     end
 
-    describe "dismissed record" do
-      before {
-        @user = user_class.create login: 'prapor', name: 'Crocos', email: 'focus@poc.us'
-        user_class.delete 'prapor'
-      }
-
-      it "should raise error on save" do
-        proc{
-          @user.apples_count += 1
-          @user.save
-        }.must_raise Tarantool::TupleDoesntExists
-      end
-
-      it "should raise error on update" do
-        proc{
-          @user.update(:apples_count => [:+, 1])
-        }.must_raise Tarantool::TupleDoesntExists
-      end
-
-      it "should raise error on reload" do
-        proc{
-          @user.reload
-        }.must_raise Tarantool::TupleDoesntExists
-      end
-    end
-
     describe "with nils" do
       before do
         user_class.field :score, :integer
@@ -173,6 +147,32 @@ shared_examples_for :record do
         user.increment :apples_count, 3
         user.apples_count.must_equal 3
       end
+    end
+  end
+
+  describe "dismissed record" do
+    before {
+      @user = user_class.create login: 'prapor', name: 'Crocos', email: 'focus@poc.us'
+      user_class.delete 'prapor'
+    }
+
+    it "should raise error on save" do
+      proc{
+        @user.apples_count += 1
+        @user.save
+      }.must_raise Tarantool::TupleDoesntExists
+    end
+
+    it "should raise error on update" do
+      proc{
+        @user.update(:apples_count => [:+, 1])
+      }.must_raise Tarantool::TupleDoesntExists
+    end
+
+    it "should raise error on reload" do
+      proc{
+        @user.reload
+      }.must_raise Tarantool::TupleDoesntExists
     end
   end
 
