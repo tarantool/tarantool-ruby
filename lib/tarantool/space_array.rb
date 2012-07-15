@@ -87,8 +87,12 @@ module Tarantool
           end
         end
       end
-      unless index_types = (@index_fields ? @indexes[index_no] : TYPES_FALLBACK)
-        raise ArgumentError, "No index ##{index_no}"
+      if @index_fields
+        unless index_types = @indexes[index_no]
+          raise ArgumentError, "No index ##{index_no}"
+        end
+      else
+        index_types = _detect_types([*[*keys][0]])
       end
 
       _select(@space_no, index_no, offset, limit, keys, cb, @fields, index_types)
