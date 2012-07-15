@@ -15,7 +15,7 @@ module Tarantool
     def select_cb(space_no, index_no, keys, offset, limit, cb, opts={})
       keys = [*keys]
       types = opts[:types] || _detect_types(keys)
-      returns = opts[:returns] || TYPES_STR
+      returns = opts[:returns] || TYPES_AUTO
       if Hash === returns
         returns, *translators = _parse_hash_definition(returns)
       end
@@ -46,7 +46,7 @@ module Tarantool
     def update_cb(space_no, pk, operations, cb, opts={})
       pk = [*pk]
       pk_types = opts[:pk_types] || _detect_types(pk)
-      returns = opts[:returns] || TYPES_STR
+      returns = opts[:returns] || TYPES_AUTO
       if Hash === returns && opts[:return_tuple]
         returns, *translators = _parse_hash_definition(returns)
       end
@@ -57,7 +57,7 @@ module Tarantool
     def delete_cb(space_no, pk, cb, opts={})
       pk = [*pk]
       pk_types = opts[:pk_types] || _detect_types(pk)
-      returns = opts[:returns] || TYPES_STR
+      returns = opts[:returns] || TYPES_AUTO
       if Hash === returns && opts[:return_tuple]
         returns, *translators = _parse_hash_definition(returns)
       end
@@ -77,7 +77,7 @@ module Tarantool
       values = [*values]
       opts[:return_tuple] = true  if opts[:return_tuple].nil?
       opts[:types] ||= _detect_types(values)
-      opts[:returns] ||= TYPES_STR
+      opts[:returns] ||= TYPES_AUTO
       if Hash === opts[:returns] && opts[:return_tuple]
         opts[:returns], *opts[:translators] = _parse_hash_definition(opts[:returns])
       end

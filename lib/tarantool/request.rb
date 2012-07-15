@@ -22,10 +22,10 @@ module Tarantool
     PACK_STRING = 'wa*'.freeze
     LEST_INT32 = -(2**31)
     GREATEST_INT32 = 2**32
-    TYPES_STR = [:str].freeze
     TYPES_AUTO = [:auto].freeze
     TYPES_FALLBACK = [:str].freeze
     TYPES_STR_STR = [:str, :str].freeze
+    TYPES_STR_AUTO = [:str, :auto].freeze
 
     REQUEST_SELECT = 17
     REQUEST_INSERT = 13
@@ -286,7 +286,7 @@ module Tarantool
       values = [*values]
       value_types = opts[:types] ? [*opts[:types]] :
                                   _detect_types(values)
-      return_types = [*opts[:returns] || TYPES_STR]
+      return_types = [*opts[:returns] || TYPES_AUTO]
 
       func_name = func_name.to_s
       body = [flags, func_name.size, func_name].pack(CALL_HEADER)
@@ -305,7 +305,9 @@ module Tarantool
     end
 
     def _detect_type(value)
-      Integer === v ? :int : :str
+      Integer === v ? :int :
+      Util::AutoType === v ? :auto :
+      :str
     end
 
     def _parse_hash_definition(returns)
