@@ -15,27 +15,27 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be selectable" do
       results = []
       emrun(8) { 
-        space0.select(0, 0, -1, 'vasya'){|res| results[0] = res; emstop}
-        space0.select(0, 0, -1, ['vasya']){|res| results[1] = res; emstop}
-        space0.select(0, 0, -1, ['vasya', 'ilya']){|res|
+        space0.select(0, 'vasya'){|res| results[0] = res; emstop}
+        space0.select(0, ['vasya']){|res| results[1] = res; emstop}
+        space0.select(0, ['vasya', 'ilya']){|res|
           results[2] = res; emstop
         }
-        space0.select(0, 0, -1, [['vasya'], ['ilya']]){|res|
+        space0.select(0, [['vasya'], ['ilya']]){|res|
           results[3] = res; emstop
         }
-        space0.select(0, 0, -1, [['ilya'], ['vasya']]){|res|
+        space0.select(0, [['ilya'], ['vasya']]){|res|
           results[4] = res; emstop
         }
-        space0.select(0, 0, 1, [['ilya'], ['vasya']]){|res|
+        space0.select(0, [['ilya'], ['vasya']], 0, 1){|res|
           results[5] = res; emstop
         }
-        space0.select(0, 1, 1, [['ilya'], ['vasya']]){|res|
+        space0.select(0, [['ilya'], ['vasya']], 1, 1){|res|
           results[6] = res; emstop
         }
-        space0.select(2, 0, 2, 13){|res|
+        space0.select(2, 13, 0, 2){|res|
           results[7] = res; emstop
         }
-        space0.select(1, 0, -1, [['zimov','il@zi.bot']]){|res|
+        space0.select(1, [['zimov','il@zi.bot']]){|res|
           results[8] = res; emstop
         }
       }

@@ -67,8 +67,8 @@ module Tarantool
         _raise_or_return ::Fiber.yield
       end
 
-      def select(index_no, offset, limit, keys)
-        select_cb(index_no, offset, limit, keys, ::Fiber.current)
+      def select(index_no, keys, offset=0, limit=-1)
+        select_cb(index_no, keys, offset, limit, ::Fiber.current)
         _raise_or_return ::Fiber.yield
       end
     end
@@ -91,7 +91,7 @@ module Tarantool
         _raise_or_return ::Fiber.yield
       end
 
-      def select(keys, offset, limit)
+      def select(keys, offset=0, limit=-1)
         select_cb(keys, offset, limit, ::Fiber.current)
         _raise_or_return ::Fiber.yield
       end

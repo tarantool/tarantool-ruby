@@ -14,15 +14,15 @@ shared_examples_for :blocking_array_space do
     let(:fedor){ ['fedor', 'kuklin', 'ku@kl.in', 13] }
     it "should be selectable" do
       results = blockrun { [
-        space0.select(0, 0, -1, 'vasya'),
-        space0.select(0, 0, -1, ['vasya']),
-        space0.select(0, 0, -1, ['vasya', 'ilya']),
-        space0.select(0, 0, -1, [['vasya'], ['ilya']]),
-        space0.select(0, 0, -1, [['ilya'], ['vasya']]),
-        space0.select(0, 0, 1, [['ilya'], ['vasya']]),
-        space0.select(0, 1, 1, [['ilya'], ['vasya']]),
-        space0.select(2, 0, 2, 13),
-        space0.select(1, 0, -1, [['zimov','il@zi.bot']])
+        space0.select(0, 'vasya'),
+        space0.select(0, ['vasya']),
+        space0.select(0, ['vasya', 'ilya']),
+        space0.select(0, [['vasya'], ['ilya']]),
+        space0.select(0, [['ilya'], ['vasya']]),
+        space0.select(0, [['ilya'], ['vasya']], 0, 1),
+        space0.select(0, [['ilya'], ['vasya']], 1, 1),
+        space0.select(2, 13, 0, 2),
+        space0.select(1, [['zimov','il@zi.bot']])
       ] }
       results[0].must_equal [vasya]
       results[1].must_equal [vasya]

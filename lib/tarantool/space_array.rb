@@ -53,15 +53,15 @@ module Tarantool
     end
 
     def all_by_key_cb(index_no, key, cb, opts={})
-      select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1, [key], cb)
+      select_cb(index_no, [key], opts[:offset] || 0, opts[:limit] || -1, cb)
     end
 
     def first_by_key_cb(index_no, key, cb)
-      select_cb(index_no, 0, :first, [key], cb)
+      select_cb(index_no, [key], 0, :first, cb)
     end
 
     def all_by_keys_cb(index_no, keys, cb, opts = {})
-      select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1, keys, cb)
+      select_cb(index_no, keys, opts[:offset] || 0, opts[:limit] || -1, cb)
     end
 
     def _fix_index_fields(index_fields, keys)
@@ -74,7 +74,7 @@ module Tarantool
       end
     end
 
-    def select_cb(index_no, offset, limit, keys, cb)
+    def select_cb(index_no, keys, offset, limit, cb)
       if Array === index_no
         raise ArgumentError, "Has no defined indexes to search index #{index_no}"  unless @index_fields
         index_fields = index_no
@@ -140,8 +140,8 @@ module Tarantool
       all_by_keys_cb(index_no, keys, block, opts)
     end
 
-    def select_blk(index_no, offset, limit, keys, &block)
-      select_cb(index_no, offset, limit, keys, block)
+    def select_blk(index_no, keys, offset=0, limit=-1, &block)
+      select_cb(index_no, keys, offset, limit, block)
     end
   end
 end

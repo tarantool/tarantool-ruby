@@ -13,27 +13,27 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be selectable" do
       results = []
       emrun(8) {
-        clear_space.select(0, 0, -1, 'vasya'){|res| results[0] = res; emstop}
-        clear_space.select(0, 0, -1, ['vasya']){|res| results[1] = res; emstop}
-        clear_space.select(0, 0, -1, ['vasya', 'ilya']){|res|
+        clear_space.select(0, 'vasya'){|res| results[0] = res; emstop}
+        clear_space.select(0, ['vasya']){|res| results[1] = res; emstop}
+        clear_space.select(0, ['vasya', 'ilya']){|res|
           results[2] = res; emstop
         }
-        clear_space.select(0, 0, -1, [['vasya'], ['ilya']]){|res|
+        clear_space.select(0, [['vasya'], ['ilya']]){|res|
           results[3] = res; emstop
         }
-        clear_space.select(0, 0, -1, [['ilya'], ['vasya']]){|res|
+        clear_space.select(0, [['ilya'], ['vasya']]){|res|
           results[4] = res; emstop
         }
-        clear_space.select(0, 0, 1, [['ilya'], ['vasya']]){|res|
+        clear_space.select(0, [['ilya'], ['vasya']], 0, 1){|res|
           results[5] = res; emstop
         }
-        clear_space.select(0, 1, 1, [['ilya'], ['vasya']]){|res|
+        clear_space.select(0, [['ilya'], ['vasya']], 1, 1){|res|
           results[6] = res; emstop
         }
-        clear_space.select(2, 0, 2, "\x0D\x00\x00\x00"){|res|
+        clear_space.select(2, "\x0D\x00\x00\x00", 0, 2){|res|
           results[7] = res; emstop
         }
-        clear_space.select(1, 0, -1, [['zimov','il@zi.bot']]){|res|
+        clear_space.select(1, [['zimov','il@zi.bot']]){|res|
           results[8] = res; emstop
         }
       }
