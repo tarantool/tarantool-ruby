@@ -10,31 +10,36 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     let(:vasya){ %W{vasya petrov eb@lo.com \x05\x00\x00\x00} }
     let(:ilya) { %W{ilya  zimov  il@zi.bot \x0D\x00\x00\x00} }
     let(:fedor){ %W{fedor kuklin ku@kl.in  \x0D\x00\x00\x00} }
+    let(:_ilya) { %W{ilya  zimov  il@zi.bot}+[13] }
+    let(:_fedor){ %W{fedor kuklin ku@kl.in}+[13] }
     it "should be selectable" do
       results = []
       emrun(8) {
-        clear_space.select(0, 0, -1, 'vasya'){|res| results[0] = res; emstop}
-        clear_space.select(0, 0, -1, ['vasya']){|res| results[1] = res; emstop}
-        clear_space.select(0, 0, -1, ['vasya', 'ilya']){|res|
+        clear_space.select(0, 'vasya'){|res| results[0] = res; emstop}
+        clear_space.select(0, ['vasya']){|res| results[1] = res; emstop}
+        clear_space.select(0, ['vasya', 'ilya']){|res|
           results[2] = res; emstop
         }
-        clear_space.select(0, 0, -1, [['vasya'], ['ilya']]){|res|
+        clear_space.select(0, [['vasya'], ['ilya']]){|res|
           results[3] = res; emstop
         }
-        clear_space.select(0, 0, -1, [['ilya'], ['vasya']]){|res|
+        clear_space.select(0, [['ilya'], ['vasya']]){|res|
           results[4] = res; emstop
         }
-        clear_space.select(0, 0, 1, [['ilya'], ['vasya']]){|res|
+        clear_space.select(0, [['ilya'], ['vasya']], 0, 1){|res|
           results[5] = res; emstop
         }
-        clear_space.select(0, 1, 1, [['ilya'], ['vasya']]){|res|
+        clear_space.select(0, [['ilya'], ['vasya']], 1, 1){|res|
           results[6] = res; emstop
         }
-        clear_space.select(2, 0, 2, "\x0D\x00\x00\x00"){|res|
+        clear_space.select(2, "\x0D\x00\x00\x00", 0, 2){|res|
           results[7] = res; emstop
         }
-        clear_space.select(1, 0, -1, [['zimov','il@zi.bot']]){|res|
+        clear_space.select(2, 13, 0, 2){|res|
           results[8] = res; emstop
+        }
+        clear_space.select(1, [['zimov','il@zi.bot']]){|res|
+          results[9] = res; emstop
         }
       }
       results[0].must_equal [vasya]
@@ -44,8 +49,12 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       results[4].must_equal [ilya, vasya]
       results[5].must_equal [ilya]
       results[6].must_equal [vasya]
-      (results[7] - [ilya, fedor]).must_be_empty
-      results[8].must_equal [ilya]
+      (results[7] - [fedor, ilya]).empty?
+      (results[7] - [_fedor, _ilya]).empty?
+      results[7].sort.must_equal [fedor, ilya]
+      results[7].sort.must_equal [_fedor, _ilya]
+      results[8].sort.must_equal [fedor, ilya]
+      results[9].must_equal [ilya]
     end
 
     it "should be able to all_by_keys" do
@@ -71,8 +80,11 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
         clear_space.all_by_keys(2, "\x0D\x00\x00\x00"){|res|
           results[7] = res; emstop
         }
-        clear_space.all_by_keys(1, [['zimov','il@zi.bot']]){|res|
+        clear_space.all_by_keys(2, 13){|res|
           results[8] = res; emstop
+        }
+        clear_space.all_by_keys(1, [['zimov','il@zi.bot']]){|res|
+          results[9] = res; emstop
         }
       }
       results[0].must_equal [vasya]
@@ -82,8 +94,9 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       results[4].must_equal [ilya, vasya]
       results[5].must_equal [ilya]
       results[6].must_equal [vasya]
-      (results[7] - [ilya, fedor]).must_be_empty
-      results[8].must_equal [ilya]
+      results[7].sort.must_equal [fedor, ilya]
+      results[8].sort.must_equal [fedor, ilya]
+      results[9].must_equal [ilya]
     end
 
     it "should be able to all_by_key" do
@@ -100,7 +113,7 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       }
       results[0].must_equal [vasya]
       results[1].must_equal [vasya]
-      (results[2] - [ilya, fedor]).must_be_empty
+      results[2].sort.must_equal [fedor, ilya]
       results[3].must_equal [ilya]
     end
 
@@ -143,9 +156,13 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
         clear_space.insert(%w{qwer qwer qwer qwer qwer}, return_tuple: true){|res|
           results[1] = res; emstop
         }
+        clear_space.insert([1,2,3,4,5], return_tuple: true){|res|
+          results[2] = res; emstop
+        }
       }
       results[0].must_equal 1
       results[1].must_equal %w{qwer qwer qwer qwer qwer}
+      results[2].must_equal [1,2,3,4,5].pack("V*").scan(/.{4}/)
     end
 
     it "should be able to update" do

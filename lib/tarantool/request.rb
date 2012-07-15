@@ -1,10 +1,12 @@
 require 'tarantool/util'
 require 'tarantool/shards_support'
+require 'tarantool/serializers'
 
 module Tarantool
   module Request
     include Util::Packer
     include Util::TailGetter
+    include Serializers
     INT32 = 'V'.freeze
     INT64 = 'Q<'.freeze
     SELECT_HEADER = 'VVVVV'.freeze
@@ -21,9 +23,10 @@ module Tarantool
     PACK_STRING = 'wa*'.freeze
     LEST_INT32 = -(2**31)
     GREATEST_INT32 = 2**32
-    TYPES_STR = [:str].freeze
+    TYPES_AUTO = [:auto].freeze
     TYPES_FALLBACK = [:str].freeze
     TYPES_STR_STR = [:str, :str].freeze
+    TYPES_STR_AUTO = [:str, :auto].freeze
 
     REQUEST_SELECT = 17
     REQUEST_INSERT = 13
@@ -38,15 +41,16 @@ module Tarantool
 
     UPDATE_OPS = {
       :"=" => 0, :+   => 1, :&   => 2, :^   => 3, :|  => 4, :[]     => 5,
-       '=' => 0, '+'  => 1, '&'  => 2, '^'  => 3, '|' => 4, '[]'    => 5,
-                                                            ':'     => 5,
       :set => 0, :add => 1, :and => 2, :xor => 3, :or => 4, :splice => 5,
-      'set'=> 0, 'add'=> 1, 'and'=> 2, 'xor'=> 3, 'or'=> 4, 'splice'=> 5,
-      '#'     => 6, '!'     => 7,
       :delete => 6, :insert => 7,
       :del    => 6, :ins    => 7,
+       '=' => 0, '+'  => 1, '&'  => 2, '^'  => 3, '|' => 4, '[]'    => 5,
+                                                            ':'     => 5,
+      'set'=> 0, 'add'=> 1, 'and'=> 2, 'xor'=> 3, 'or'=> 4, 'splice'=> 5,
+      '#'     => 6, '!'     => 7,
       'delete'=> 6, 'insert'=> 7,
-      'del'   => 6, 'ins'   => 7
+      'del'   => 6, 'ins'   => 7,
+       0 => 0, 1 => 1, 2 => 2, 3 => 3, 4 => 4, 5 => 5, 6 => 6, 7 => 7
     }
     UPDATE_FIELDNO_OP = 'VC'.freeze
 
@@ -56,7 +60,7 @@ module Tarantool
 
     def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, shard_nums, translators = [])
       get_tuples = limit == :first ? (limit = 1; :first) : :all
-      keys = Array(keys)
+      keys = [*keys]
       body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
 
       for key in keys
@@ -115,15 +119,21 @@ module Tarantool
         body << [value.bytesize, value].pack(PACK_STRING)
       when :error
         raise IndexIndexError
-      else
-        if serializer = field_kind.respond_to?(:encode) ? field_kind :
-                        Tarantool::Serializers::MAP[field_kind]
-          value = serializer.encode(value).to_s
-          raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
-          body << [value.bytesize, value].pack(PACK_STRING)
+      when :auto
+        case value
+        when Integer
+          pack_field(body, :int, value)
+        when String
+          pack_field(body, :str, value)
+        when Util::AutoType
+          pack_field(body, :str, value.data)
         else
-          raise ArgumentError, "Unknown field type #{field.inspect}"
+          raise ArgumentError, "Could auto detect only Integer and String"
         end
+      else
+        value = get_serializer(field_kind).encode(value).to_s
+        raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
+        body << [value.bytesize, value].pack(PACK_STRING)
       end
     end
 
@@ -135,9 +145,9 @@ module Tarantool
 
     def _insert(space_no, flags, tuple, fields, cb, ret_tuple, shard_nums, translators = [])
       flags |= BOX_RETURN_TUPLE  if ret_tuple
-      fields = Array(fields)
+      fields = [*fields]
 
-      tuple = Array(tuple)
+      tuple = [*tuple]
       tuple_size = tuple.size
       body = [space_no, flags].pack(INSERT_HEADER)
       pack_tuple(body, tuple, fields, :space)
@@ -168,7 +178,16 @@ module Tarantool
         tail = 1
       end
       for operation in operations
-        operation = operation.flatten
+        if Array === operation[0]
+          operation = operation[0] + operation.drop(1)
+        elsif Array === operation[1]
+          if operation.size == 2
+            operation = [operation[0]] + operation[1]
+          else
+            raise ArgumentError, "Could not understand operation #{operation}"
+          end
+        end
+
         field_no = operation[0]
         if operation.size == 2
           if (Integer === field_no || field_no =~ /\A\d/)
@@ -179,9 +198,11 @@ module Tarantool
               pack_field(body, type, operation[1])
               next
             end
-          else
+          elsif String === field_no
             operation.insert(1, field_no.slice(0, 1))
             field_no = field_no.slice(1..-1).to_i
+          else
+            raise ArgumentError, "Could not understand field number #{field_no.inspect}"
           end
         end
 
@@ -253,9 +274,9 @@ module Tarantool
       opts = opts.dup
       space_no = opts[:space_no]  if opts.has_key?(:space_no)
       if space_no
-        values = [space_no].concat(Array(values))
+        values = [space_no].concat([*values])
         if opts[:types]
-          opts[:types] = [:str].concat(Array(opts[:types])) # cause lua could convert it to integer by itself
+          opts[:types] = [:str].concat([*opts[:types]]) # cause lua could convert it to integer by itself
         else
           opts[:types] = TYPES_STR_STR
         end
@@ -273,10 +294,10 @@ module Tarantool
       return_tuple = opts[:return_tuple] && :all
       flags = return_tuple ? BOX_RETURN_TUPLE : 0
       
-      values = Array(values)
-      value_types = opts[:types] ? Array(opts[:types]) :
+      values = [*values]
+      value_types = opts[:types] ? [*opts[:types]] :
                                   _detect_types(values)
-      return_types = Array(opts[:returns] || TYPES_STR)
+      return_types = [*opts[:returns] || TYPES_AUTO]
 
       func_name = func_name.to_s
       body = [flags, func_name.size, func_name].pack(CALL_HEADER)
@@ -298,7 +319,9 @@ module Tarantool
     end
 
     def _detect_type(value)
-      Integer === v ? :int : :str
+      Integer === v ? :int :
+      Util::AutoType === v ? :auto :
+      :str
     end
 
     def _parse_hash_definition(returns)
@@ -313,7 +336,7 @@ module Tarantool
             raise ArgumentError, "_tail should be de declared last"
           end
           field_names.pop
-          Array(field_types.last).size
+          [*field_types.last].size
         else
           1
         end

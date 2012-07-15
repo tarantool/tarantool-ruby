@@ -124,12 +124,12 @@ module Tarantool
         first_by_key_cb(index_no, key, _block_cb)
       end
 
-      def all_by_keys(index_no, key, opts={})
-        all_by_keys_cb(index_no, key, _block_cb, opts)
+      def all_by_keys(index_no, keys, opts={})
+        all_by_keys_cb(index_no, keys, _block_cb, opts)
       end
 
-      def select(index_no, offset, limit, keys)
-        select_cb(index_no, offset, limit, keys, _block_cb)
+      def select(index_no, keys, offset=0, limit=-1)
+        select_cb(index_no, keys, offset, limit, _block_cb)
       end
     end
 
@@ -144,7 +144,7 @@ module Tarantool
         first_cb(key, _block_cb)
       end
 
-      def select(keys, offset, limit)
+      def select(keys, offset=0, limit=-1)
         select_cb(keys, offset, limit, _block_cb)
       end
     end

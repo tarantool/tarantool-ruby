@@ -3,9 +3,10 @@ require File.expand_path('../helper.rb', __FILE__)
 shared_examples_for :blocking_hash_space do
   before { clear_db }
 
-  let(:space0) { tarantool.space_hash(0, HSPACE0[:fields], pk: HSPACE0[:pk], indexes: HSPACE0[:indexes])}
-  let(:space1) { tarantool.space_hash(1, HSPACE1[:fields], pk: HSPACE1[:pk], indexes: HSPACE1[:indexes])}
-  let(:space2) { tarantool.space_hash(2, HSPACE2[:fields], pk: HSPACE2[:pk], indexes: HSPACE2[:indexes])}
+  let(:space0) { tarantool.space_hash(0, HSPACE0[:fields], keys: HSPACE0[:keys])}
+  let(:space1) { tarantool.space_hash(1, HSPACE1[:fields], keys: HSPACE1[:keys])}
+  let(:space2) { tarantool.space_hash(2, HSPACE2[:fields], keys: HSPACE2[:keys])}
+  let(:space3) { tarantool.space_hash(3, HSPACE3[:fields], keys: HSPACE3[:keys])}
 
   let(:vasya) { {name: 'vasya', surname: 'petrov', email: 'eb@lo.com', score: 5} }
   let(:ilya)  { {name: 'ilya', surname: 'zimov', email: 'il@zi.bot', score: 13} }
@@ -168,5 +169,71 @@ shared_examples_for :blocking_hash_space do
         space2.update({first: 'haha', second: 'hoho'}, {name: 'haha'})
       }.must_raise Tarantool::ArgumentError
     }
+  end
+
+  describe "Array Serializer" do
+    it "should be able to save" do
+      results = blockrun {[
+        space3.insert({id: 1, scores: [1,2,3,4]}, return_tuple: true),
+        space3.insert({id: 2, scores: []}, return_tuple: true),
+        space3.insert({id: 3}, return_tuple: true),
+        space3.all_by_pks([1,2,3])
+      ]}
+      results[0].must_equal({id: 1, scores: [1,2,3,4]})
+      results[1].must_equal({id: 2, scores: nil})
+      results[2].must_equal({id: 3, scores: nil})
+      results[3].sort_by{|h| h[:id]}.must_equal [
+        {id:1, scores:[1,2,3,4]},
+        {id:2, scores:nil},
+        {id:3, scores:nil}
+        ]
+    end
+    
+    it "should be able to update" do
+      results = blockrun {[
+        space3.insert({id:1, scores:[1,2,3,4]}, return_tuple: true),
+        space3.update(1, [[:scores, :set, [4,3,2,1]]], return_tuple: true)
+      ]}
+      results.must_equal [{id:1, scores:[1,2,3,4]}, {id:1, scores:[4,3,2,1]}]
+    end
+
+    it "should be able to save tail with same type" do
+      results = blockrun {[
+        space3.insert({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]}, return_tuple: true),
+        space3.by_pk(1)
+      ]}
+      results[0].must_equal({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]})
+      results[1].must_equal({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]})
+    end
+
+    it "should be able to update tail with same type" do
+      results = blockrun {[
+        space3.insert({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]}, return_tuple: true),
+        space3.update(1, {1 => [:set, [3,2,1]]}, return_tuple: true)
+      ]}
+      results[0].must_equal({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]})
+      results[1].must_equal({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [3,2,1]]})
+    end
+
+    it "should be able to update tail with same type(2)" do
+      results = blockrun {[
+        space3.insert({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]}, return_tuple: true),
+        space3.update(1, {:_tail => [:set, [[1,2,3],[3,2,1]]]}, return_tuple: true)
+      ]}
+      results[0].must_equal({id:1, scores:[1,2,3,4], _tail:[[4,3,2,1], [2,1]]})
+      results[1].must_equal({id:1, scores:[1,2,3,4], _tail:[[1,2,3], [3,2,1]]})
+    end
+
+    it "should be able to search by serialized value" do
+      results = blockrun {[
+        space3.insert({id:5, scores:[1,2,3]}),
+        space3.insert({id:6, scores:[3,2,1]}),
+        space3.first(scores: [1,2,3]),
+        space3.first(scores: [3,2,1]),
+      ]}
+      results[0..1].must_equal [1,1]
+      results[2].must_equal({id:5, scores:[1,2,3]})
+      results[3].must_equal({id:6, scores:[3,2,1]})
+    end
   end
 end

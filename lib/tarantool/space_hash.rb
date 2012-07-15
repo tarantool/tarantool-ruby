@@ -7,7 +7,7 @@ module Tarantool
   class SpaceHash
     include Request
 
-    def initialize(tarantool, space_no, fields_def, primary_index, indexes, shard_fields = nil, shard_proc = nil)
+    def initialize(tarantool, space_no, fields_def, indexes, shard_fields = nil, shard_proc = nil)
       @tarantool = tarantool
       @space_no = space_no
 
@@ -20,19 +20,13 @@ module Tarantool
         k = k.to_sym
         unless k == :_tail
           raise ArgumentError, ":_tail field should be defined last"  if field_to_pos[:_tail]
-          t = t.to_sym  unless t.respond_to?(:encode) && t.respond_to?(:decode)
+          t = check_type(t)
           last_type = t
           field_to_pos[k] = i
           field_to_type[k] = t
           field_types << t
         else
-          t = Array(t).map{|tt|
-            unless t.respond_to?(:encode) && t.respond_to?(:decode)
-              tt.to_sym
-            else
-              tt
-            end
-          }
+          t = [*t].map{|tt| check_type(tt)}
           field_to_pos[:_tail] = i
           field_to_type[:_tail] = t
           field_types.concat t
@@ -49,15 +43,11 @@ module Tarantool
       @tail_pos  = field_to_pos[:_tail]
       @tail_size = field_to_type[:_tail].size
 
-      indexes = Array(indexes).map{|ind| Array(ind)}
-      primary_index = primary_index ?
-                      Array(primary_index) :
-                      [@field_names.first]
-      @index_fields = [primary_index].concat(indexes).map{|ind| ind.map{|fld| fld.to_sym}}
+      @index_fields = [*indexes].map{|ind| [*ind].map{|fld| fld.to_sym}.freeze}.freeze
       @indexes = _map_indexes(@index_fields)
       @translators = [TranslateToHash.new(@field_names - [:_tail], @tail_size)].freeze
 
-      @shard_fields = Array(shard_fields || @index_fields[0])
+      @shard_fields = [*(shard_fields || @index_fields[0])]
       @shard_positions = @shard_fields.map{|name| @field_to_pos[name]}
       _init_shard_vars(shard_proc)
     end
@@ -71,15 +61,14 @@ module Tarantool
 
     def _map_indexes(indexes)
       indexes.map do |index|
-        index.map do |name|
+        (index.map do |name|
           @field_to_type[name.to_sym] or raise "Wrong index field name: #{index} #{name}"
-        end << :error
-      end
+        end << :error).freeze
+      end.freeze
     end
 
     def select_cb(keys, offset, limit, cb)
-      keys = Hash === keys ? [keys] : Array(keys)
-      index_names = keys.first.keys
+      index_names = Hash === keys ? keys.keys : keys.first.keys
       index_no = @index_fields.index{|fields|
         fields.take(index_names.size) == index_names
       }
@@ -93,10 +82,21 @@ module Tarantool
       end
       index_types = @indexes[index_no]
 
-      unless Array === keys.first.first.last
+      unless Hash === keys
         keys = keys.map{|key| key.values_at(*index_names)}
       else
-        keys = keys.first.values_at(*index_names).transpose
+        keys = keys.values_at(*index_names)
+        if keys.all?{|v| Array === v}
+          if (max_size = keys.map{|v| v.size}.max) > 1
+            keys.map!{|v| v.size == max_size ? v :
+                          v.size == 1        ? v*max_size :
+                          raise(ArgumentError, "size of array keys ought to be 1 or equal to others")
+            }
+          end
+          keys = keys.transpose
+        else
+          keys = [keys]
+        end
       end
 
       shard_nums = _get_shard_nums { _detect_shards_for_keys(keys, index_no) }
@@ -109,11 +109,11 @@ module Tarantool
     end
 
     def first_cb(key, cb)
-      select_cb(key, 0, :first, cb)
+      select_cb([key], 0, :first, cb)
     end
 
     def all_by_pks_cb(keys, cb, opts={})
-      keys = (Hash === keys ? [keys] : Array(keys)).map{|key| _prepare_pk(key)}
+      keys = (Hash === keys ? [keys] : [*keys]).map{|key| _prepare_pk(key)}
       shard_nums = _get_shard_nums{ _detect_shards_for_keys(keys, 0) }
       _select(@space_no, 0, 
               opts[:offset] || 0, opts[:limit] || -1,
@@ -131,8 +131,14 @@ module Tarantool
         raise ArgumentError, "wrong keys #{exc} for tuple"
       end
       tuple_ar = tuple.values_at(*@field_names)
-      tuple_ar.pop  if tuple_ar[-1].nil?
-      tuple_ar.flatten!
+      case tail = tuple_ar.pop
+      when Array
+        tail = tail.flatten(1)  if @tail_size > 1
+        tuple_ar.concat tail
+      when nil
+      else
+        raise ArgumentError, "_tail ought to be an array, but it == #{tail.inspect}"
+      end
       tuple_ar
     end
 
@@ -162,7 +168,7 @@ module Tarantool
         end
         pk.values_at *pindex
       else
-        Array(pk)
+        [*pk]
       end
     end
 
@@ -171,14 +177,37 @@ module Tarantool
       opers = []
       operations.each{|oper|
         if Array === oper[0]
-          oper = oper[1..-1].unshift(*oper[0])
+          oper = oper[0] + oper.drop(1)
+        elsif Array === oper[1] && oper.size == 2 && UPDATE_OPS[oper[1][0]]
+          oper = [oper[0]] + oper[1]
         end
         case oper[0]
         when Integer
           opers << oper[1..-1].unshift(oper[0] + @tail_pos)
         when :_tail
-          raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1]
-          oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
+          if UPDATE_OPS[oper[1]] == 0
+            tail = oper[2]
+            unless Array === tail[0] && @tail_size > 1
+              tail.each_with_index{|val, i| opers << [i + @tail_pos, :set, val]}
+            else
+              tail.each_with_index{|vals, i|
+                vals.each_with_index{|val, j|
+                  opers << [i*@tail_size + j + @tail_pos, :set, val]
+                }
+              }
+            end
+          else
+            raise ArgumentError, "_tail update should be array with operations" unless Array === oper[1] && Array === oper[1][0]
+            if @tail_size == 1 || !(Array === oper[1][0][0])
+              oper[1].each_with_index{|op, i| opers << [i + @tail_pos, op]}
+            else
+              oper[1].each_with_index{|ops, i|
+                ops.each_with_index{|op, j|
+                  opers << [i*@tail_size + j + @tail_pos, op]
+                }
+              }
+            end
+          end
         else
           opers << oper[1..-1].unshift(
             @field_to_pos[oper[0]]  || raise(ArgumentError, "Not defined field name #{oper[0]}")
@@ -214,7 +243,7 @@ module Tarantool
           end
         else
           types = @field_to_type.values
-          types << Array(types.last).size
+          types << [*types.last].size
           types.flatten!
           opts[:returns] = types.flatten
           opts[:translators] = @translators
@@ -234,7 +263,7 @@ module Tarantool
       first_blk(key, block)
     end
 
-    def select_blk(keys, offset, limit, &block)
+    def select_blk(keys, offset=0, limit=1, &block)
       select_cb(keys, offset, limit, block)
     end
   end

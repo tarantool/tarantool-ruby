@@ -4,38 +4,50 @@ require 'rr'
 
 require 'tarantool'
 
+class ArrayPackSerializer
+  def encode(arr)
+    arr.pack("N*")
+  end
+
+  def decode(str)
+    str.unpack("N*")
+  end
+end
+
 TCONFIG = { host: '127.0.0.1', port: 33013, admin: 33015 }
 
 SPACE0 = {
   types:  [:str, :str, :str, :int],
-  pk:     [0],
-  indexes:[[1,2], [3]]
+  keys:   [0, [1,2], 3]
 }
 SPACE1 = {
   types:  [:int, :str, :int, 2],
-  pk:     [0],
-  indexes:[]
+  keys:   0
 }
 SPACE2 = {
   types:  [:str, :str, :int],
-  pk:     [0,1],
-  indexes:[[2]]
+  keys:   [[0,1], 2]
+}
+SPACE3 = {
+  types:  [:int, ArrayPackSerializer.new],
+  keys:   [0, 1]
 }
 
 HSPACE0 = {
   fields: {name: :str, surname: :str, email: :str, score: :int},
-  pk: :name,
-  indexes: [%w{surname email}, 'score']
+  keys:   [:name, %w{surname email}, 'score']
 }
 HSPACE1 = {
   fields: {id: :int, _tail: [:str, :int]},
-  pk: [:id],
-  indexes: nil
+  keys:   :id
 }
 HSPACE2 = {
   fields: {first: :str, second: :str, third: :int},
-  pk: %w{first second},
-  indexes: :third
+  keys:   [%w{first second}, :third]
+}
+HSPACE3 = {
+  fields: {id: :int, scores: ArrayPackSerializer.new},
+  keys:   [:id, :scores]
 }
 
 module Helper
@@ -62,7 +74,8 @@ module Helper
        lua truncate(0)
        lua truncate(1)
        lua truncate(2)
-    ", 9
+       lua truncate(3)
+    ", 12
   end
 
   def seed

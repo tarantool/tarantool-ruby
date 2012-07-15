@@ -4,9 +4,9 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
   before { clear_db }
 
   let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em_callback)) }
-  let(:space0) { tarantool.space_array(0, SPACE0[:types], pk: SPACE0[:pk], indexes: SPACE0[:indexes])}
-  let(:space1) { tarantool.space_array(1, SPACE1[:types], pk: SPACE1[:pk], indexes: SPACE1[:indexes])}
-  let(:space2) { tarantool.space_array(2, SPACE2[:types], pk: SPACE2[:pk], indexes: SPACE2[:indexes])}
+  let(:space0) { tarantool.space_array(0, SPACE0[:types], keys: SPACE0[:keys])}
+  let(:space1) { tarantool.space_array(1, SPACE1[:types], keys: SPACE1[:keys])}
+  let(:space2) { tarantool.space_array(2, SPACE2[:types], keys: SPACE2[:keys])}
 
   describe "with definition" do
     let(:vasya){ ['vasya', 'petrov', 'eb@lo.com', 5] }
@@ -15,27 +15,27 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be selectable" do
       results = []
       emrun(8) { 
-        space0.select(0, 0, -1, 'vasya'){|res| results[0] = res; emstop}
-        space0.select(0, 0, -1, ['vasya']){|res| results[1] = res; emstop}
-        space0.select(0, 0, -1, ['vasya', 'ilya']){|res|
+        space0.select(0, 'vasya'){|res| results[0] = res; emstop}
+        space0.select(0, ['vasya']){|res| results[1] = res; emstop}
+        space0.select(0, ['vasya', 'ilya']){|res|
           results[2] = res; emstop
         }
-        space0.select(0, 0, -1, [['vasya'], ['ilya']]){|res|
+        space0.select(0, [['vasya'], ['ilya']]){|res|
           results[3] = res; emstop
         }
-        space0.select(0, 0, -1, [['ilya'], ['vasya']]){|res|
+        space0.select(0, [['ilya'], ['vasya']]){|res|
           results[4] = res; emstop
         }
-        space0.select(0, 0, 1, [['ilya'], ['vasya']]){|res|
+        space0.select(0, [['ilya'], ['vasya']], 0, 1){|res|
           results[5] = res; emstop
         }
-        space0.select(0, 1, 1, [['ilya'], ['vasya']]){|res|
+        space0.select(0, [['ilya'], ['vasya']], 1, 1){|res|
           results[6] = res; emstop
         }
-        space0.select(2, 0, 2, 13){|res|
+        space0.select(2, 13, 0, 2){|res|
           results[7] = res; emstop
         }
-        space0.select(1, 0, -1, [['zimov','il@zi.bot']]){|res|
+        space0.select(1, [['zimov','il@zi.bot']]){|res|
           results[8] = res; emstop
         }
       }

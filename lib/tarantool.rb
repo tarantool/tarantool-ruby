@@ -76,23 +76,17 @@ module Tarantool
 
     # returns regular space, where fields are named by position
     #
-    # tarantool.space_block(0, :int, :str, :int, :str, indexes: [[0], [1,2]])
-    def space_array(space_no, *args)
-      options = args.pop  if Hash === args.last
-      options ||= {}
-      fields = args
-      fields.flatten!
-      primary_key = options[:pk]
-      indexes = options[:indexes]
-      self.class::SpaceArray.new(self, space_no, fields, primary_key, indexes)
+    # tarantool.space_block(0, [:int, :str, :int, :str], keys: [[0], [1,2]])
+    def space_array(space_no, field_types = [], opts = {})
+      indexes = opts[:keys] || opts[:indexes]
+      self.class::SpaceArray.new(self, space_no, field_types, indexes)
     end
     # alias space_array to space for backward compatibility
     alias space space_array
 
     def space_hash(space_no, fields, opts = {})
-      primary_key = opts[:pk]
-      indexes = opts[:indexes]
-      self.class::SpaceHash.new(self, space_no, fields, primary_key, indexes)
+      indexes = opts[:keys] || opts[:indexes]
+      self.class::SpaceHash.new(self, space_no, fields, indexes)
     end
 
     def query

@@ -1,5 +1,6 @@
 *.gem
 *.rbc
+*.sw?
 .bundle
 .config
 .yardoc
@@ -15,3 +16,4 @@ spec/reports
 test/tmp
 test/version_tmp
 tmp
+test/tarant*/*

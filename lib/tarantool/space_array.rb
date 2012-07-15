@@ -1,34 +1,38 @@
 require 'tarantool/util'
 require 'tarantool/request'
 require 'tarantool/response'
+require 'tarantool/serializers'
 require 'tarantool/core-ext'
 
 module Tarantool
   class SpaceArray
     include Request
+    include Util::Array
 
-    def initialize(tarantool, space_no, fields, primary_index, indexes, shard_fields = nil, shard_proc = nil)
+    def initialize(tarantool, space_no, fields, indexes, shard_fields = nil, shard_proc = nil)
       @tarantool = tarantool
       @space_no = space_no
-      @fields = (fields.empty? ? TYPES_STR : fields).dup.freeze
-      indexes = Array(indexes).map{|ind| Array(ind)}
-      if primary_index
-        indexes = [Array(primary_index)].concat(indexes)
+
+      fields = ([*fields].empty? ? TYPES_AUTO : fields).dup
+      tail_size = Integer === fields.last ? fields.pop : 1
+      fields.map!{|type| check_type(type)}
+      fields << tail_size
+      @fields = fields
+
+      indexes = [*indexes].map{|ind| frozen_array(ind) }.freeze
+      if !indexes.empty?
         @index_fields = indexes
         @indexes = _map_indexes(indexes)
-      elsif !indexes.empty?
-        @index_fields = [[]] + indexes
-        @indexes = [TYPES_FALLBACK] + _map_indexes(indexes)
       else
         @index_fields = []
         @indexes = [TYPES_FALLBACK]
       end
 
-      shard_fields ||= primary_index
+      shard_fields ||= @index_fields[0]
       unless shard_fields || @tarantool.shards_count == 1
         raise ArgumentError, "You could not use space without specifying primary key or shard fields when shards count is greater than 1"
       else
-        @shard_fields = Array(shard_fields)
+        @shard_fields = [*shard_fields]
         @shard_positions = @shard_fields
         _init_shard_vars(shard_proc)
       end
@@ -36,13 +40,13 @@ module Tarantool
 
     def _map_indexes(indexes)
       indexes.map do |index|
-        index.map do |i|
-          unless Symbol === (field = @fields[i])
+        (index.map do |i|
+          unless (field = @fields[i]) && !field.is_a?(Integer)
             raise ArgumentError, "Wrong index field number: #{index} #{i}"
           end
           field
-        end << :error
-      end
+        end << :error).freeze
+      end.freeze
     end
 
     def all_by_pks_cb(keys, cb, opts={})
@@ -54,15 +58,15 @@ module Tarantool
     end
 
     def all_by_key_cb(index_no, key, cb, opts={})
-      select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1, [key], cb)
+      select_cb(index_no, [key], opts[:offset] || 0, opts[:limit] || -1, cb)
     end
 
     def first_by_key_cb(index_no, key, cb)
-      select_cb(index_no, 0, :first, [key], cb)
+      select_cb(index_no, [key], 0, :first, cb)
     end
 
     def all_by_keys_cb(index_no, keys, cb, opts = {})
-      select_cb(index_no, opts[:offset] || 0, opts[:limit] || -1, keys, cb)
+      select_cb(index_no, keys, opts[:offset] || 0, opts[:limit] || -1, cb)
     end
 
     def _fix_index_fields(index_fields, keys)
@@ -70,12 +74,12 @@ module Tarantool
       if index_no = @index_fields.index{|fields| fields.take(index_fields.size).sort == sorted}
         real_fields = @index_fields[index_no]
         permutation = index_fields.map{|i| real_fields.index(i)}
-        keys = Array(keys).map{|v| Array(v).values_at(*permutation)}
+        keys = [*keys].map{|v| [*v].values_at(*permutation)}
         [index_no, keys]
       end
     end
 
-    def select_cb(index_no, offset, limit, keys, cb)
+    def select_cb(index_no, keys, offset, limit, cb)
       if Array === index_no
         raise ArgumentError, "Has no defined indexes to search index #{index_no}"  if @index_fields.empty?
         index_fields = index_no
@@ -88,8 +92,12 @@ module Tarantool
           end
         end
       end
-      unless index_types = (@index_fields.empty? ? TYPES_FALLBACK : @indexes[index_no])
-        raise ArgumentError, "No index ##{index_no}"
+      unless @index_fields.empty?
+        unless index_types = @indexes[index_no]
+          raise ArgumentError, "No index ##{index_no}"
+        end
+      else
+        index_types = _detect_types([*[*keys][0]])
       end
 
       shard_nums = _get_shard_nums { _detect_shards_for_keys(keys, index_no) }
@@ -111,13 +119,16 @@ module Tarantool
     def update_cb(pk, operations, cb, opts = {})
       shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
       _update(@space_no, pk, operations, @fields,
-              @indexes[0], cb, opts[:return_tuple],
+              @indexes[0] || _detect_types([*pk]),
+              cb, opts[:return_tuple],
               shard_nums)
     end
 
     def delete_cb(pk, cb, opts = {})
       shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
-      _delete(@space_no, pk, @fields, @indexes[0], cb, opts[:return_tuple], shard_nums)
+      _delete(@space_no, pk, @fields,
+              @indexes[0] || _detect_types([*pk]),
+              cb, opts[:return_tuple], shard_nums)
     end
 
     def invoke_cb(func_name, values, cb, opts = {})
@@ -148,8 +159,8 @@ module Tarantool
       all_by_keys_cb(index_no, keys, block, opts)
     end
 
-    def select_blk(index_no, offset, limit, keys, &block)
-      select_cb(index_no, offset, limit, keys, block)
+    def select_blk(index_no, keys, offset=0, limit=-1, &block)
+      select_cb(index_no, keys, offset, limit, block)
     end
   end
 end

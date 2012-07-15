@@ -35,6 +35,7 @@ shared_examples_for :record do
       field :id, :int
       field :count1, :int
       field :count2, :int
+      _tail :str, :int
     end
   end
 
@@ -150,11 +151,63 @@ shared_examples_for :record do
     end
   end
 
+  describe "tail" do
+    let(:attrs){ {:id => 100, :count1 => 1, :count2 => 2,
+                  :_tail => [['hello', 23], ['world', 42]]} }
+    it "should insert with tail" do
+      obj = second_class.insert(attrs, true)
+      obj.attributes.must_equal attrs
+      second_class.by_pk(100).attributes.must_equal attrs
+    end
+
+    it "should create with tail" do
+      obj = second_class.create(attrs)
+      obj.attributes.must_equal attrs
+      second_class.by_pk(100).attributes.must_equal attrs
+    end
+
+    it "should save tail" do
+      iron_tail = [['i',1],['am',2],['irontail',3]]
+      obj = second_class.create(attrs)
+      obj._tail = iron_tail
+      obj.save
+      obj = second_class.by_pk(100)
+      obj.attributes.must_equal attrs.merge(:_tail => iron_tail)
+      obj._tail.must_equal iron_tail
+    end
+  end
+
+  describe "dismissed record" do
+    before {
+      @user = user_class.create login: 'prapor', name: 'Crocos', email: 'focus@poc.us'
+      user_class.delete 'prapor'
+    }
+
+    it "should raise error on save" do
+      proc{
+        @user.apples_count += 1
+        @user.save
+      }.must_raise Tarantool::TupleDoesntExists
+    end
+
+    it "should raise error on update" do
+      proc{
+        @user.update(:apples_count => [:+, 1])
+      }.must_raise Tarantool::TupleDoesntExists
+    end
+
+    it "should raise error on reload" do
+      proc{
+        @user.reload
+      }.must_raise Tarantool::TupleDoesntExists
+    end
+  end
+
   describe "destroy" do
     it "should destroy record" do
       u = user_class.create login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru'
       u.destroy
-      u.reload.must_equal false
+      user_class.find('prepor').must_equal nil
     end
   end
 
@@ -307,13 +360,13 @@ shared_examples_for :record do
       second_class.insert(id: 100).must_equal 1
       obj = second_class.by_pk(100)
       obj.attributes.must_equal({id: 100, count1: nil, count2: nil})
-      tuple = DB.space(1, [:int, :int, :int], pk: 0).by_pk(100)
+      tuple = DB.space(1, [:int, :int, :int], keys: 0).by_pk(100)
       tuple.must_equal([100, nil, nil])
 
       second_class.insert(id: 101, count2: 102).must_equal 1
       obj = second_class.by_pk(101)
       obj.attributes.must_equal({id: 101, count1: nil, count2: 102})
-      tuple = DB.space(1, [:int, :int, :int], pk: 0).by_pk(101)
+      tuple = DB.space(1, [:int, :int, :int], keys: 0).by_pk(101)
       tuple.must_equal([101, nil, 102])
     end
 
