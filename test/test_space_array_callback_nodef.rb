@@ -10,6 +10,8 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     let(:vasya){ %W{vasya petrov eb@lo.com \x05\x00\x00\x00} }
     let(:ilya) { %W{ilya  zimov  il@zi.bot \x0D\x00\x00\x00} }
     let(:fedor){ %W{fedor kuklin ku@kl.in  \x0D\x00\x00\x00} }
+    let(:_ilya) { %W{ilya  zimov  il@zi.bot}+[13] }
+    let(:_fedor){ %W{fedor kuklin ku@kl.in}+[13] }
     it "should be selectable" do
       results = []
       emrun(8) {
@@ -47,7 +49,10 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       results[4].must_equal [ilya, vasya]
       results[5].must_equal [ilya]
       results[6].must_equal [vasya]
+      (results[7] - [fedor, ilya]).empty?
+      (results[7] - [_fedor, _ilya]).empty?
       results[7].sort.must_equal [fedor, ilya]
+      results[7].sort.must_equal [_fedor, _ilya]
       results[8].sort.must_equal [fedor, ilya]
       results[9].must_equal [ilya]
     end
@@ -108,7 +113,7 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       }
       results[0].must_equal [vasya]
       results[1].must_equal [vasya]
-      (results[2] - [ilya, fedor]).must_be_empty
+      results[2].sort.must_equal [fedor, ilya]
       results[3].must_equal [ilya]
     end
 
@@ -151,9 +156,13 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
         clear_space.insert(%w{qwer qwer qwer qwer qwer}, return_tuple: true){|res|
           results[1] = res; emstop
         }
+        clear_space.insert([1,2,3,4,5], return_tuple: true){|res|
+          results[2] = res; emstop
+        }
       }
       results[0].must_equal 1
       results[1].must_equal %w{qwer qwer qwer qwer qwer}
+      results[2].must_equal [1,2,3,4,5].pack("V*").scan(/.{4}/)
     end
 
     it "should be able to update" do

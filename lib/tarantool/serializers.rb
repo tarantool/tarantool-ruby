@@ -8,7 +8,7 @@ module Tarantool
       return :str  if String  == type
 
       case type
-      when :int, :integer, :str, :string, :bytes
+      when :int, :integer, :str, :string, :bytes, :auto
         # pass
       when Symbol
         unless MAP.include?(type)

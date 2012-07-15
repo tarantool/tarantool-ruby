@@ -13,7 +13,7 @@ module Tarantool
       @tarantool = tarantool
       @space_no = space_no
 
-      fields = ([*fields].empty? ? TYPES_STR : fields).dup
+      fields = ([*fields].empty? ? TYPES_AUTO : fields).dup
       tail_size = Integer === fields.last ? fields.pop : 1
       fields.map!{|type| check_type(type)}
       fields << tail_size
@@ -108,12 +108,14 @@ module Tarantool
 
     def update_cb(pk, operations, cb, opts = {})
       _update(@space_no, pk, operations, @fields,
-              @indexes[0], cb, opts[:return_tuple])
+              @indexes[0] || _detect_types([*pk]),
+              cb, opts[:return_tuple])
     end
 
     def delete_cb(pk, cb, opts = {})
       _delete(@space_no, pk, @fields,
-              @indexes[0], cb, opts[:return_tuple])
+              @indexes[0] || _detect_types([*pk]),
+              cb, opts[:return_tuple])
     end
 
     def invoke_cb(func_name, values, cb, opts = {})

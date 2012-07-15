@@ -23,6 +23,7 @@ module Tarantool
     LEST_INT32 = -(2**31)
     GREATEST_INT32 = 2**32
     TYPES_STR = [:str].freeze
+    TYPES_AUTO = [:auto].freeze
     TYPES_FALLBACK = [:str].freeze
     TYPES_STR_STR = [:str, :str].freeze
 
@@ -113,6 +114,17 @@ module Tarantool
         body << [value.bytesize, value].pack(PACK_STRING)
       when :error
         raise IndexIndexError
+      when :auto
+        case value
+        when Integer
+          pack_field(body, :int, value)
+        when String
+          pack_field(body, :str, value)
+        when Util::AutoType
+          pack_field(body, :str, value.data)
+        else
+          raise ArgumentError, "Could auto detect only Integer and String"
+        end
       else
         value = get_serializer(field_kind).encode(value).to_s
         raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE

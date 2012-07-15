@@ -59,7 +59,8 @@ module Tarantool
 
           field = fields[i] || get_tail_item(fields, i, tail)
 
-          tuple << case field
+          tuple << (field_size == 0 ? nil :
+            case field
             when :int, :integer
               case field_size
               when 8
@@ -68,22 +69,24 @@ module Tarantool
                 unpack_int32!(tuple_str)
               when 2
                 unpack_int16!(tuple_str)
-              when 0
-                nil # well, it is debatable
               else
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
             when :str, :string
               tuple_str.slice!(0, field_size).force_encoding('utf-8')
             when :bytes
-              typle_str.slice!(0, field_size)
-            else
-              if field_size == 0
-                nil
+              tuple_str.slice!(0, field_size)
+            when :auto
+              str = tuple_str.slice!(0, field_size).force_encoding('utf-8')
+              case field_size
+              when 8, 4, 2
+                Util::AutoType.new(str)
               else
-                get_serializer(field).decode(tuple_str.slice!(0, field_size))
+                str
               end
-            end
+            else
+              get_serializer(field).decode(tuple_str.slice!(0, field_size))
+            end)
           i += 1
         end
         tuples << tuple
