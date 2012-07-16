@@ -42,6 +42,7 @@ module Tarantool
     end
 
     def _detect_shards_for_keys(keys, index_no)
+      return _detect_shards_for_key(keys, index_no)  unless Array === keys
       if index_no == @shard_by_index && (
             @index_fields.size == 1 ||
             keys.all?{|key| Array === key && key.size == @index_fields.size}

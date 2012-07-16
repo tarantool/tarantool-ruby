@@ -56,7 +56,9 @@ module Tarantool
 
     def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
       original_cb = cb.cb
+      original_get_tuples = cb.get_tuples
       cb.cb = (@_several_shards_cb ||= method(:_raise_or_return))
+      cb.get_tuples = :all  if cb.get_tuples == :first
       results = []
       for shard in shard_numbers
         res = _send_to_one_shard(shard, read_write, request_type, body, cb)
@@ -68,6 +70,8 @@ module Tarantool
       end
       if Integer === results.first
         results = results.inject(0){|s, i| s + i}
+      elsif original_get_tuples == :first
+        results = results.first
       end
       original_cb.call results
     end

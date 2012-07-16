@@ -82,7 +82,7 @@ module Tarantool
     # tarantool.space_block(0, [:int, :str, :int, :str], keys: [[0], [1,2]])
     def space_array(space_no, field_types = [], opts = {})
       indexes = opts[:keys] || opts[:indexes]
-      shard_fields = opts[:shard_keys]
+      shard_fields = opts[:shard_fields]
       shard_proc = opts[:shard_proc]
       self.class::SpaceArray.new(self, space_no, field_types, indexes,
                                  shard_fields, shard_proc)
@@ -92,7 +92,7 @@ module Tarantool
 
     def space_hash(space_no, fields, opts = {})
       indexes = opts[:keys] || opts[:indexes]
-      shard_fields = opts[:shard_keys]
+      shard_fields = opts[:shard_fields]
       shard_proc = opts[:shard_proc]
       self.class::SpaceHash.new(self, space_no, fields, indexes,
                                 shard_fields, shard_proc)

@@ -94,15 +94,18 @@ shared_examples_for 'replication and shards' do
       }
     }
     it "should spread distribution over" do
+      all_pks = 100.times.map{|i| [i]}
       results = blockrun{[
         100.times.map{|i|      space_both.by_pk(i) },
-        100.times.flat_map{|i| space_first.all_by_pks([i]) },
-        100.times.flat_map{|i| space_second.all_by_pks([i]) }
+        space_first.all_by_pks(all_pks),
+        space_second.all_by_pks(all_pks),
+        space_both.all_by_pks(all_pks),
       ]}
       results[1].size.must_equal 50
       results[2].size.must_equal 50
       results[1].include?([50, '51', 52]).must_equal results[2].include?([51, '52', 53])
       (results[1] + results[2]).sort.must_equal results[0]
+      results[3].sort.must_equal results[0]
     end
 
     it "should delete" do
@@ -149,15 +152,18 @@ shared_examples_for 'replication and shards' do
       }
     }
     it "should spread distribution over" do
+      all_pks = 100.times.map{|i| [i]}
       results = blockrun{[
         100.times.map{|i|      space_both.by_pk(i) },
-        100.times.flat_map{|i| space_first.all_by_pks([i]) },
-        100.times.flat_map{|i| space_second.all_by_pks([i]) }
+        space_first.all_by_pks(all_pks),
+        space_second.all_by_pks(all_pks),
+        space_both.all_by_pks(all_pks),
       ]}
       results[1].size.must_equal 50
       results[2].size.must_equal 50
       results[1].include?({id:50, name:'51', val:52}).must_equal results[2].include?({id:51, name:'52', val:53})
       (results[1] + results[2]).sort_by{|v| v[:id]}.must_equal results[0]
+      results[3].sort_by{|v| v[:id]}.must_equal results[0]
     end
 
     it "should delete" do
@@ -371,4 +377,68 @@ shared_examples_for 'replication and shards' do
     it_behaves_like "hash space shard with composit pk"
   end
 
+  describe "array space with shard on not pk" do
+    let(:shard_fields_array0) { [3] }
+    let(:space_both){ space0_array_both }
+    let(:space_first){ space0_array_first }
+    let(:space_second){ space0_array_second }
+    let(:pks){ 100.times.to_a }
+
+    before {
+      blockrun{
+        pks.each{|i| space_both.insert([i, i+1, i+2, i/10]) }
+      }
+    }
+
+    it "should spread distribution over" do
+      results = blockrun{[
+        pks.flat_map{|i| space_both.all_by_pks([i])},
+        pks.flat_map{|i| space_first.all_by_pks([i])},
+        pks.flat_map{|i| space_second.all_by_pks([i])},
+        (0..9).flat_map{|i| space_both.select(2, i)},
+        (0..9).flat_map{|i| space_first.select([3], i)},
+        (0..9).flat_map{|i| space_second.select(2, i)},
+        space_both.all_by_pks(pks.map{|pk| [pk]}),
+        space_both.select(2, pks.map{|pk| [pk]})
+      ]}
+      results[0].size.must_equal pks.size
+      results[1].size.must_equal pks.size/2
+      results[2].size.must_equal pks.size/2
+      (results[1]+results[2]).sort_by{|v|v[0].to_i}.must_equal results[0]
+
+      results[3].size.must_equal pks.size
+      results[3].sort_by{|v|v[0].to_i}.must_equal results[0]
+      results[4].size.must_equal pks.size/2
+      results[5].size.must_equal pks.size/2
+      (results[4]+results[5]).sort_by{|v|v[0].to_i}.must_equal results[0]
+
+      results[4].include?(['21','22','23',2]).must_equal(
+        results[5].include?(['31','32','33',3]))
+
+      results[6].sort_by{|v|v[0].to_i}.must_equal results[0]
+      results[7].sort_by{|v|v[0].to_i}.must_equal results[0]
+    end
+
+    it "should delete xxx" do
+      results = blockrun{[
+        space_both.delete('21', return_tuple:true),
+        space_both.by_pk('21'),
+        space_both.delete('31', return_tuple:true),
+        space_both.by_pk('31')
+      ]}
+      results[0].must_equal ['21','22','23',2]
+      results[1].must_be_nil
+      results[2].must_equal ['31','32','33',3]
+      results[3].must_be_nil
+    end
+
+    it "should update" do
+      results = blockrun{[
+        space_both.update('21', {1=> [:splice,3,0,'!']}, return_tuple:true),
+        space_both.update('31', {1=> [:splice,3,0,'!']}, return_tuple:true),
+      ]}
+      results[0].must_equal ['21','22!','23',2]
+      results[1].must_equal ['31','32!','33',3]
+    end
+  end
 end

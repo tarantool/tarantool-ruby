@@ -78,10 +78,11 @@ module Tarantool
     end
 
     class Concatter
-      def initialize(result, count, cb)
-        @result = result
+      def initialize(count, cb, get_tuples)
+        @result = []
         @count = count
         @cb = cb
+        @get_tuples = get_tuples
       end
       def call(array)
         if @count > 0
@@ -95,7 +96,13 @@ module Tarantool
             @result << array
           end
           if (@count -= 1) == 0
-            @cb.call @result
+            if Integer === @result.first
+              @cb.call @result.inject(0){|s, i| s + i}
+            elsif @get_tuples == :first
+              @cb.call @result.first
+            else
+              @cb.call @result
+            end
           end
         end
       end
@@ -103,7 +110,9 @@ module Tarantool
 
     def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
       original_cb = cb.cb
-      cb.cb = Concatter.new([], shard_numbers.size, original_cb)
+      original_get_tuples = cb.get_tuples
+      cb.cb = Concatter.new(shard_numbers.size, original_cb, original_get_tuples)
+      cb.get_tuples = :all  if cb.get_tuples == :first
       for shard in shard_numbers
         _send_to_one_shard(shard, read_write, request_type, body, cb)
       end
