@@ -509,4 +509,51 @@ shared_examples_for 'replication and shards' do
       results[1].must_equal thirty_one.merge(surname: '32!')
     end
   end
+
+  shared_examples_for "space test call" do
+    before {
+      blockrun {
+        space_both.insert(one)
+        space_both.insert(two)
+      }
+    }
+
+    it "should call on both" do
+      result = blockrun{ space_both.call('box.select_range', [0, 100]) }
+      result.sort_by{|t| get_id(t)}.must_equal [one, two]
+    end
+
+    it "should call on specified" do
+      results = blockrun{[
+        space_both.call('box.select_range', [0, 100], shard_key: 1),
+        space_both.call('box.select_range', [0, 100], shard_keys: [2])
+      ]}
+      results[0].must_equal [one]
+      results[1].must_equal [two]
+    end
+  end
+
+  describe "space array test call" do
+    let(:space_both){ space1_array_both }
+    let(:space_first){ space1_array_first }
+    let(:space_second){ space1_array_second }
+
+    let(:one) { [1, 'a', 1] }
+    let(:two) { [2, 'b', 2] }
+    def get_id(tuple) tuple[0] end
+
+    it_behaves_like "space test call"
+  end
+
+  describe "space hash test call" do
+    let(:space_both){ space1_hash_both }
+    let(:space_first){ space1_hash_first }
+    let(:space_second){ space1_hash_second }
+
+    let(:one) { {id: 1, name: 'a', val: 1} }
+    let(:two) { {id: 2, name: 'b', val: 2} }
+    def get_id(tuple) tuple[:id] end
+
+    it_behaves_like "space test call"
+  end
 end
