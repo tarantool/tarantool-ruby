@@ -5,12 +5,12 @@ module Tarantool
 
     def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
       if (replicas = _shard(shard_number)).size == 1
-        replicas[0].send_request(request_type, body, cb)
+        EM.next_tick{ replicas[0].send_request(request_type, body, cb) }
       elsif read_write == :read
         replicas = replicas.shuffle  if @replica_strategy == :round_robin
-        _one_shard_read(replicas, request_type, body, cb)
+        EM.next_tick{ _one_shard_read(replicas, request_type, body, cb) }
       else
-        _one_shard_write(replicas, request_type, body, cb)
+        EM.next_tick{ _one_shard_write(replicas, request_type, body, cb) }
       end
     end
 
@@ -52,17 +52,20 @@ module Tarantool
       end
 
       def rotate!
-        if (@i -= 1) <= 0
-          return @cb.call(NoMasterError.new("no available master connections"))
+        if @i > 0
+          @i -= 1
+          @replicas.rotate!
         end
-        @replicas.rotate!
       end
 
       def call(result)
         case result
         when INITIAL, ::IProto::ConnectionError, ::Tarantool::NonMaster
           rotate!  if Exception === result
-          rotate!  until (repl = @replicas[0]).could_be_connected?
+          rotate!  until @i <= 0 || (repl = @replicas[0]).could_be_connected?
+          if @i <= 0
+            return @cb.call(NoMasterError.new("no available master connections"))
+          end
           repl.send_request(@request_type, @body, self)
         else
           @cb.call(result)
@@ -71,7 +74,7 @@ module Tarantool
     end
 
     def _one_shard_write(replicas, request_type, body, cb)
-       OneShardWrite.new(replicas, replicas.size, request_type, body, cb).call(INITIAL)
+       OneShardWrite.new(replicas, request_type, body, cb).call(INITIAL)
     end
 
     class Concatter
@@ -99,9 +102,10 @@ module Tarantool
     end
 
     def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
-      concatter = Concatter.new([], shard_numbers.size, cb)
+      original_cb = cb.cb
+      cb.cb = Concatter.new([], shard_numbers.size, original_cb)
       for shard in shard_numbers
-        _send_to_one_shard(shard, read_write, request_type, body, concatter)
+        _send_to_one_shard(shard, read_write, request_type, body, cb)
       end
     end
   end

@@ -47,6 +47,8 @@ module Tarantool
       when :block
         require 'tarantool/block_db'
         BlockDB.new(shards, replica_strategy)
+      else
+        raise "Unknown Tarantool connection type"
       end
     end
 
@@ -57,7 +59,8 @@ module Tarantool
       end
       if conn.is_a? String
         host, port = conn.split(':')
-        conn = [host, port || DEFAULT_PORT]
+        port ||= DEFAULT_PORT
+        conn = [host, port.to_i]
       end
       raise ArgumentError, "Wrong connection declaration #{conn}" unless conn.is_a? Array
       conn

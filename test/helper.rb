@@ -232,17 +232,26 @@ module Helper
     end
   end
 
+  class TimeOut < Exception
+  end
   def fibrun
     res = nil
     EM.run {
+      t = nil
       f = Fiber.new{
         begin
           res = yield
         ensure
-          EM.next_tick{ EM.stop }
+          EM.next_tick{
+            EM.cancel_timer t
+            EM.stop
+          }
         end
       }
       EM.next_tick{ f.resume }
+      t = EM.add_timer(1) {
+        f.resume TimeOut.new
+      }
     }
     res
   end

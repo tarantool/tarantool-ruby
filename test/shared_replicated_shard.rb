@@ -212,7 +212,7 @@ shared_examples_for 'replication and shards' do
       }
     }
 
-    it "should spread distribution over" do
+    it "should spread distribution over xxx" do
       results = blockrun{[
         pks.map{|pk|      space_both.by_pk(pk)},
         pks.flat_map{|pk| space_first.all_by_pks([pk])},
@@ -277,9 +277,9 @@ shared_examples_for 'replication and shards' do
       end
       def call(shard_values, shards_count, this)
         @count += 1
-        shard_values = [*shard_values]
-        if shard_values[0]
-          shard_values[0].to_i % shards_count
+        value = Array === shard_values ? shard_values[0] : shard_values
+        if value
+          value.to_i % shards_count
         else
           this.all_shards
         end
