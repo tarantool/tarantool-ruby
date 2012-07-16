@@ -26,27 +26,27 @@ module Tarantool
         unless shards.first.is_a? Array
           shards = [ shards ]
         end
-        shards = shards.map{|shard| shard.map{|server| _fix_connection(conn)}}
+        shards = shards.map{|shard| shard.map{|server| _fix_connection(server)}}
       end
 
-      shard_strategy = conf[:shard_strategy] || :round_robin
-      if %w{round_robin master_first}.include?(shard_strategy)
-        shard_strategy = shard_strategy.to_sym
+      replica_strategy = conf[:replica_strategy] || :round_robin
+      if %w{round_robin master_first}.include?(replica_strategy)
+        replica_strategy = replica_strategy.to_sym
       end
-      unless [:round_robin, :master_first].include?(shard_strategy)
-        raise ArgumentError, "Shard strategy could be :round_robin or :master_first, got #{shard_strategy.inspect}"
+      unless [:round_robin, :master_first].include?(replica_strategy)
+        raise ArgumentError, "Shard strategy could be :round_robin or :master_first, got #{replica_strategy.inspect}"
       end
 
       case conf[:type] || :block
       when :em, :em_fiber
         require 'tarantool/fiber_db'
-        FiberDB.new(shards, shard_strategy)
+        FiberDB.new(shards, replica_strategy)
       when :em_cb, :em_callback
         require 'tarantool/callback_db'
-        CallbackDB.new(shards, shard_strategy)
+        CallbackDB.new(shards, replica_strategy)
       when :block
         require 'tarantool/block_db'
-        BlockDB.new(shards, shard_strategy)
+        BlockDB.new(shards, replica_strategy)
       end
     end
 
@@ -67,9 +67,9 @@ module Tarantool
   class DB
     attr_reader :closed, :connection
     alias closed? closed
-    def initialize(shards, shard_strategy)
+    def initialize(shards, replica_strategy)
       @shards = shards
-      @shard_strategy = shard_strategy
+      @replica_strategy = replica_strategy
       @connections = {}
       @closed = false
     end
@@ -79,14 +79,20 @@ module Tarantool
     # tarantool.space_block(0, [:int, :str, :int, :str], keys: [[0], [1,2]])
     def space_array(space_no, field_types = [], opts = {})
       indexes = opts[:keys] || opts[:indexes]
-      self.class::SpaceArray.new(self, space_no, field_types, indexes)
+      shard_fields = opts[:shard_keys]
+      shard_proc = opts[:shard_proc]
+      self.class::SpaceArray.new(self, space_no, field_types, indexes,
+                                 shard_fields, shard_proc)
     end
     # alias space_array to space for backward compatibility
     alias space space_array
 
     def space_hash(space_no, fields, opts = {})
       indexes = opts[:keys] || opts[:indexes]
-      self.class::SpaceHash.new(self, space_no, fields, indexes)
+      shard_fields = opts[:shard_keys]
+      shard_proc = opts[:shard_proc]
+      self.class::SpaceHash.new(self, space_no, fields, indexes,
+                                shard_fields, shard_proc)
     end
 
     def query

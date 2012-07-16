@@ -7,7 +7,7 @@ module Tarantool
       if (replicas = _shard(shard_number)).size == 1
         replicas[0].send_request(request_type, body, cb)
       elsif read_write == :read
-        replicas = replicas.shuffle  if @shard_strategy == :round_robin
+        replicas = replicas.shuffle  if @replica_strategy == :round_robin
         _one_shard_read(replicas, request_type, body, cb)
       else
         _one_shard_write(replicas, request_type, body, cb)

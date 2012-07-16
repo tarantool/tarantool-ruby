@@ -117,7 +117,7 @@ module Tarantool
     end
 
     def update_cb(pk, operations, cb, opts = {})
-      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
+      shard_nums = _get_shard_nums{ _detect_shards_for_key(pk, 0) }
       _update(@space_no, pk, operations, @fields,
               @indexes[0] || _detect_types([*pk]),
               cb, opts[:return_tuple],
@@ -125,7 +125,7 @@ module Tarantool
     end
 
     def delete_cb(pk, cb, opts = {})
-      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
+      shard_nums = _get_shard_nums{ _detect_shards_for_key(pk, 0) }
       _delete(@space_no, pk, @fields,
               @indexes[0] || _detect_types([*pk]),
               cb, opts[:return_tuple], shard_nums)

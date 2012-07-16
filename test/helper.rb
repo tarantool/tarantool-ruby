@@ -17,10 +17,10 @@ end
 module TConf
   extend FileUtils
   CONF = {
-    master1: {port: 33013, replica: :master},
-    slave1:  {port: 34013, replica: '127.0.0.1:33016'},
-    master2: {port: 35013, replica: :master},
-    slave2:  {port: 36013, replica: '127.0.0.1:35016'},
+    master1: {port: 33013, replica: :imaster},
+    slave1:  {port: 34013, replica: :master1},
+    master2: {port: 35013, replica: :imaster},
+    slave2:  {port: 36013, replica: :master2},
   }
   DIR = File.expand_path('..', __FILE__)
   def self.fjoin(*args)
@@ -30,9 +30,19 @@ module TConf
     fjoin(DIR, "tarantool_#{name}")
   end
 
+  def self._to_master(cfg, conf)
+    cfg.sub!(/^replication.*$/, "replication_port = #{conf[:port]+3}")
+  end
+
+  def self._to_slave(cfg, master)
+    replica_source = "127.0.0.1:#{CONF.fetch(master)[:port]+3}"
+    cfg.sub!(/^replication.*$/, "replication_source = \"#{replica_source}\"")
+  end
+
   def self.prepare(name)
-    conf = CONF[name]
+    conf = CONF.fetch(name)
     return if conf[:dir]
+    clear(name)
     dir = dir(name)
     FileUtils.rm_rf dir
     mkdir_p(dir)
@@ -43,34 +53,78 @@ module TConf
     cfg.sub!(/(primary_port\s*=\s*)\d+/, "\\1#{conf[:port]}")
     cfg.sub!(/(secondary_port\s*=\s*)\d+/, "\\1#{conf[:port]+1}")
     cfg.sub!(/(admin_port\s*=\s*)\d+/, "\\1#{conf[:port]+2}")
-    if conf[:replica] == :master
-      cfg.sub!(/(replication_port\s*=\s*)\d+/, "\\1#{conf[:port]+3}")
+    if conf[:replica] == :imaster
+      _to_master(cfg, conf)
     else
-      cfg.sub!(/replication_port\s*=\s*\d+/, "replication_source = #{conf[:replica]}")
+      _to_slave(cfg, conf[:replica])
     end
     File.open(fjoin(dir, 'tarantool.cfg'), 'w'){|f| f.write(cfg)}
     Dir.chdir(dir) do
-      puts `tarantool_box --init-storage`
+      `tarantool_box --init-storage 2>&1`
     end
     conf[:dir] = dir
   end
 
   def self.run(name)
-    conf = CONF[name]
+    conf = CONF.fetch(name)
     return  if conf[:pid]
     prepare(name)
-    Dir.chdir(dir(name)) do
+    Dir.chdir(conf[:dir]) do
       conf[:pid] = spawn('tarantool_box')
     end
   end
 
-  at_exit do
-    CONF.each{|name, conf|
-      if conf[:pid]
-        Process.kill('INT', conf[:pid])
-        Process.wait2(conf[:pid])
-      end
+  def self.stop(name)
+    conf = CONF.fetch(name)
+    return  unless conf[:pid]
+    Process.kill('INT', conf[:pid])
+    Process.wait2(conf[:pid])
+    conf.delete :pid
+  end
+
+  def self.clear(name)
+    conf = CONF.fetch(name)
+    return  unless conf[:dir]
+    stop(name)
+    rm_rf(conf[:dir])
+    conf.delete :dir
+  end
+
+  def self.reset_and_up_all
+    CONF.keys.each{|name|
+      clear(name)
+      run(name)
     }
+  end
+
+  def self.conf(name)
+    {host: '127.0.0.1', port: CONF.fetch(name)[:port]}
+  end
+
+  def self.promote_to_master(name)
+    conf = CONF.fetch(name)
+    raise "#{name} not running"  unless conf[:pid]
+    fcfg = fjoin(dir(name), 'tarantool.cfg')
+    cfg = File.read(fcfg)
+    _to_master(cfg, conf)
+    File.open(fcfg, 'w'){|f| f.write(cfg)}
+    sock = TCPSocket.new('127.0.0.1', conf[:port]+2)
+    sock.write("reload configuration\n")
+    3.times{ sock.gets }
+  end
+
+  def self.promote_to_slave(slave, master)
+    conf = CONF.fetch(slave)
+    clear(name)
+    fcfg = fjoin(dir(name), 'tarantool.cfg')
+    cfg = File.read(fcfg)
+    _to_slave(cfg, master)
+    File.open(fcfg, 'w'){|f| f.write(cfg)}
+    run(name)
+  end
+
+  at_exit do
+    CONF.keys.each{|name| clear(name)}
   end
 end
 require 'minitest/autorun'

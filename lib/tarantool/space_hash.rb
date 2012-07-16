@@ -122,7 +122,7 @@ module Tarantool
 
     def by_pk_cb(pk, cb)
       pk = _prepare_pk(pk)
-      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
+      shard_nums = _get_shard_nums{ _detect_shards_for_key(pk, 0) }
       _select(@space_no, 0, 0, :first, [pk], cb, @field_types, @indexes[0], shard_nums, @translators)
     end
 
@@ -214,14 +214,14 @@ module Tarantool
           )
         end
       }
-      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
+      shard_nums = _get_shard_nums{ _detect_shards_for_key(pk, 0) }
       _update(@space_no, pk, opers, @field_types, @indexes[0], cb, opts[:return_tuple],
               shard_nums, @translators)
     end
 
     def delete_cb(pk, cb, opts = {})
       pk = _prepare_pk(pk)
-      shard_nums = _get_shard_nums{ _detect_shard_for_key(pk, 0) }
+      shard_nums = _get_shard_nums{ _detect_shards_for_key(pk, 0) }
       _delete(@space_no, pk, @field_types, @indexes[0], cb, opts[:return_tuple],
               shard_nums, @translators)
     end

@@ -3,6 +3,7 @@ require File.expand_path('../shared_record', __FILE__)
 require 'tarantool/record'
 
 describe 'Tarantool::Record' do
+  before { TConf.run(:master1) }
   let(:base_class){ Tarantool::Record }
   it_behaves_like :record
 

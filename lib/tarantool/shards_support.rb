@@ -51,7 +51,7 @@ module Tarantool
       end
     end
 
-    def _detect_shards_for_key(key, index)
+    def _detect_shards_for_key(key, index_no)
       if index_no == @shard_by_index
         detect_shard(key)
       elsif pos = @shard_for_index[index_no]
