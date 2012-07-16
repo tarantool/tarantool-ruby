@@ -212,7 +212,7 @@ shared_examples_for 'replication and shards' do
       }
     }
 
-    it "should spread distribution over xxx" do
+    it "should spread distribution over" do
       results = blockrun{[
         pks.map{|pk|      space_both.by_pk(pk)},
         pks.flat_map{|pk| space_first.all_by_pks([pk])},
@@ -288,8 +288,87 @@ shared_examples_for 'replication and shards' do
     let(:shard_proc2){ ShardProc2.new }
 
     it_behaves_like "array space shard with composit pk"
+
     it "should call custom shard proc" do
       shard_proc2.count.must_equal pks.size
     end
   end
+
+  shared_examples_for "hash space shard with composit pk" do
+    def iii(pk) {first: pk[0], second: pk[1], third: pk.hash & 0xffffff} end
+    let(:space_both){ space2_hash_both }
+    let(:space_first){ space2_hash_first }
+    let(:space_second){ space2_hash_second }
+    let(:pks) {
+      (1..10).to_a.product((1..10).to_a).map{|i,j| [i.to_s, j.to_s]}
+    }
+    let(:pk_first) {
+      pks.detect{|pk| space_both._detect_shards_for_key(pk, 0) == 0}
+    }
+    let(:pk_second) {
+      pks.detect{|pk| space_both._detect_shards_for_key(pk, 0) == 1}
+    }
+    before {
+      blockrun{
+        pks.each{|pk| space_both.insert(iii(pk))}
+      }
+    }
+
+    it "should spread distribution over" do
+      results = blockrun{[
+        pks.map{|pk|      space_both.by_pk(pk)},
+        pks.flat_map{|pk| space_first.all_by_pks([pk])},
+        pks.flat_map{|pk| space_second.all_by_pks([pk])},
+        space_first.by_pk(pk_first),
+        space_second.by_pk(pk_second),
+        space_first.by_pk(pk_second),
+        space_second.by_pk(pk_first),
+      ]}
+      results[0].compact.size.must_equal pks.size
+      (results[1] + results[2]).sort_by(&:values).must_equal results[0].sort_by(&:values)
+      results[1].size.must_be_close_to pks.size/2, pks.size/5
+      results[2].size.must_be_close_to pks.size/2, pks.size/5
+      results[3].must_equal iii(pk_first)
+      results[4].must_equal iii(pk_second)
+      results[5].must_equal nil
+      results[6].must_equal nil
+    end
+
+    it "should delete" do
+      results = blockrun{[
+        space_both.delete(pk_first, return_tuple:true),
+        space_both.by_pk(pk_first),
+        space_both.delete(pk_second, return_tuple:true),
+        space_both.by_pk(pk_second),
+      ]}
+      results[0].must_equal iii(pk_first)
+      results[1].must_be_nil
+      results[2].must_equal iii(pk_second)
+      results[3].must_be_nil
+    end
+
+    it "should update" do
+      results = blockrun{[
+        space_both.update(pk_first, {third: [:+, 1]}, return_tuple:true),
+        space_both.update(pk_second, {third: [:+, 1]}, return_tuple:true),
+      ]}
+      results[0][:third].must_equal iii(pk_first)[:third]+1
+      results[1][:third].must_equal iii(pk_second)[:third]+1
+    end
+
+    it "should search by keys half" do
+      results = blockrun{[
+        pks.map{|pk| space_both.by_pk(pk)},
+        (1..10).flat_map{|i| space_both.select({first: i.to_s})},
+        space_both.select((1..10).map{|i| {first: i.to_s}})
+      ]}
+      results[1].sort_by(&:values).must_equal results[0].sort_by(&:values)
+      results[2].sort_by(&:values).must_equal results[0].sort_by(&:values)
+    end
+  end
+
+  describe "hash space default shard with composit pk" do
+    it_behaves_like "hash space shard with composit pk"
+  end
+
 end
