@@ -55,10 +55,11 @@ module Tarantool
     end
 
     def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
-      @_several_shards_cb ||= method(:_raise_or_return)
+      original_cb = cb.cb
+      cb.cb = (@_several_shards_cb ||= method(:_raise_or_return))
       results = []
       for shard in shard_numbers
-        res = _send_to_one_shard(shard, read_write, request_type, body, @_several_shards_cb)
+        res = _send_to_one_shard(shard, read_write, request_type, body, cb)
         if Array === res
           results.concat res
         else
@@ -68,7 +69,7 @@ module Tarantool
       if Integer === results.first
         results = results.inject(0){|s, i| s + i}
       end
-      cb.call results
+      original_cb.call results
     end
 
     module CommonSpaceBlockingMethods

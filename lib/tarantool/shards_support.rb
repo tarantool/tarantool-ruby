@@ -42,10 +42,13 @@ module Tarantool
     end
 
     def _detect_shards_for_keys(keys, index_no)
-      if index_no == @shard_by_index
+      if index_no == @shard_by_index && (
+            @index_fields.size == 1 ||
+            keys.all?{|key| Array === key && key.size == @index_fields.size}
+          )
         _flat_uniq keys.map{|key| detect_shard(key)}
       elsif pos = @shard_for_index[index_no]
-        _flat_uniq keys.map{|key| detect_shard(key.values_at(*pos)) }
+        _flat_uniq keys.map{|key| detect_shard([*key].values_at(*pos)) }
       else
         all_shards
       end
