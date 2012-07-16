@@ -556,4 +556,73 @@ shared_examples_for 'replication and shards' do
 
     it_behaves_like "space test call"
   end
+
+  shared_examples_for "explicit shard number" do
+    before {
+      blockrun {
+        space_both.shard(0).insert(one)
+        space_both.shard(1).insert(two)
+      }
+    }
+
+    it "should not find under implicit shard" do
+      blockrun{[
+        space_both.by_pk(1),
+        space_both.by_pk(2),
+      ]}.must_equal [nil, nil]
+    end
+
+    it "should not find under explicit but not same shard" do
+      blockrun{[
+        space_both.shard(1).by_pk(1),
+        space_both.shard(0).by_pk(2),
+      ]}.must_equal [nil, nil]
+    end
+
+    it "should find under explict shard" do
+      blockrun{[
+        space_both.shard(0).by_pk(1),
+        space_both.shard(1).by_pk(2)
+      ]}.must_equal [one, two]
+    end
+
+    it "should call on both" do
+      result = blockrun{ space_both.call('box.select_range', [0, 100]) }
+      result.sort_by{|t| get_id(t)}.must_equal [one, two]
+    end
+
+    it "should call on specified" do
+      results = blockrun{[
+        space_both.shard(1).call('box.select_range', [0, 100]),
+        space_both.shard(0).call('box.select_range', [0, 100])
+      ]}
+      results[0].must_equal [two]
+      results[1].must_equal [one]
+    end
+  end
+
+  describe "space array explicit shard number" do
+    let(:space_both){ space1_array_both }
+    let(:space_first){ space1_array_first }
+    let(:space_second){ space1_array_second }
+
+    let(:one) { [1, 'a', 1] }
+    let(:two) { [2, 'b', 2] }
+    def get_id(tuple) tuple[0] end
+
+    it_behaves_like "explicit shard number"
+  end
+
+  describe "space hash explicit shard number" do
+    let(:space_both){ space1_hash_both }
+    let(:space_first){ space1_hash_first }
+    let(:space_second){ space1_hash_second }
+
+    let(:one) { {id: 1, name: 'a', val: 1} }
+    let(:two) { {id: 2, name: 'b', val: 2} }
+    def get_id(tuple) tuple[:id] end
+
+    it_behaves_like "explicit shard number"
+  end
+
 end
