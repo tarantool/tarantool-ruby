@@ -399,7 +399,7 @@ shared_examples_for 'replication and shards' do
         (0..9).flat_map{|i| space_first.select([3], i)},
         (0..9).flat_map{|i| space_second.select(2, i)},
         space_both.all_by_pks(pks.map{|pk| [pk]}),
-        space_both.select(2, pks.map{|pk| [pk]})
+        space_both.select(2, (0..9).map{|i| [i]})
       ]}
       results[0].size.must_equal pks.size
       results[1].size.must_equal pks.size/2
@@ -419,7 +419,7 @@ shared_examples_for 'replication and shards' do
       results[7].sort_by{|v|v[0].to_i}.must_equal results[0]
     end
 
-    it "should delete xxx" do
+    it "should delete" do
       results = blockrun{[
         space_both.delete('21', return_tuple:true),
         space_both.by_pk('21'),
@@ -439,6 +439,74 @@ shared_examples_for 'replication and shards' do
       ]}
       results[0].must_equal ['21','22!','23',2]
       results[1].must_equal ['31','32!','33',3]
+    end
+  end
+
+  describe "hash space with shard on not pk" do
+    let(:shard_fields_hash0) { [:score] }
+    let(:space_both){ space0_hash_both }
+    let(:space_first){ space0_hash_first }
+    let(:space_second){ space0_hash_second }
+    let(:pks){ 100.times.to_a }
+
+    before {
+      blockrun{
+        pks.each{|i|
+          space_both.insert(name: i, surname: i+1, email: i+2, score: i/10)
+        }
+      }
+    }
+    let(:twenty_one){ {name:'21',surname:'22',email:'23',score: 2} }
+    let(:thirty_one){ {name:'31',surname:'32',email:'33',score: 3} }
+
+    it "should spread distribution over" do
+      results = blockrun{[
+        pks.flat_map{|i| space_both.all_by_pks([i])},
+        pks.flat_map{|i| space_first.all_by_pks([i])},
+        pks.flat_map{|i| space_second.all_by_pks([i])},
+        (0..9).flat_map{|i| space_both.select(score: i)},
+        (0..9).flat_map{|i| space_first.select(score: i)},
+        (0..9).flat_map{|i| space_second.select(score: i)},
+        space_both.all_by_pks(pks.map{|pk| [pk]}),
+        space_both.select(score: (0..9).to_a)
+      ]}
+      results[0].size.must_equal pks.size
+      results[1].size.must_equal pks.size/2
+      results[2].size.must_equal pks.size/2
+      (results[1]+results[2]).sort_by{|v|v[:name].to_i}.must_equal results[0]
+
+      results[3].size.must_equal pks.size
+      results[3].sort_by{|v|v[:name].to_i}.must_equal results[0]
+      results[4].size.must_equal pks.size/2
+      results[5].size.must_equal pks.size/2
+      (results[4]+results[5]).sort_by{|v|v[:name].to_i}.must_equal results[0]
+
+      results[4].include?(twenty_one).must_equal results[5].include?(thirty_one)
+
+      results[6].sort_by{|v|v[:name].to_i}.must_equal results[0]
+      results[7].sort_by{|v|v[:name].to_i}.must_equal results[0]
+    end
+
+    it "should delete" do
+      results = blockrun{[
+        space_both.delete('21', return_tuple:true),
+        space_both.by_pk('21'),
+        space_both.delete('31', return_tuple:true),
+        space_both.by_pk('31')
+      ]}
+      results[0].must_equal twenty_one
+      results[1].must_be_nil
+      results[2].must_equal thirty_one
+      results[3].must_be_nil
+    end
+
+    it "should update" do
+      results = blockrun{[
+        space_both.update('21', {surname: [:splice,3,0,'!']}, return_tuple:true),
+        space_both.update('31', {surname: [:splice,3,0,'!']}, return_tuple:true),
+      ]}
+      results[0].must_equal twenty_one.merge(surname: '22!')
+      results[1].must_equal thirty_one.merge(surname: '32!')
     end
   end
 end
