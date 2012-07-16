@@ -5,12 +5,12 @@ module Tarantool
 
     def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
       if (replicas = _shard(shard_number)).size == 1
-        EM.next_tick{ replicas[0].send_request(request_type, body, cb) }
+        replicas[0].send_request(request_type, body, cb)
       elsif read_write == :read
         replicas = replicas.shuffle  if @replica_strategy == :round_robin
-        EM.next_tick{ _one_shard_read(replicas, request_type, body, cb) }
+        _one_shard_read(replicas, request_type, body, cb)
       else
-        EM.next_tick{ _one_shard_write(replicas, request_type, body, cb) }
+        _one_shard_write(replicas, request_type, body, cb)
       end
     end
 
@@ -23,7 +23,7 @@ module Tarantool
         @cb = cb
       end
 
-      def call(result)
+      def call(result=INITIAL)
         case result
         when INITIAL, ::IProto::ConnectionError
           begin
@@ -39,7 +39,7 @@ module Tarantool
     end
 
     def _one_shard_read(replicas, request_type, body, cb)
-      OneShardRead.new(replicas, request_type, body, cb).call(INITIAL)
+      EM.next_tick OneShardRead.new(replicas, request_type, body, cb)
     end
 
     class OneShardWrite
@@ -58,7 +58,7 @@ module Tarantool
         end
       end
 
-      def call(result)
+      def call(result=INITIAL)
         case result
         when INITIAL, ::IProto::ConnectionError, ::Tarantool::NonMaster
           rotate!  if Exception === result
@@ -74,7 +74,7 @@ module Tarantool
     end
 
     def _one_shard_write(replicas, request_type, body, cb)
-       OneShardWrite.new(replicas, request_type, body, cb).call(INITIAL)
+       EM.next_tick OneShardWrite.new(replicas, request_type, body, cb)
     end
 
     class Concatter
