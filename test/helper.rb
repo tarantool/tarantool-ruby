@@ -1,6 +1,6 @@
 require 'minitest/spec'
-require 'minitest/autorun'
 require 'rr'
+require 'fileutils'
 
 require 'tarantool'
 
@@ -13,6 +13,69 @@ class ArrayPackSerializer
     str.unpack("N*")
   end
 end
+
+module TConf
+  extend FileUtils
+  CONF = {
+    master1: {port: 33013, replica: :master},
+    slave1:  {port: 34013, replica: '127.0.0.1:33016'},
+    master2: {port: 35013, replica: :master},
+    slave2:  {port: 36013, replica: '127.0.0.1:35016'},
+  }
+  DIR = File.expand_path('..', __FILE__)
+  def self.fjoin(*args)
+    File.join(*args.map(&:to_s))
+  end
+  def self.dir(name)
+    fjoin(DIR, "tarantool_#{name}")
+  end
+
+  def self.prepare(name)
+    conf = CONF[name]
+    return if conf[:dir]
+    dir = dir(name)
+    FileUtils.rm_rf dir
+    mkdir_p(dir)
+    cp fjoin(DIR, 'init.lua'), dir
+    cfg = File.read(fjoin(DIR, 'tarantool.cfg'))
+    cfg.sub!(/(pid_file\s*=\s*)"[^"]*"/, "\\1\"#{fjoin(dir, 'box.pid')}\"")
+    cfg.sub!(/(work_dir\s*=\s*)"[^"]*"/, "\\1\"#{dir}\"")
+    cfg.sub!(/(primary_port\s*=\s*)\d+/, "\\1#{conf[:port]}")
+    cfg.sub!(/(secondary_port\s*=\s*)\d+/, "\\1#{conf[:port]+1}")
+    cfg.sub!(/(admin_port\s*=\s*)\d+/, "\\1#{conf[:port]+2}")
+    if conf[:replica] == :master
+      cfg.sub!(/(replication_port\s*=\s*)\d+/, "\\1#{conf[:port]+3}")
+    else
+      cfg.sub!(/replication_port\s*=\s*\d+/, "replication_source = #{conf[:replica]}")
+    end
+    File.open(fjoin(dir, 'tarantool.cfg'), 'w'){|f| f.write(cfg)}
+    Dir.chdir(dir) do
+      puts `tarantool_box --init-storage`
+    end
+    conf[:dir] = dir
+  end
+
+  def self.run(name)
+    conf = CONF[name]
+    return  if conf[:pid]
+    prepare(name)
+    Dir.chdir(dir(name)) do
+      conf[:pid] = spawn('tarantool_box')
+    end
+  end
+
+  at_exit do
+    CONF.each{|name, conf|
+      if conf[:pid]
+        Process.kill('INT', conf[:pid])
+        Process.wait2(conf[:pid])
+      end
+    }
+  end
+end
+require 'minitest/autorun'
+TConf.run(:master1)
+
 
 TCONFIG = { host: '127.0.0.1', port: 33013, admin: 33015 }
 
