@@ -23,7 +23,7 @@ module Tarantool
     def _send_to_one_shard(shard_number, read_write, request_type, body, response)
       response.parse_response(
         if (replicas = _shard(shard_number)).size == 1
-          replicas[0].send_request(request_type, body)
+          _parse_iproto(replicas[0].send_request(request_type, body))
         elsif read_write == :read
           replicas = replicas.shuffle  if @replica_strategy == :round_robin
           _one_shard_read(replicas, request_type, body)

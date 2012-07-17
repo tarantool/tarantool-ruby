@@ -26,7 +26,7 @@ module Tarantool
         cb.call(data)
       else
         if (ret = return_code(data)) == 0
-          cb.call parse_response(data)
+          call_callback parse_response(data)
         else
           data.gsub!("\x00", "")
           cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
@@ -43,6 +43,7 @@ module Tarantool
     end
 
     def parse_response(data)
+      return data  if Exception === data
       unless get_tuples
         unpack_int32(data)
       else
