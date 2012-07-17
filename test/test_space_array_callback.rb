@@ -1,6 +1,7 @@
 require File.expand_path('../helper.rb', __FILE__)
 
 describe 'Tarantool::CallbackDB::SpaceArray' do
+  before { TConf.run(:master1) }
   before { clear_db }
 
   let(:tarantool) { Tarantool.new(TCONFIG.merge(type: :em_callback)) }

@@ -1,4 +1,7 @@
 module Tarantool
+  class ConnectionError < ::IProto::Disconnected; end
+  class NoMasterError < ConnectionError; end
+
   class ArgumentError < ::ArgumentError; end
   class StringTooLong < ArgumentError; end
 

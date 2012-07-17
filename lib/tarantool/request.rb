@@ -1,4 +1,5 @@
 require 'tarantool/util'
+require 'tarantool/shards_support'
 require 'tarantool/serializers'
 
 module Tarantool
@@ -53,7 +54,11 @@ module Tarantool
     }
     UPDATE_FIELDNO_OP = 'VC'.freeze
 
-    def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, translators = [])
+    def _send_request(shard_numbers, read_write, type, body, cb)
+      @tarantool._send_request(shard_numbers, read_write, type, body, cb)
+    end
+
+    def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, shard_nums, translators = [])
       get_tuples = limit == :first ? (limit = 1; :first) : :all
       keys = [*keys]
       body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
@@ -61,8 +66,8 @@ module Tarantool
       for key in keys
         pack_tuple(body, key, index_fields, index_no)
       end
-      cb = Response.new(cb, get_tuples, fields, translators)
-      _send_request(REQUEST_SELECT, body, cb)
+      response = Response.new(cb, get_tuples, fields, translators)
+      _send_request(shard_nums, :read, REQUEST_SELECT, body, response)
     end
 
     class IndexIndexError < StandardError; end
@@ -132,13 +137,13 @@ module Tarantool
       end
     end
 
-    def _modify_request(type, body, fields, ret_tuple, cb, translators)
-      cb = Response.new(cb, ret_tuple && (ret_tuple != :all ? :first : :all),
+    def _modify_request(type, body, fields, ret_tuple, cb, shard_nums, read_write, translators)
+      response = Response.new(cb, ret_tuple && (ret_tuple != :all ? :first : :all),
                             fields, translators)
-      _send_request(type, body, cb)
+      _send_request(shard_nums, read_write, type, body, response)
     end
 
-    def _insert(space_no, flags, tuple, fields, cb, ret_tuple, translators = [])
+    def _insert(space_no, flags, tuple, fields, cb, ret_tuple, shard_nums, translators = [])
       flags |= BOX_RETURN_TUPLE  if ret_tuple
       fields = [*fields]
 
@@ -147,10 +152,10 @@ module Tarantool
       body = [space_no, flags].pack(INSERT_HEADER)
       pack_tuple(body, tuple, fields, :space)
 
-      _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, translators)
+      _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, shard_nums, :write, translators)
     end
 
-    def _update(space_no, pk, operations, fields, pk_fields, cb, ret_tuple, translators = [])
+    def _update(space_no, pk, operations, fields, pk_fields, cb, ret_tuple, shard_nums, translators = [])
       flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
       if Array === operations && !(Array === operations.first)
@@ -163,7 +168,7 @@ module Tarantool
 
       _pack_operations(body, operations, fields)
 
-      _modify_request(REQUEST_UPDATE, body, fields, ret_tuple, cb, translators)
+      _modify_request(REQUEST_UPDATE, body, fields, ret_tuple, cb, shard_nums, :write, translators)
     end
 
     def _pack_operations(body, operations, fields)
@@ -256,13 +261,13 @@ module Tarantool
       end
     end
 
-    def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple, translators = [])
+    def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple, shard_nums, translators = [])
       flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
       body = [space_no, flags].pack(DELETE_HEADER)
       pack_tuple(body, pk, pk_fields, 0)
 
-      _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb, translators)
+      _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb, shard_nums, :write, translators)
     end
 
     def _space_call_fix_values(values, space_no, opts)
@@ -276,6 +281,12 @@ module Tarantool
           opts[:types] = TYPES_STR_STR
         end
       end
+      # scheck for shards hints
+      opts[:shards] ||= _get_shard_nums {
+          opts[:shard_keys] ? _detect_shards(opts[:shard_keys]) :
+          opts[:shard_key]  ?  detect_shard( opts[:shard_key]) :
+                               all_shards
+        }
       [values, opts]
     end
 
@@ -292,11 +303,25 @@ module Tarantool
       body = [flags, func_name.size, func_name].pack(CALL_HEADER)
       pack_tuple(body, values, value_types, :func_call)
 
-      _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, opts[:translators] || [])
+      shard_nums = opts[:shards] || _get_shard_nums{ all_shards }
+      read_write = opts[:readonly] ? :read : :write
+
+      _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, shard_nums, read_write, opts[:translators] || [])
     end
 
+    class WrapPing < Struct.new(:cb)
+      def call(data)
+        cb.call data
+      end
+      def call_callback(data)
+        cb.call data
+      end
+      def parse_response(data)
+        data
+      end
+    end
     def _ping(cb)
-      _send_request(REQUEST_PING, EMPTY, cb)
+      _send_request(_get_shard_nums{ all_shards }, :write, REQUEST_PING, EMPTY, WrapPing.new(cb))
     end
     alias ping_cb _ping
 

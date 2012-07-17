@@ -5,6 +5,7 @@ require 'yajl'
 require 'tarantool/serializers/bson'
 
 describe Tarantool::Record do
+  before { TConf.run(:master1) }
   DB = Tarantool.new(TCONFIG.merge(type: :block))
   before{ truncate }
 

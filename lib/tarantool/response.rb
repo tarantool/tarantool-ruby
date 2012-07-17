@@ -3,6 +3,20 @@ require 'tarantool/exceptions'
 require 'tarantool/serializers'
 
 module Tarantool
+  module ParseIProto
+    include Util::Packer
+    def _parse_iproto(data)
+      if Exception === data || data == ''
+        data
+      elsif (ret = unpack_int32!(data)) == 0
+        data
+      else
+        data.gsub!("\x00", "")
+        CODE_TO_EXCEPTION[ret].new(ret, data)
+      end
+    end
+  end
+
   class Response < Struct.new(:cb, :get_tuples, :fields, :translators)
     include Util::Packer
     include Util::TailGetter
@@ -12,7 +26,7 @@ module Tarantool
         cb.call(data)
       else
         if (ret = return_code(data)) == 0
-          cb.call parse_response(data)
+          call_callback parse_response(data)
         else
           data.gsub!("\x00", "")
           cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
@@ -24,7 +38,12 @@ module Tarantool
       super || (self.translators = [])
     end
 
+    def call_callback(result)
+      cb.call(Exception === result || get_tuples != :first ? result : result.first)
+    end
+
     def parse_response(data)
+      return data  if Exception === data
       unless get_tuples
         unpack_int32(data)
       else
@@ -34,7 +53,7 @@ module Tarantool
             tuples.map!{|tuple| trans.call(tuple)}
           }
         end
-        get_tuples == :first ? tuples.first : tuples
+        tuples
       end
     end
 
