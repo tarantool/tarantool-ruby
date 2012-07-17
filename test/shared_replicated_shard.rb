@@ -283,12 +283,7 @@ shared_examples_for 'replication and shards' do
       end
       def call(shard_values, shards_count, this)
         @count += 1
-        value = Array === shard_values ? shard_values[0] : shard_values
-        if value
-          value.to_i % shards_count
-        else
-          this.all_shards
-        end
+        shard_values[0] && shard_values[0].to_i % shards_count
       end
     end
     let(:shard_proc2){ ShardProc2.new }

@@ -2,17 +2,17 @@ module Tarantool
   module Request
     class DefaultShardProc
       def call(shard_values, shards_count, this)
-        this.default_shard_proc(shard_values, shards_count)
+        if shard_values.size == 1 && Integer === shard_values[0]
+          shard_values[0] % shards_count
+        elsif shard_values.all?
+          shard_values.hash % shards_count
+        end
       end
     end
 
     class ModuloShardProc
       def call(shard_values, shards_count, this)
-        if value = (Array === shard_values ? shard_values[0] : shard_values)
-          value % shards_count
-        else
-          this.all_shards
-        end
+        shard_values[0] && shard_values[0] % shards_count
       end
     end
 
@@ -83,23 +83,8 @@ module Tarantool
 
     # methods for override
     def detect_shard(shard_values)
-      @shard_proc.call(shard_values, @shards_count, self)
-    end
-
-    def default_shard_proc(shard_values, shards_count)
-      if Array === shard_values
-        if shard_values.size == 1 && Integer === shard_values[0]
-          shard_values[0] % shards_count
-        elsif shard_values.all?
-          shard_values.hash % shards_count
-        else
-          all_shards
-        end
-      elsif Integer === shard_values
-        shard_values % shards_count
-      else
-        [shard_values].hash % shards_count
-      end
+      shard_values = [shard_values]  unless Array === shard_values
+      @shard_proc.call(shard_values, @shards_count, self) || all_shards
     end
 
     def _get_shard_nums
