@@ -6,7 +6,7 @@ module Tarantool
   module ParseIProto
     include Util::Packer
     def _parse_iproto(data)
-      if Exception === data
+      if Exception === data || data == ''
         data
       elsif (ret = unpack_int32!(data)) == 0
         data

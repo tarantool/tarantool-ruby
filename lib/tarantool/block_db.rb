@@ -162,6 +162,10 @@ module Tarantool
     end
 
     class Query < ::Tarantool::Query
+      def _block_cb
+        @_block_cb ||= method(:_raise_or_return)
+      end
+
       def select(space_no, index_no, keys, offset, limit, opts={})
         select_cb(space_no, index_no, keys, offset, limit, _block_cb, opts)
       end

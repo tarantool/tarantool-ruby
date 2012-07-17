@@ -309,8 +309,19 @@ module Tarantool
       _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, shard_nums, read_write, opts[:translators] || [])
     end
 
+    class WrapPing < Struct.new(:cb)
+      def call(data)
+        cb.call data
+      end
+      def call_callback(data)
+        cb.call data
+      end
+      def parse_response(data)
+        data
+      end
+    end
     def _ping(cb)
-      _send_request(REQUEST_PING, EMPTY, cb)
+      _send_request(_get_shard_nums{ all_shards }, :write, REQUEST_PING, EMPTY, WrapPing.new(cb))
     end
     alias ping_cb _ping
 
