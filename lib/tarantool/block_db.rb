@@ -2,8 +2,26 @@ module Tarantool
   class BlockDB < DB
     IPROTO_CONNECTION_TYPE = :block
 
-    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
-      cb.call(
+    include ParseIProto
+    def _send_request(shard_numbers, read_write, request_type, body, response)
+      if @closed
+        response.cb.call ::IProto::Disconnected.new("Tarantool is closed")
+      else
+        response.call_callback begin
+          shard_numbers = shard_numbers[0]  if Array === shard_numbers && shard_numbers.size == 1
+          if Array === shard_numbers
+            _send_to_several_shards(shard_numbers, read_write, request_type,
+                                    body, response)
+          else
+            _send_to_one_shard(shard_numbers, read_write, request_type,
+                               body, response)
+          end
+        end
+      end
+    end
+
+    def _send_to_one_shard(shard_number, read_write, request_type, body, response)
+      response.parse_response(
         if (replicas = _shard(shard_number)).size == 1
           replicas[0].send_request(request_type, body)
         elsif read_write == :read
@@ -19,11 +37,11 @@ module Tarantool
       for conn in replicas
         if conn.could_be_connected?
           begin
-            res = conn.send_request(request_type, body)
+            res = _parse_iproto(conn.send_request(request_type, body))
+            raise res  if Exception === res
+            return res
           rescue ::IProto::ConnectionError
             # pass
-          else
-            return res
           end
         end
       end
@@ -36,11 +54,11 @@ module Tarantool
         conn = replicas[0]
         if conn.could_be_connected?
           begin
-            res = conn.send_request(request_type, body)
+            res = _parse_iproto(conn.send_request(request_type, body))
+            raise res  if Exception === res
+            return res
           rescue ::IProto::ConnectionError, ::Tarantool::NonMaster
             # pass
-          else
-            return res
           end
         end
         replicas.rotate!
@@ -49,19 +67,10 @@ module Tarantool
       raise NoMasterError, "no available master connections"
     end
 
-    def _raise_or_return(res)
-      raise res  if Exception == res
-      res
-    end
-
-    def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
-      original_cb = cb.cb
-      original_get_tuples = cb.get_tuples
-      cb.cb = (@_several_shards_cb ||= method(:_raise_or_return))
-      cb.get_tuples = :all  if cb.get_tuples == :first
+    def _send_to_several_shards(shard_numbers, read_write, request_type, body, response)
       results = []
       for shard in shard_numbers
-        res = _send_to_one_shard(shard, read_write, request_type, body, cb)
+        res = _send_to_one_shard(shard, read_write, request_type, body, response)
         if Array === res
           results.concat res
         else
@@ -70,10 +79,8 @@ module Tarantool
       end
       if Integer === results.first
         results = results.inject(0){|s, i| s + i}
-      elsif original_get_tuples == :first
-        results = results.first
       end
-      original_cb.call results
+      results
     end
 
     module CommonSpaceBlockingMethods

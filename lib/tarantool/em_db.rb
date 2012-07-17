@@ -3,52 +3,93 @@ module Tarantool
     IPROTO_CONNECTION_TYPE = :em_callback
     INITIAL = Object.new.freeze
 
-    def _send_to_one_shard(shard_number, read_write, request_type, body, cb)
-      if (replicas = _shard(shard_number)).size == 1
-        replicas[0].send_request(request_type, body, cb)
-      elsif read_write == :read
-        replicas = replicas.shuffle  if @replica_strategy == :round_robin
-        _one_shard_read(replicas, request_type, body, cb)
-      else
-        _one_shard_write(replicas, request_type, body, cb)
+    class Curry1 < Struct.new(:obj, :arg)
+      def call
+        obj.call arg
       end
     end
 
-    class OneShardRead
-      def initialize(replicas, request_type, body, cb)
-        @replicas = replicas
-        @i = -1
-        @request_type = request_type
-        @body = body
-        @cb = cb
-      end
-
-      def call(result=INITIAL)
-        case result
-        when INITIAL, ::IProto::ConnectionError
-          begin
-            if (@i += 1) >= @replicas.size
-              return @cb.call(ConnectionError.new("no available connections"))
-            end
-          end until (repl = @replicas[@i]).could_be_connected?
-          repl.send_request(@request_type, @body, self)
+    class FeedResponse < Struct.new(:response)
+      def call(result)
+        if Exception === result
+          response.cb.call result
         else
-          @cb.call(result)
+          response.call_callback(result)
         end
       end
     end
 
-    def _one_shard_read(replicas, request_type, body, cb)
-      EM.next_tick OneShardRead.new(replicas, request_type, body, cb)
+    def _send_request(shard_numbers, read_write, request_type, body, response)
+      if @closed
+        exc =  ::IProto::Disconnected.new("Tarantool is closed")
+        if EM.reactor_running?
+          EM.next_tick Curry1.new(response.cb, exc)
+        else
+          response.cb.call exc
+        end
+      else
+        feed = FeedResponse.new(response)
+        shard_numbers = shard_numbers[0]  if Array === shard_numbers && shard_numbers.size == 1
+        if Array === shard_numbers
+          _send_to_several_shards(shard_numbers, read_write, request_type,
+                                  body, response, feed)
+        else
+          _send_to_one_shard(shard_numbers, read_write, request_type,
+                             body, response, feed)
+        end
+      end
+    end
+
+    def _send_to_one_shard(shard_number, read_write, request_type, body, response, feed)
+      if (replicas = _shard(shard_number)).size == 1
+        replicas[0].send_request(request_type, body, response)
+      elsif read_write == :read
+        replicas = replicas.shuffle  if @replica_strategy == :round_robin
+        EM.next_tick OneShardRead.new(replicas, request_type, body, response, feed)
+      else
+        EM.next_tick OneShardWrite.new(replicas, request_type, body, response, feed)
+      end
+    end
+
+    class OneShardRead
+      include ParseIProto
+      def initialize(replicas, request_type, body, response, feed)
+        @replicas = replicas
+        @i = -1
+        @request_type = request_type
+        @body = body
+        @response = response
+        @feed = feed
+      end
+
+      def call(result=INITIAL)
+        result = _parse_iproto(result)  unless result == INITIAL
+        case result
+        when INITIAL, ::IProto::ConnectionError
+          begin
+            if (@i += 1) >= @replicas.size
+              EM.next_tick Curry1.new(@feed, ConnectionError.new("no available connections"))
+              return
+            end
+          end until (repl = @replicas[@i]).could_be_connected?
+          repl.send_request(@request_type, @body, self)
+        when Exception
+          @feed.call result
+        else
+          @feed.call @response.parse_response(result)
+        end
+      end
     end
 
     class OneShardWrite
-      def initialize(replicas, request_type, body, cb)
+      include ParseIProto
+      def initialize(replicas, request_type, body, response, feed)
         @replicas = replicas
         @i = replicas.size
         @request_type = request_type
         @body = body
-        @cb = cb
+        @response = response
+        @feed = feed
       end
 
       def rotate!
@@ -59,30 +100,29 @@ module Tarantool
       end
 
       def call(result=INITIAL)
+        result = _parse_iproto(result)  unless result == INITIAL
         case result
         when INITIAL, ::IProto::ConnectionError, ::Tarantool::NonMaster
           rotate!  if Exception === result
           rotate!  until @i <= 0 || (repl = @replicas[0]).could_be_connected?
           if @i <= 0
-            return @cb.call(NoMasterError.new("no available master connections"))
+            EM.next_tick Curry1.new(@feed, NoMasterError.new("no available master connections"))
+            return
           end
           repl.send_request(@request_type, @body, self)
+        when Exception
+          @feed.call result
         else
-          @cb.call(result)
+          @feed.call @response.parse_response(result)
         end
       end
     end
 
-    def _one_shard_write(replicas, request_type, body, cb)
-       EM.next_tick OneShardWrite.new(replicas, request_type, body, cb)
-    end
-
     class Concatter
-      def initialize(count, cb, get_tuples)
+      def initialize(count, feed)
         @result = []
         @count = count
-        @cb = cb
-        @get_tuples = get_tuples
+        @feed = feed
       end
       def call(array)
         if @count > 0
@@ -96,25 +136,20 @@ module Tarantool
             @result << array
           end
           if (@count -= 1) == 0
-            if Integer === @result.first
-              @cb.call @result.inject(0){|s, i| s + i}
-            elsif @get_tuples == :first
-              @cb.call @result.first
+            if Array === @result && Integer === @result.first
+              @feed.call @result.inject(0){|s, i| s + i}
             else
-              @cb.call @result
+              @feed.call @result
             end
           end
         end
       end
     end
 
-    def _send_to_several_shards(shard_numbers, read_write, request_type, body, cb)
-      original_cb = cb.cb
-      original_get_tuples = cb.get_tuples
-      cb.cb = Concatter.new(shard_numbers.size, original_cb, original_get_tuples)
-      cb.get_tuples = :all  if cb.get_tuples == :first
+    def _send_to_several_shards(shard_numbers, read_write, request_type, body, response, feed)
+      concat = Concatter.new(shard_numbers.size, feed)
       for shard in shard_numbers
-        _send_to_one_shard(shard, read_write, request_type, body, cb)
+        _send_to_one_shard(shard, read_write, request_type, body, response, concat)
       end
     end
   end

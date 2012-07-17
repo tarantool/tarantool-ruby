@@ -625,4 +625,48 @@ shared_examples_for 'replication and shards' do
     it_behaves_like "explicit shard number"
   end
 
+  describe "space array replication" do
+    let(:space){ space1_array_first }
+
+    let(:record){ [1, 'a', 1] }
+    let(:update_op){ {1 => 'b'} }
+    let(:updated){ [1, 'b', 1] }
+
+    before{
+      blockrun{ space.insert(record) }
+      sleep 0.1
+      TConf.stop(:master1)
+    }
+
+    it "should read from slave" do
+      blockrun{[
+        space.by_pk(1),
+        space.call('box.select_range', [0, 100])
+      ]}.must_equal [record, [record]]
+    end
+
+    it "should raise exception when slave had not become master" do
+      blockrun{
+        proc{
+          p space.delete(1)
+        }.must_raise Tarantool::NoMasterError
+        proc{
+          space.update(1, update_op)
+        }.must_raise Tarantool::NoMasterError
+        proc{
+          space.call('box.delete', [0, 1])
+        }.must_raise Tarantool::NoMasterError
+      }
+    end
+
+    it "should perform write when slave became master" do
+      TConf.promote_to_master(:slave1)
+      blockrun{[
+        space.call('box.select_range', [0, 100]),
+        space.update(1, update_op, return_tuple: true),
+        space.delete(1, return_tuple: true)
+      ]}.must_equal [[record], updated, updated]
+    end
+  end
+
 end

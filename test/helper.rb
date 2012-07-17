@@ -31,12 +31,12 @@ module TConf
   end
 
   def self._to_master(cfg, conf)
-    cfg.sub!(/^replication.*$/, "replication_port = #{conf[:port]+3}")
+    cfg.sub!(/^replication_source.*$/, '#\0')
   end
 
   def self._to_slave(cfg, master)
     replica_source = "127.0.0.1:#{CONF.fetch(master)[:port]+3}"
-    cfg.sub!(/^replication.*$/, "replication_source = \"#{replica_source}\"")
+    cfg.sub!(/^#?replication_source.*$/, "replication_source = \"#{replica_source}\"")
   end
 
   def self.prepare(name)
@@ -53,6 +53,7 @@ module TConf
     cfg.sub!(/(primary_port\s*=\s*)\d+/, "\\1#{conf[:port]}")
     cfg.sub!(/(secondary_port\s*=\s*)\d+/, "\\1#{conf[:port]+1}")
     cfg.sub!(/(admin_port\s*=\s*)\d+/, "\\1#{conf[:port]+2}")
+    cfg.sub!(/(replication_port\s*=\s*)\d+/, "\\1#{conf[:port]+3}")
     if conf[:replica] == :imaster
       _to_master(cfg, conf)
     else

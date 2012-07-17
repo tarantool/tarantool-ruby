@@ -133,22 +133,5 @@ module Tarantool
       end
       @connections.clear
     end
-
-    def _send_request(shard_numbers, read_write, request_type, body, cb)
-      if @closed
-        cb.call(::IProto::Disconnected.new("Tarantool is closed"))
-      else
-        if Array === shard_numbers
-          if shard_numbers.size > 1
-            return _send_to_several_shards(
-                      shard_numbers, read_write, request_type, body, cb
-                   )
-          else
-            shard_numbers = shard_numbers[0]
-          end
-        end
-        _send_to_one_shard(shard_numbers, read_write, request_type, body, cb)
-      end
-    end
   end
 end

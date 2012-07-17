@@ -66,8 +66,8 @@ module Tarantool
       for key in keys
         pack_tuple(body, key, index_fields, index_no)
       end
-      cb = Response.new(cb, get_tuples, fields, translators)
-      _send_request(shard_nums, :read, REQUEST_SELECT, body, cb)
+      response = Response.new(cb, get_tuples, fields, translators)
+      _send_request(shard_nums, :read, REQUEST_SELECT, body, response)
     end
 
     class IndexIndexError < StandardError; end
@@ -138,9 +138,9 @@ module Tarantool
     end
 
     def _modify_request(type, body, fields, ret_tuple, cb, shard_nums, read_write, translators)
-      cb = Response.new(cb, ret_tuple && (ret_tuple != :all ? :first : :all),
+      response = Response.new(cb, ret_tuple && (ret_tuple != :all ? :first : :all),
                             fields, translators)
-      _send_request(shard_nums, read_write, type, body, cb)
+      _send_request(shard_nums, read_write, type, body, response)
     end
 
     def _insert(space_no, flags, tuple, fields, cb, ret_tuple, shard_nums, translators = [])
