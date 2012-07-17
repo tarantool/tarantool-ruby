@@ -19,9 +19,32 @@ module Tarantool
     class_attribute :space_no, instance_reader: false, instance_writer: false
     class_attribute :tarantool, instance_reader: false, instance_writer: false
 
+    class_attribute :_shard_proc, instance_reader: false, instance_writer: false
+    class_attribute :_shard_fields, instance_reader: false, instanse_writer: false
+    self._shard_proc = :default
+    self._shard_fields = nil
+
     class << self
       alias set_space_no space_no=
       alias set_tarantool tarantool=
+
+      alias set_shard_proc _shard_proc=
+      def shard_proc(cb = nil, &block)
+        if cb ||= block
+          self._shard_proc = cb
+        else
+          _shard_proc
+        end
+      end
+
+      def shard_fields(*args)
+        if args.empty?
+          _shard_fields
+        else
+          self._shard_fields = args
+        end
+      end
+      alias set_shard_fields shard_fields
     end
 
     module ClassMethods
@@ -63,7 +86,11 @@ module Tarantool
 
       def space
         @space ||= begin
-            tarantool.space_hash(space_no, fields.dup, keys: indexes)
+            tarantool.space_hash(space_no, fields.dup,
+                                 keys: indexes,
+                                 shard_fields: shard_fields,
+                                 shard_proc: _shard_proc
+                                )
           end
       end
 
@@ -187,7 +214,7 @@ module Tarantool
         end
       end
 
-      %w{where limit offset}.each do |meth|
+      %w{where limit offset shard}.each do |meth|
         class_eval <<-"EOF", __FILE__, __LINE__
           def #{meth}(arg)
             select.#{meth}(arg)

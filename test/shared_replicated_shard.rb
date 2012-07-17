@@ -1,4 +1,5 @@
 require File.expand_path('../helper.rb', __FILE__)
+require 'tarantool/light_record'
 
 shared_examples_for 'replication and shards' do
   before { TConf.reset_and_up_all }
@@ -794,4 +795,68 @@ shared_examples_for 'replication and shards' do
     it_behaves_like "replication tests"
   end
 
+  describe "record api" do
+    let(:klass) do
+      t_both = t_both()
+      Class.new(Tarantool::LightRecord) do
+        set_tarantool t_both
+        set_space_no  0
+
+        field :name, :str
+        field :surname, :str
+        field :email, :str
+        field :score, :int
+
+        index :surname, :email
+        index :score
+
+        shard_fields :score
+        shard_proc do |fields, shard_num|
+          fields[0] && ((fields[0].to_i + 1) / 2 + 1) % shard_num
+        end
+      end
+    end
+
+    before do
+      blockrun {
+        klass.create(name: 'a', surname: 'a', email: 'a', score: 1)
+        klass.create(name: 'b', surname: 'b', email: 'b', score: 2)
+        klass.create(name: 'c', surname: 'c', email: 'c', score: 3)
+        klass.create(name: 'd', surname: 'd', email: 'd', score: 4)
+      }
+    end
+
+    it "should spread distribution" do
+      results = blockrun {[
+        space0_hash_first.all_by_pks(%w{a b c d}),
+        space0_hash_second.all_by_pks(%w{a b c d})
+      ]}
+      results[0].map{|v| v[:name]}.sort.must_equal %w{a b}
+      results[0].map{|v| v[:score]}.sort.must_equal [1, 2]
+      results[1].map{|v| v[:name]}.sort.must_equal %w{c d}
+      results[1].map{|v| v[:score]}.sort.must_equal [3, 4]
+    end
+
+    it "should find by pk" do
+      results = blockrun {[
+        klass.find('a'),
+        klass.find('b'),
+        klass.find('c'),
+        klass.find('d')
+      ]}
+      results.map(&:name).must_equal %w{a b c d}
+      results.map(&:score).must_equal [1,2,3,4]
+    end
+
+    it "should find by shard key" do
+      results = blockrun {[
+        klass.first(score: 1),
+        klass.first(score: 2),
+        klass.first(score: 3),
+        klass.first(score: 4),
+      ]}
+      results.map(&:name).must_equal %w{a b c d}
+      results.map(&:score).must_equal [1,2,3,4]
+    end
+  end
 end

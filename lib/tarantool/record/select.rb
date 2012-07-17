@@ -24,6 +24,11 @@ module Tarantool
           end
       end
 
+      def reset!
+        @results = nil
+        self
+      end
+
       def each
         return to_enum  unless block_given?
         results.each{|a| yield a}
@@ -45,14 +50,30 @@ module Tarantool
         self.class.new(@record, @params.merge(where: params))
       end
 
+      def shard(params)
+        self.class.new(@record, @params.merge(shard: params))
+      end
+
+      def auto_shard
+        params = @params.dup
+        params.delte :shard
+        self.class.new(@record, params)
+      end
+
       def all
         results.dup
       end
 
       def first
-        @record.auto_space.
-          select(@params[:where], @params[:offset] || 0, 1).
-          first
+        space.select(@params[:where], @params[:offset] || 0, 1).first
+      end
+
+      def space
+        if @params[:shard]
+          @record.auto_space.shard(@params[:shard])
+        else
+          @record.auto_space
+        end
       end
     end
   end
