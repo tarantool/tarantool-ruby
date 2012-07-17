@@ -625,48 +625,178 @@ shared_examples_for 'replication and shards' do
     it_behaves_like "explicit shard number"
   end
 
-  describe "space array replication" do
-    let(:space){ space1_array_first }
-
-    let(:record){ [1, 'a', 1] }
-    let(:update_op){ {1 => 'b'} }
-    let(:updated){ [1, 'b', 1] }
-
+  shared_examples_for "replication tests" do
     before{
-      blockrun{ space.insert(record) }
-      sleep 0.1
-      TConf.stop(:master1)
+      blockrun{
+        space.insert(record1)
+        space.insert(record2)
+      }
+      sleep 0.12
+      stop_masters
     }
 
     it "should read from slave" do
-      blockrun{[
+      results = blockrun{[
+        space.by_pk(2),
         space.by_pk(1),
         space.call('box.select_range', [0, 100])
-      ]}.must_equal [record, [record]]
+      ]}
+      results[1].must_equal record1
+      results[0].must_equal record2
+      results[2].sort_by{|v| get_id(v)}.must_equal [record1, record2]
     end
 
     it "should raise exception when slave had not become master" do
       blockrun{
-        proc{
-          p space.delete(1)
-        }.must_raise Tarantool::NoMasterError
-        proc{
-          space.update(1, update_op)
-        }.must_raise Tarantool::NoMasterError
-        proc{
-          space.call('box.delete', [0, 1])
-        }.must_raise Tarantool::NoMasterError
+        [1,2].each do |i|
+          proc{
+            p space.delete(i)
+          }.must_raise Tarantool::NoMasterError
+          proc{
+            space.update(i, update_op)
+          }.must_raise Tarantool::NoMasterError
+          proc{
+            space.call('box.delete', [0, i])
+          }.must_raise Tarantool::NoMasterError
+        end
       }
     end
 
     it "should perform write when slave became master" do
-      TConf.promote_to_master(:slave1)
-      blockrun{[
+      make_masters
+      results = blockrun{[
         space.call('box.select_range', [0, 100]),
         space.update(1, update_op, return_tuple: true),
-        space.delete(1, return_tuple: true)
-      ]}.must_equal [[record], updated, updated]
+        space.delete(1, return_tuple: true),
+        space.update(2, update_op, return_tuple: true),
+        space.delete(2, return_tuple: true),
+      ]}
+      results[0].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+      results[1].must_equal updated1
+      results[2].must_equal updated1
+      results[3].must_equal updated2
+      results[4].must_equal updated2
     end
+
+    it "should perform read from previous masters when slaves (which became masters) fails" do
+      make_masters
+      make_slaves
+      sleep 0.15
+      stop_masters :slaves
+
+      results = blockrun{[
+        space.by_pk(1),
+        space.by_pk(2),
+        space.call('box.select_range', [0, 100])
+      ]}
+      results[0].must_equal record1
+      results[1].must_equal record2
+      results[2].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+    end
+
+    it "should fail when masters and slaves both down" do
+      stop_masters(:slaves)
+      blockrun{
+        proc {
+          space.by_pk(1)
+        }.must_raise ::Tarantool::ConnectionError
+      }
+    end
+  end
+
+  shared_examples_for "space array replication" do
+    let(:record1){ [1, 'a', 1] }
+    let(:record2){ [2, 'a', 2] }
+    let(:update_op){ {1 => 'b'} }
+    let(:updated1){ [1, 'b', 1] }
+    let(:updated2){ [2, 'b', 2] }
+    def get_id(v) v[0] end
+  end
+
+  shared_examples_for "space hash replication" do
+    let(:record1){ {id: 1, name: 'a', val: 1} }
+    let(:record2){ {id: 2, name: 'a', val: 2} }
+    let(:update_op){ {name: 'b'} }
+    let(:updated1){ {id: 1, name: 'b', val: 1} }
+    let(:updated2){ {id: 2, name: 'b', val: 2} }
+    def get_id(v) v[:id] end
+  end
+
+  shared_examples_for "single replication" do
+    def stop_masters(which=:masters)
+      if which == :masters
+        TConf.stop(:master1)
+      else
+        TConf.stop(:slave1)
+      end
+    end
+    def make_masters(which=:masters)
+      if which == :masters
+        TConf.promote_to_master(:slave1)
+      else
+        TConf.promote_to_master(:master1)
+      end
+    end
+    def make_slaves
+      TConf.promote_to_slave(:master1, :slave1)
+    end
+  end
+
+  shared_examples_for "shard and replication" do
+    def stop_masters(which=:masters)
+      if which == :masters
+        TConf.stop(:master1)
+        TConf.stop(:master2)
+      else
+        TConf.stop(:slave1)
+        TConf.stop(:slave2)
+      end
+    end
+    def make_masters(which=:masters)
+      if which == :masters
+        TConf.promote_to_master(:slave1)
+        TConf.promote_to_master(:slave2)
+      else
+        TConf.promote_to_master(:master1)
+        TConf.promote_to_master(:master2)
+      end
+    end
+    def make_slaves
+      TConf.promote_to_slave(:master1, :slave1)
+      TConf.promote_to_slave(:master2, :slave2)
+    end
+  end
+
+  describe "space array single replication" do
+    let(:space){ space1_array_first }
+
+    it_behaves_like "space array replication"
+    it_behaves_like "single replication"
+    it_behaves_like "replication tests"
+  end
+
+  describe "space hash single replication" do
+    let(:space){ space1_hash_first }
+
+    it_behaves_like "space hash replication"
+    it_behaves_like "single replication"
+    it_behaves_like "replication tests"
+  end
+
+  describe "space hash shard and replication" do
+    let(:space){ space1_hash_both }
+
+    it_behaves_like "space hash replication"
+    it_behaves_like "shard and replication"
+    it_behaves_like "replication tests"
+  end
+
+  describe "space array shard and replication" do
+    let(:space){ space1_array_both }
+
+    it_behaves_like "space array replication"
+    it_behaves_like "shard and replication"
+    it_behaves_like "replication tests"
   end
 
 end

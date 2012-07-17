@@ -116,12 +116,13 @@ module TConf
 
   def self.promote_to_slave(slave, master)
     conf = CONF.fetch(slave)
-    clear(name)
-    fcfg = fjoin(dir(name), 'tarantool.cfg')
+    clear(slave)
+    prepare(slave)
+    fcfg = fjoin(dir(slave), 'tarantool.cfg')
     cfg = File.read(fcfg)
     _to_slave(cfg, master)
     File.open(fcfg, 'w'){|f| f.write(cfg)}
-    run(name)
+    run(slave)
   end
 
   at_exit do
