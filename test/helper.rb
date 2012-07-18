@@ -234,8 +234,13 @@ module Helper
     end
   end
 
-  def setp(results, i)
-    proc{|v| results[i]=v; emstop}
+  def setp(i)
+    @results ||= []
+    proc{|v| @results[i]=v; emstop}
+  end
+
+  def results
+    @results
   end
 
   class TimeOut < Exception
