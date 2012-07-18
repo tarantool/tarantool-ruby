@@ -690,9 +690,138 @@ shared_examples_for 'replication and shards' do
       results[2].sort_by{|v| get_id(v)}.must_equal [record1, record2]
     end
 
+    it "should perform write to previous masters, which become masters again when slaves fails" do
+      make_masters
+      make_slaves
+      sleep 0.15
+      stop_masters :slaves
+      make_masters :masters
+
+      results = blockrun{[
+        space.call('box.select_range', [0, 100]),
+        space.update(1, update_op, return_tuple: true),
+        space.delete(1, return_tuple: true),
+        space.update(2, update_op, return_tuple: true),
+        space.delete(2, return_tuple: true),
+      ]}
+      results[0].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+      results[1].must_equal updated1
+      results[2].must_equal updated1
+      results[3].must_equal updated2
+      results[4].must_equal updated2
+    end
+
     it "should fail when masters and slaves both down" do
       stop_masters(:slaves)
       blockrun{
+        proc {
+          space.by_pk(1)
+        }.must_raise ::Tarantool::ConnectionError
+      }
+    end
+  end
+
+  shared_examples_for "replication tests 2" do
+    def prepare_replica
+      space.insert(record1)
+      space.insert(record2)
+      bsleep 0.12
+      stop_masters
+    end
+
+    it "should read from slave" do
+      results = blockrun{
+        prepare_replica
+      [
+        space.by_pk(2),
+        space.by_pk(1),
+        space.call('box.select_range', [0, 100])
+      ]}
+      results[1].must_equal record1
+      results[0].must_equal record2
+      results[2].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+    end
+
+    it "should raise exception when slave had not become master" do
+      blockrun{
+        prepare_replica
+        [1,2].each do |i|
+          proc{
+            p space.delete(i)
+          }.must_raise Tarantool::NoMasterError
+          proc{
+            space.update(i, update_op)
+          }.must_raise Tarantool::NoMasterError
+          proc{
+            space.call('box.delete', [0, i])
+          }.must_raise Tarantool::NoMasterError
+        end
+      }
+    end
+
+    it "should perform write when slave became master" do
+      results = blockrun{
+        prepare_replica
+        make_masters
+      [
+        space.call('box.select_range', [0, 100]),
+        space.update(1, update_op, return_tuple: true),
+        space.delete(1, return_tuple: true),
+        space.update(2, update_op, return_tuple: true),
+        space.delete(2, return_tuple: true),
+      ]}
+      results[0].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+      results[1].must_equal updated1
+      results[2].must_equal updated1
+      results[3].must_equal updated2
+      results[4].must_equal updated2
+    end
+
+    it "should perform read from previous masters when slaves (which became masters) fails" do
+      results = blockrun{
+        prepare_replica
+        make_masters
+        make_slaves
+        bsleep 0.15
+        stop_masters :slaves
+      [
+        space.by_pk(1),
+        space.by_pk(2),
+        space.call('box.select_range', [0, 100])
+      ]}
+      results[0].must_equal record1
+      results[1].must_equal record2
+      results[2].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+    end
+
+    it "should perform write to previous masters, which become masters again when slaves fails" do
+
+      results = blockrun{
+        prepare_replica
+        make_masters
+        make_slaves
+        bsleep 0.15
+        stop_masters :slaves
+        make_masters :masters
+      [
+        space.call('box.select_range', [0, 100]),
+        space.update(1, update_op, return_tuple: true),
+        space.delete(1, return_tuple: true),
+        space.update(2, update_op, return_tuple: true),
+        space.delete(2, return_tuple: true),
+      ]}
+      results[0].sort_by{|v| get_id(v)}.must_equal [record1, record2]
+      results[1].must_equal updated1
+      results[2].must_equal updated1
+      results[3].must_equal updated2
+      results[4].must_equal updated2
+    end
+
+
+    it "should fail when masters and slaves both down" do
+      blockrun{
+        prepare_replica
+        stop_masters(:slaves)
         proc {
           space.by_pk(1)
         }.must_raise ::Tarantool::ConnectionError
@@ -726,8 +855,8 @@ shared_examples_for 'replication and shards' do
         TConf.stop(:slave1)
       end
     end
-    def make_masters(which=:masters)
-      if which == :masters
+    def make_masters(which=:slaves)
+      if which == :slaves
         TConf.promote_to_master(:slave1)
       else
         TConf.promote_to_master(:master1)
@@ -748,8 +877,8 @@ shared_examples_for 'replication and shards' do
         TConf.stop(:slave2)
       end
     end
-    def make_masters(which=:masters)
-      if which == :masters
+    def make_masters(which=:slaves)
+      if which == :slaves
         TConf.promote_to_master(:slave1)
         TConf.promote_to_master(:slave2)
       else
@@ -793,6 +922,38 @@ shared_examples_for 'replication and shards' do
     it_behaves_like "space array replication"
     it_behaves_like "shard and replication"
     it_behaves_like "replication tests"
+  end
+
+  describe "space array single replication 2" do
+    let(:space){ space1_array_first }
+
+    it_behaves_like "space array replication"
+    it_behaves_like "single replication"
+    it_behaves_like "replication tests 2"
+  end
+
+  describe "space hash single replication 2" do
+    let(:space){ space1_hash_first }
+
+    it_behaves_like "space hash replication"
+    it_behaves_like "single replication"
+    it_behaves_like "replication tests 2"
+  end
+
+  describe "space hash shard and replication 2" do
+    let(:space){ space1_hash_both }
+
+    it_behaves_like "space hash replication"
+    it_behaves_like "shard and replication"
+    it_behaves_like "replication tests 2"
+  end
+
+  describe "space array shard and replication 2" do
+    let(:space){ space1_array_both }
+
+    it_behaves_like "space array replication"
+    it_behaves_like "shard and replication"
+    it_behaves_like "replication tests 2"
   end
 
   describe "record api" do
