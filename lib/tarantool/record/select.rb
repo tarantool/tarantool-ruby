@@ -69,11 +69,8 @@ module Tarantool
       end
 
       def space
-        if @params[:shard]
-          @record.auto_space.shard(@params[:shard])
-        else
-          @record.auto_space
-        end
+        space = @record.auto_space
+        @params[:shard] ? space.shard(@params[:shard]) : space
       end
     end
   end
