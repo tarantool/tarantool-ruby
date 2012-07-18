@@ -3,6 +3,7 @@ module Tarantool
     module Packer
     private
       EMPTY = ''.freeze
+      ONE = "\x01".freeze
       def unpack_int16(data)
         data.getbyte(0) + data.getbyte(1) * 256
       end

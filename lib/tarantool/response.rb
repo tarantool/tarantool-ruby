@@ -21,6 +21,8 @@ module Tarantool
     include Util::Packer
     include Util::TailGetter
     include Serializers
+    UTF8 = 'utf-8'.freeze
+
     def call(data)
       if Exception === data
         cb.call(data)
@@ -87,7 +89,9 @@ module Tarantool
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
             when :string, :str
-              tuple_str.slice!(0, field_size).force_encoding('utf-8')
+              str = tuple_str.slice!(0, field_size)
+              str[0,1] = EMPTY  if str < ONE
+              str.force_encoding(UTF8)
             when :int64
               if field_size == 8
                 unpack_int64!(tuple_str)

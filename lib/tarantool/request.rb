@@ -19,6 +19,7 @@ module Tarantool
     BER4 = "\x04".freeze
     BER8 = "\x08".freeze
     ZERO = "\x00".freeze
+    ONE  = "\x01".freeze
     EMPTY = "".freeze
     PACK_STRING = 'wa*'.freeze
     LEST_INT32 = -(2**31)
@@ -111,6 +112,11 @@ module Tarantool
         body << BER4 << [value].pack(INT32)
       when :string, :bytes, :str
         value = value.to_s
+        value = ZERO + value  if value < ONE
+        raise StringTooLong  if value.bytesize >= MAX_BYTE_SIZE
+        body << [value.bytesize, value].pack(PACK_STRING)
+      when :bytes
+        value = value.to_s
         raise StringTooLong  if value.bytesize >= MAX_BYTE_SIZE
         body << [value.bytesize, value].pack(PACK_STRING)
       when :int64
@@ -130,9 +136,9 @@ module Tarantool
         when Integer
           pack_field(body, :varint, value)
         when String
-          pack_field(body, :string, value)
+          pack_field(body, :bytes, value)
         when Util::AutoType
-          pack_field(body, :string, value.data)
+          pack_field(body, :bytes, value.data)
         else
           raise ArgumentError, "Could auto detect only Integer and String"
         end
