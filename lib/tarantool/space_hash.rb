@@ -263,7 +263,7 @@ module Tarantool
       first_blk(key, block)
     end
 
-    def select_blk(keys, offset=0, limit=1, &block)
+    def select_blk(keys, offset=0, limit=-1, &block)
       select_cb(keys, offset, limit, block)
     end
   end
