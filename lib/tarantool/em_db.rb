@@ -84,7 +84,8 @@ module Tarantool
     class OneShardWrite
       include ParseIProto
       def initialize(replicas, request_type, body, response, feed)
-        @replicas = replicas
+        @replicas_origin = replicas
+        @replicas = replicas.dup
         @i = replicas.size
         @request_type = request_type
         @body = body
@@ -113,6 +114,7 @@ module Tarantool
         when Exception
           @feed.call result
         else
+          @replicas_origin.replace @replicas
           @feed.call @response.parse_response(result)
         end
       end
