@@ -1,26 +1,27 @@
 require 'tarantool'
 require 'tarantool/record/select'
-require 'active_support/core_ext/class/attribute'
+require 'tarantool/core-ext'
 
 module Tarantool
   class RecordError < StandardError; end
   class UpdateNewRecord < RecordError; end
 
   class BaseRecord
-    class_attribute :fields, instance_reader: false, instance_writer: false
+    extend ::Tarantool::ClassAttribute
+    t_class_attribute :fields
     self.fields = {}.freeze
 
-    class_attribute :default_values, instance_reader: false, instance_writer: false
+    t_class_attribute :default_values
     self.default_values = {}.freeze
 
-    class_attribute :indexes, instance_reader: false, instance_writer: false
+    t_class_attribute :indexes
     self.indexes = [].freeze
 
-    class_attribute :space_no, instance_reader: false, instance_writer: false
-    class_attribute :tarantool, instance_reader: false, instance_writer: false
+    t_class_attribute :space_no
+    t_class_attribute :tarantool
 
-    class_attribute :_shard_proc, instance_reader: false, instance_writer: false
-    class_attribute :_shard_fields, instance_reader: false, instanse_writer: false
+    t_class_attribute :_shard_proc
+    t_class_attribute :_shard_fields
     self._shard_proc = nil
     self._shard_fields = nil
 
