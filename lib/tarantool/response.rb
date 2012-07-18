@@ -81,6 +81,20 @@ module Tarantool
           tuple << (field_size == 0 ? nil :
             case field
             when :int, :integer
+              if field_size == 4
+                unpack_int32!(tuple_str)
+              else
+                raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
+              end
+            when :string, :str
+              tuple_str.slice!(0, field_size).force_encoding('utf-8')
+            when :int64
+              if field_size == 8
+                unpack_int64!(tuple_str)
+              else
+                raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
+              end
+            when :varint
               case field_size
               when 8
                 unpack_int64!(tuple_str)
@@ -91,8 +105,6 @@ module Tarantool
               else
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
-            when :str, :string
-              tuple_str.slice!(0, field_size).force_encoding('utf-8')
             when :bytes
               tuple_str.slice!(0, field_size)
             when :auto

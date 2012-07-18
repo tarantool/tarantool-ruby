@@ -39,9 +39,9 @@ module Tarantool
 
         if Symbol === type
           convert_code = case type
-             when :int, :integer
+             when :int, :int64, :varint
                "v = v.to_i  if String === v"
-             when :str, :string, :bytes
+             when :string, :bytes
                ""
              else
                if serializer = Serializers::MAP[type]

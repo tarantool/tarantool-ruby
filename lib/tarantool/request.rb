@@ -24,9 +24,9 @@ module Tarantool
     LEST_INT32 = -(2**31)
     GREATEST_INT32 = 2**32
     TYPES_AUTO = [:auto].freeze
-    TYPES_FALLBACK = [:str].freeze
-    TYPES_STR_STR = [:str, :str].freeze
-    TYPES_STR_AUTO = [:str, :auto].freeze
+    TYPES_FALLBACK = [:string].freeze
+    TYPES_STR_STR = [:string, :string].freeze
+    TYPES_STR_AUTO = [:string, :auto].freeze
 
     REQUEST_SELECT = 17
     REQUEST_INSERT = 13
@@ -108,25 +108,31 @@ module Tarantool
       case field_kind
       when :int, :integer
         value = value.to_i
-        if LEST_INT32 <= value && value < GREATEST_INT32
+        body << BER4 << [value].pack(INT32)
+      when :string, :bytes, :str
+        value = value.to_s
+        raise StringTooLong  if value.bytesize >= MAX_BYTE_SIZE
+        body << [value.bytesize, value].pack(PACK_STRING)
+      when :int64
+        value = value.to_i
+        body << BER8 << [value].pack(INT64)
+      when :varint
+        value = value.to_i
+        if 0 <= value && value < GREATEST_INT32
           body << BER4 << [value].pack(INT32)
         else
           body << BER8 << [value].pack(INT64)
         end
-      when :str, :string, :bytes
-        value = value.to_s
-        raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
-        body << [value.bytesize, value].pack(PACK_STRING)
       when :error
         raise IndexIndexError
       when :auto
         case value
         when Integer
-          pack_field(body, :int, value)
+          pack_field(body, :varint, value)
         when String
-          pack_field(body, :str, value)
+          pack_field(body, :string, value)
         when Util::AutoType
-          pack_field(body, :str, value.data)
+          pack_field(body, :string, value.data)
         else
           raise ArgumentError, "Could auto detect only Integer and String"
         end
@@ -237,7 +243,7 @@ module Tarantool
           body << [ 10 + ber_size(str.bytesize) + str.bytesize ].pack('w')
           pack_field(body, :int, operation[2])
           pack_field(body, :int, operation[3])
-          pack_field(body, :str, str)
+          pack_field(body, :string, str)
         when 7
           old_field_no = field_no + 
             (inserted ||= []).count{|i| i <= field_no} -
@@ -276,7 +282,7 @@ module Tarantool
       if space_no
         values = [space_no].concat([*values])
         if opts[:types]
-          opts[:types] = [:str].concat([*opts[:types]]) # cause lua could convert it to integer by itself
+          opts[:types] = [:string].concat([*opts[:types]]) # cause lua could convert it to integer by itself
         else
           opts[:types] = TYPES_STR_STR
         end
@@ -326,13 +332,13 @@ module Tarantool
     alias ping_cb _ping
 
     def _detect_types(values)
-      values.map{|v| Integer === v ? :int : :str}
+      values.map{|v| Integer === v ? :varint : :string}
     end
 
     def _detect_type(value)
-      Integer === v ? :int :
+      Integer === v ? :varint :
       Util::AutoType === v ? :auto :
-      :str
+      :string
     end
 
     def _parse_hash_definition(returns)
