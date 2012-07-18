@@ -87,8 +87,17 @@ module Tarantool
       self.class::SpaceArray.new(self, space_no, field_types, indexes,
                                  shard_fields, shard_proc)
     end
-    # alias space_array to space for backward compatibility
-    alias space space_array
+
+    def space(space_no, fields = [], opts = {})
+      case fields
+      when Array
+        space_array(space_no, fields, opts)
+      when Hash
+        space_array(space_no, fields, opts)
+      else
+        raise "You should specify fields as an array or hash (got #{fields.inspect})"
+      end
+    end
 
     def space_hash(space_no, fields, opts = {})
       indexes = opts[:keys] || opts[:indexes]
