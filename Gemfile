@@ -6,11 +6,10 @@ end
 
 group :test do
   gem "rr"
-  gem "activesupport"
   gem "activemodel"
   gem "yajl-ruby"
   gem "bson"
   gem "bson_ext"
 end
-# Specify your gem's dependencies in em-tarantool.gemspec
-gemspec
+# Specify your gem's dependencies in tarantool.gemspec
+gemspec name: 'tarantool'
