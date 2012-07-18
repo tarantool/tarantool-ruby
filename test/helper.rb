@@ -234,6 +234,10 @@ module Helper
     end
   end
 
+  def setp(results, i)
+    proc{|v| results[i]=v; emstop}
+  end
+
   class TimeOut < Exception
   end
   def fibrun

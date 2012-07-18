@@ -16,29 +16,15 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be selectable" do
       results = []
       emrun(8) { 
-        space0.select(0, 'vasya'){|res| results[0] = res; emstop}
-        space0.select(0, ['vasya']){|res| results[1] = res; emstop}
-        space0.select(0, ['vasya', 'ilya']){|res|
-          results[2] = res; emstop
-        }
-        space0.select(0, [['vasya'], ['ilya']]){|res|
-          results[3] = res; emstop
-        }
-        space0.select(0, [['ilya'], ['vasya']]){|res|
-          results[4] = res; emstop
-        }
-        space0.select(0, [['ilya'], ['vasya']], 0, 1){|res|
-          results[5] = res; emstop
-        }
-        space0.select(0, [['ilya'], ['vasya']], 1, 1){|res|
-          results[6] = res; emstop
-        }
-        space0.select(2, 13, 0, 2){|res|
-          results[7] = res; emstop
-        }
-        space0.select(1, [['zimov','il@zi.bot']]){|res|
-          results[8] = res; emstop
-        }
+        space0.select(0, 'vasya',                     &setp(results, 0))
+        space0.select(0, ['vasya'],                   &setp(results, 1))
+        space0.select(0, ['vasya', 'ilya'],           &setp(results, 2))
+        space0.select(0, [['vasya'], ['ilya']],       &setp(results, 3))
+        space0.select(0, [['ilya'], ['vasya']],       &setp(results, 4))
+        space0.select(0, [['ilya'], ['vasya']], 0, 1, &setp(results, 5))
+        space0.select(0, [['ilya'], ['vasya']], 1, 1, &setp(results, 6))
+        space0.select(2, 13, 0, 2,                    &setp(results, 7))
+        space0.select(1, [['zimov','il@zi.bot']],     &setp(results, 8))
       }
       results[0].must_equal [vasya]
       results[1].must_equal [vasya]
@@ -54,27 +40,15 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to all_by_keys" do
       results = []
       emrun(8) { 
-        space0.all_by_keys(0, 'vasya'){|res| results[0] = res; emstop}
-        space0.all_by_keys(0, ['vasya']){|res| results[1] = res; emstop}
-        space0.all_by_keys(0, ['vasya', 'ilya']){|res|
-          results[2] = res; emstop
-        }
-        space0.all_by_keys(0, [['vasya'], ['ilya']]){|res|
-          results[3] = res; emstop
-        }
-        space0.all_by_keys(0, [['ilya'], ['vasya']]){|res|
-          results[4] = res; emstop
-        }
-        space0.all_by_keys(0, [['ilya'], ['vasya']], limit: 1){|res|
-          results[5] = res; emstop
-        }
-        space0.all_by_keys(0, [['ilya'], ['vasya']], limit: 1, offset: 1){|res|
-          results[6] = res; emstop
-        }
-        space0.all_by_keys(2, 13){|res| results[7] = res; emstop }
-        space0.all_by_keys(1, [['zimov','il@zi.bot']]){|res|
-          results[8] = res; emstop
-        }
+        space0.all_by_keys(0, 'vasya',                         &setp(results, 0))
+        space0.all_by_keys(0, ['vasya'],                       &setp(results, 1))
+        space0.all_by_keys(0, ['vasya', 'ilya'],               &setp(results, 2))
+        space0.all_by_keys(0, [['vasya'], ['ilya']],           &setp(results, 3))
+        space0.all_by_keys(0, [['ilya'], ['vasya']],           &setp(results, 4))
+        space0.all_by_keys(0, [['ilya'], ['vasya']], limit: 1, &setp(results, 5))
+        space0.all_by_keys(0, [['ilya'], ['vasya']], limit: 1, offset: 1, &setp(results, 6))
+        space0.all_by_keys(2, 13,                              &setp(results, 7))
+        space0.all_by_keys(1, [['zimov','il@zi.bot']],         &setp(results, 8))
       }
       results[0].must_equal [vasya]
       results[1].must_equal [vasya]
@@ -90,12 +64,10 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to all_by_key" do
       results = []
       emrun(4) { 
-        space0.all_by_key(0, 'vasya'){|res| results[0] = res; emstop}
-        space0.all_by_key(0, ['vasya']){|res| results[1] = res; emstop}
-        space0.all_by_key(2, 13){|res| results[2] = res; emstop }
-        space0.all_by_key(1, ['zimov','il@zi.bot']){|res|
-          results[3] = res; emstop
-        }
+        space0.all_by_key(0, 'vasya',               &setp(results, 0))
+        space0.all_by_key(0, ['vasya'],             &setp(results, 1))
+        space0.all_by_key(2, 13,                    &setp(results, 2))
+        space0.all_by_key(1, ['zimov','il@zi.bot'], &setp(results, 3))
       }
       results[0].must_equal [vasya]
       results[1].must_equal [vasya]
@@ -106,12 +78,10 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to first_by_key" do
       results = []
       emrun(4) { 
-        space0.first_by_key(0, 'vasya'){|res| results[0] = res; emstop}
-        space0.first_by_key(0, ['ilya']){|res| results[1] = res; emstop}
-        space0.first_by_key(2, 13){|res| results[2] = res; emstop }
-        space0.first_by_key(1, ['petrov','eb@lo.com']){|res|
-          results[3] = res; emstop
-        }
+        space0.first_by_key(0, 'vasya', &setp(results, 0))
+        space0.first_by_key(0, ['ilya'], &setp(results, 1))
+        space0.first_by_key(2, 13, &setp(results, 2))
+        space0.first_by_key(1, ['petrov','eb@lo.com'], &setp(results, 3))
       }
       results[0].must_equal vasya
       results[1].must_equal ilya
@@ -122,11 +92,9 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to by_pk" do
       results = []
       emrun(3) { 
-        space0.by_pk('vasya'){|res| results[0] = res; emstop}
-        space0.by_pk(['ilya']){|res| results[1] = res; emstop}
-        space2.by_pk(['hi zo', 'ho zo']){|res|
-          results[2] = res; emstop
-        }
+        space0.by_pk('vasya', &setp(results, 0))
+        space0.by_pk(['ilya'], &setp(results, 1))
+        space2.by_pk(['hi zo', 'ho zo'], &setp(results, 2))
       }
       results[0].must_equal vasya
       results[1].must_equal ilya
@@ -136,7 +104,7 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should raise on not matched pk" do
       proc {
         emrun(1) {
-          space0.by_pk(['il','ya']){|res| assert false; emstop }
+          space0.by_pk(['il','ya'], &setp([], 0))
         }
       }.must_raise Tarantool::ArgumentError
     end
@@ -144,8 +112,8 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should fetch longer records" do
       results = []
       emrun(2) {
-        space2.by_pk(['hi zo', 'pidas']){|res| results[0] = res; emstop}
-        space1.by_pk(2){|res| results[1] = res; emstop}
+        space2.by_pk(['hi zo', 'pidas'], &setp(results, 0))
+        space1.by_pk(2, &setp(results, 1))
       }
       results[0].must_equal ['hi zo', 'pidas', 1, 3, 5]
       results[1].must_equal [2, 'medium', 6, 'common', 7]
@@ -158,16 +126,13 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       zxcv = [4, 'zxcv', 7, 'zxcv', 8]
       xcvb = [5, 'xcvb', 7, 'xcvb', 8]
       emrun(4) {
-        space0.insert(asdf){|res| results[0] = res; emstop}
-        space0.insert(qwer, return_tuple: true){|res| results[1] = res; emstop }
+        space0.insert(asdf, &setp(results, 0))
+        space0.insert(qwer, return_tuple: true, &setp(results, 1))
         space1.insert(zxcv){|res|
           results[2] = res
-          space1.by_pk(4){|res|
-            results[3] = res
-            emstop
-          }
+          space1.by_pk(4, &setp(results, 3))
         }
-        space1.insert(xcvb, return_tuple: true){|res| results[4] = res; emstop }
+        space1.insert(xcvb, return_tuple: true, &setp(results, 4))
       }
       results[0].must_equal 1
       results[1].must_equal qwer
@@ -179,32 +144,17 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to update" do
       results = []
       emrun(6) {
-        space0.update('vasya', {1 => 'holodov', 3 => [:+, 2]}, return_tuple: true){|res|
-          results[0] = res; emstop
-        }
-        space0.update('ilya', {[2, :set] => 'we@al.hero', 3 => [:&, 7]}, return_tuple: true){|res|
-          results[1] = res; emstop
-        }
+        space0.update('vasya', {1 => 'holodov', 3 => [:+, 2]}, return_tuple: true, &setp(results, 0))
+        space0.update('ilya', {[2, :set] => 'we@al.hero', 3 => [:&, 7]}, return_tuple: true, &setp(results, 1))
         space1.update(2, [[2, :^, 3], [4, :|, 20]]){|res|
           results[2] = res
-          space1.by_pk(2){|res|
-            results[3] = res; emstop
-          }
+          space1.by_pk(2, &setp(results, 3))
         }
-        space1.update(1, [1, :splice, 2, 2, 'nd'], return_tuple: true){|res|
-          results[4] = res
-          emstop
-        }
-        space2.update(['hi zo', 'pidas'], [[2, :delete], [3, :delete]], return_tuple: true){|res|
-          results[5] = res
-          emstop
-        }
+        space1.update(1, [1, :splice, 2, 2, 'nd'], return_tuple: true, &setp(results, 4))
+        space2.update(['hi zo', 'pidas'], [[2, :delete], [3, :delete]], return_tuple: true, &setp(results, 5))
         space2.update(['coma', 'peredoma'], [2, :insert, 1]){|res|
           results[6] = res
-          space2.all_by_key(1, 1){|res|
-            results[7] = res
-            emstop
-          }
+          space2.all_by_key(1, 1, &setp(results, 7))
         }
       }
       results[0].must_equal ['vasya', 'holodov', 'eb@lo.com', 7]
@@ -217,15 +167,9 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to delete" do
       results = []
       emrun(3) {
-        space0.delete('vasya', return_tuple: true){|res|
-          results[0] = res; emstop
-        }
-        space1.delete([1], return_tuple: true){|res|
-          results[1] = res; emstop
-        }
-        space2.delete(['hi zo', 'pidas'], return_tuple: true){|res|
-          results[2] = res; emstop
-        }
+        space0.delete('vasya', return_tuple: true, &setp(results, 0))
+        space1.delete([1], return_tuple: true, &setp(results, 1))
+        space2.delete(['hi zo', 'pidas'], return_tuple: true, &setp(results, 2))
       }
       results[0].must_equal vasya
       results[1].must_equal [1, 'common', 4]
@@ -235,16 +179,10 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     it "should be able to choose index by field numbers" do
       results = []
       emrun(4) {
-        space0.first_by_key([0], 'vasya'){|res| results[0] = res; emstop}
-        space0.first_by_key([1,2], ['zimov', 'il@zi.bot']){|res|
-          results[1] = res; emstop
-        }
-        space0.all_by_key([3], 13){|res|
-          results[2] = res; emstop
-        }
-        space2.first_by_key([1,0], ['peredoma', 'coma']){|res|
-          results[3] = res; emstop
-        }
+        space0.first_by_key([0], 'vasya', &setp(results, 0))
+        space0.first_by_key([1,2], ['zimov', 'il@zi.bot'], &setp(results, 1))
+        space0.all_by_key([3], 13, &setp(results, 2))
+        space2.first_by_key([1,0], ['peredoma', 'coma'], &setp(results, 3))
       }
       results[0].must_equal vasya
       results[1].must_equal ilya
