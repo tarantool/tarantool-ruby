@@ -21,30 +21,13 @@ module Tarantool
 
     class_attribute :_shard_proc, instance_reader: false, instance_writer: false
     class_attribute :_shard_fields, instance_reader: false, instanse_writer: false
-    self._shard_proc = :default
+    self._shard_proc = nil
     self._shard_fields = nil
 
     class << self
       alias set_space_no space_no=
       alias set_tarantool tarantool=
-
       alias set_shard_proc _shard_proc=
-      def shard_proc(cb = nil, &block)
-        if cb ||= block
-          self._shard_proc = cb
-        else
-          _shard_proc
-        end
-      end
-
-      def shard_fields(*args)
-        if args.empty?
-          _shard_fields
-        else
-          self._shard_fields = args
-        end
-      end
-      alias set_shard_fields shard_fields
     end
 
     module ClassMethods
@@ -80,16 +63,41 @@ module Tarantool
         end
       end
 
+      def shard_proc(cb = nil, &block)
+        if cb ||= block
+          self._shard_proc = cb
+        else
+          _shard_proc
+        end
+      end
+
+      def shard_fields(*args)
+        if args.empty?
+          _shard_fields
+        else
+          self._shard_fields = args
+        end
+      end
+      alias set_shard_fields shard_fields
+
       def primary_index
         indexes[0]
       end
 
       def space
         @space ||= begin
+            shard_fields = _shard_fields || primary_index
+            shard_proc = _shard_proc ||
+              if shard_fields.size == 1 &&
+                  [:int, :int64, :varint].include?(fields[shard_fields[0]])
+                :modulo
+              else
+                :default
+              end
             tarantool.space_hash(space_no, fields.dup,
                                  keys: indexes,
                                  shard_fields: shard_fields,
-                                 shard_proc: _shard_proc
+                                 shard_proc: shard_proc
                                 )
           end
       end
