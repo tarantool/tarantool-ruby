@@ -22,29 +22,25 @@ module Tarantool
     end
 
     def save
-      if before_save
-        if @__new_record
-          if before_create
-            self.class.insert(@attributes)
-            @__new_record = false
-            after_create
-          end
-        else
-          if before_update
-            self.class.replace(@attributes)
-            after_update
-          end
-        end
-        after_save
+      return false  unless before_save
+      if @__new_record
+        return false  unless before_create
+        self.class.insert(@attributes)
+        @__new_record = false
+        after_create
+      else
+        return false  unless before_update
+        self.class.replace(@attributes)
+        after_update
       end
+      after_save
       self
     end
 
     def destroy
-      if before_destroy
-        self.class.delete id
-        after_destroy
-      end
+      return false  unless before_destroy
+      self.class.delete id
+      after_destroy
       true
     end
 
