@@ -48,7 +48,7 @@ module Tarantool
         require 'tarantool/block_db'
         BlockDB.new(shards, replica_strategy)
       else
-        raise "Unknown Tarantool connection type"
+        raise "Unknown Tarantool connection type #{conf[:type]}"
       end
     end
 
