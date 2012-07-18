@@ -22,19 +22,40 @@ module Tarantool
     end
 
     def save
-      if @__new_record
-        self.class.insert(@attributes)
-        @__new_record = false
-      else
-        self.class.replace(@attributes)
+      if before_save
+        if @__new_record
+          if before_create
+            self.class.insert(@attributes)
+            @__new_record = false
+            after_create
+          end
+        else
+          if before_update
+            self.class.replace(@attributes)
+            after_update
+          end
+        end
+        after_save
       end
       self
     end
 
     def destroy
-      self.class.delete id
+      if before_destroy
+        self.class.delete id
+        after_destroy
+      end
       true
     end
+
+    def before_save; true end
+    def before_create; true end
+    def before_update; true end
+    def after_create; end
+    def after_update; end
+    def after_save; end
+    def before_destroy; true end
+    def after_destroy; end
 
     class << self
       def generated_attribute_methods
