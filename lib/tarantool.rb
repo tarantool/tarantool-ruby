@@ -137,8 +137,8 @@ module Tarantool
     end
 
     def close_connection
-      @connections.each do |name, conn|
-        conn.close
+      @connections.each do |number, replicas|
+        replicas.each(&:close)
       end
       @connections.clear
     end
