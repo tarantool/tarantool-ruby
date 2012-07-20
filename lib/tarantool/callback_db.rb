@@ -10,6 +10,7 @@ module Tarantool
       alias select       select_blk
       alias insert       insert_blk
       alias replace      replace_blk
+      alias store        store_blk
       alias update       update_blk
       alias delete       delete_blk
       alias invoke       invoke_blk
@@ -24,6 +25,7 @@ module Tarantool
       alias select  select_blk
       alias insert  insert_blk
       alias replace replace_blk
+      alias store   store_blk
       alias update  update_blk
       alias delete  delete_blk
       alias invoke  invoke_blk
@@ -37,6 +39,7 @@ module Tarantool
       alias first   first_blk
       alias insert  insert_blk
       alias replace replace_blk
+      alias store   store_blk
       alias update  update_blk
       alias delete  delete_blk
       alias invoke  invoke_blk

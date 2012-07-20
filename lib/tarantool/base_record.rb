@@ -207,6 +207,15 @@ module Tarantool
         end
       end
 
+      def store(hash, ret_tuple = false)
+        hash = default_values.merge(hash)
+        if ret_tuple
+          from_fetched space.store(hash, return_tuple: true)
+        else
+          space.store(hash)
+        end
+      end
+
       def update(pk, ops, ret_tuple=false)
         if ret_tuple
           from_fetched space.update(pk, ops, return_tuple: true)

@@ -116,6 +116,11 @@ module Tarantool
               cb, opts[:return_tuple], shard_nums)
     end
 
+    def store_cb(tuple, cb, opts = {})
+      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      _insert(@space_no, 0, tuple, @fields, cb, opts[:return_tuple], shard_nums)
+    end
+
     def update_cb(pk, operations, cb, opts = {})
       shard_nums = _get_shard_nums{ _detect_shards_for_key(pk, 0) }
       _update(@space_no, pk, operations, @fields,

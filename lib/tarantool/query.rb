@@ -43,6 +43,12 @@ module Tarantool
       _insert(space_no, BOX_REPLACE, tuple, types, cb, opts[:return_tuple], shard_nums)
     end
 
+    def store_cb(space_no, tuple, cb, opts={})
+      types = opts[:types] || _detect_types(tuple)
+      shard_nums = _get_shard_nums{ all_shards }
+      _insert(space_no, 0, tuple, types, cb, opts[:return_tuple], shard_nums)
+    end
+
     def update_cb(space_no, pk, operations, cb, opts={})
       pk = [*pk]
       pk_types = opts[:pk_types] || _detect_types(pk)
@@ -104,6 +110,10 @@ module Tarantool
 
     def replace_blk(space_no, tuple, opts={}, &block)
       replace_cb(space_no, tuple, block, opts)
+    end
+
+    def store_blk(space_no, tuple, opts={}, &block)
+      store_cb(space_no, tuple, block, opts)
     end
 
     def update_blk(space_no, pk, operation, opts={}, &block)

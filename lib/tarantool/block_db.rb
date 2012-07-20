@@ -104,6 +104,10 @@ module Tarantool
         replace_cb(tuple, _block_cb, opts)
       end
 
+      def store(tuple, opts={})
+        store_cb(tuple, _block_cb, opts)
+      end
+
       def update(pk, operations, opts={})
         update_cb(pk, operations, _block_cb, opts)
       end
@@ -184,6 +188,10 @@ module Tarantool
 
       def replace(space_no, tuple, opts={})
         replace_cb(space_no, tuple, _block_cb, opts)
+      end
+
+      def store(space_no, tuple, opts={})
+        store_cb(space_no, tuple, _block_cb, opts)
       end
 
       def update(space_no, pk, operation, opts={})

@@ -156,6 +156,13 @@ module Tarantool
               shard_nums, @translators)
     end
 
+    def store_cb(tuple, cb, opts = {})
+      tuple = _prepare_tuple(tuple)
+      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      _insert(@space_no, 0, tuple, @field_types, cb, opts[:return_tuple],
+              shard_nums, @translators)
+    end
+
     def _prepare_pk(pk)
       if Hash === pk
         pk_fields = pk.keys

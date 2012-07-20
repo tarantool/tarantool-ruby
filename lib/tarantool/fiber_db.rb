@@ -24,6 +24,11 @@ module Tarantool
         _raise_or_return ::Fiber.yield
       end
 
+      def store(tuple, opts={})
+        store_cb(tuple, ::Fiber.current, opts)
+        _raise_or_return ::Fiber.yield
+      end
+
       def update(pk, operations, opts={})
         update_cb(pk, operations, ::Fiber.current, opts)
         _raise_or_return ::Fiber.yield
@@ -120,6 +125,11 @@ module Tarantool
 
       def replace(space_no, tuple, opts={})
         replace_cb(space_no, tuple, ::Fiber.current, opts)
+        _raise_or_return ::Fiber.yield
+      end
+
+      def store(space_no, tuple, opts={})
+        store_cb(space_no, tuple, ::Fiber.current, opts)
         _raise_or_return ::Fiber.yield
       end
 

@@ -390,6 +390,10 @@ module Tarantool
       replace_cb(tuple, block, opts)
     end
 
+    def store_blk(tuple, opts={}, &block)
+      store_cb(tuple, block, opts)
+    end
+
     def update_blk(pk, operations, opts={}, &block)
       update_cb(pk, operations, block, opts)
     end
