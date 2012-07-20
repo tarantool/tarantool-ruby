@@ -7,8 +7,6 @@ module Tarantool
     include Util::Packer
     include Util::TailGetter
     include Serializers
-    INT32 = 'V'.freeze
-    INT64 = 'Q<'.freeze
     SELECT_HEADER = 'VVVVV'.freeze
     INSERT_HEADER = 'VV'.freeze
     UPDATE_HEADER = 'VV'.freeze
@@ -16,14 +14,12 @@ module Tarantool
     CALL_HEADER = 'Vwa*'.freeze
     INT32_0 = "\x00\x00\x00\x00".freeze
     INT32_1 = "\x01\x00\x00\x00".freeze
-    BER4 = "\x04".freeze
-    BER8 = "\x08".freeze
     ZERO = "\x00".freeze
     ONE  = "\x01".freeze
     EMPTY = "".freeze
     PACK_STRING = 'wa*'.freeze
     LEST_INT32 = -(2**31)
-    GREATEST_INT32 = 2**32
+
     TYPES_AUTO = [:auto].freeze
     TYPES_FALLBACK = [:string].freeze
     TYPES_STR_STR = [:string, :string].freeze
@@ -109,7 +105,8 @@ module Tarantool
       case field_kind
       when :int, :integer
         value = value.to_i
-        body << BER4 << [value].pack(INT32)
+        _raise_integer_overflow(value, MIN_INT, MAX_INT32)  if value > MAX_INT32 or value < 0
+        append_ber_int32!(body, value)
       when :string, :bytes, :str
         value = value.to_s
         value = ZERO + value  if value < ONE
@@ -121,13 +118,38 @@ module Tarantool
         body << [value.bytesize, value].pack(PACK_STRING)
       when :int64
         value = value.to_i
-        body << BER8 << [value].pack(INT64)
+        _raise_integer_overflow(value, MIN_INT, MAX_INT64)  if value > MAX_INT64 or value < 0
+        append_ber_int64!(body, value)
+      when :int16
+        value = value.to_i
+        _raise_integer_overflow(value, MIN_INT, MAX_INT16)  if value > MAX_INT16 or value < 0
+        append_ber_int16!(body, value)
+      when :int8
+        value = value.to_i
+        _raise_integer_overflow(value, MIN_INT, MAX_INT8)  if value > MAX_INT8 or value < 0
+        append_ber_int8!(body, value)
+      when :sint
+        value = value.to_i
+        _raise_integer_overflow(value, MIN_SINT32, MAX_SINT32)  if value > MAX_SINT32 or value < MIN_SINT32
+        append_ber_sint32!(body, value)
+      when :sint64
+        value = value.to_i
+        _raise_integer_overflow(value, MIN_SINT64, MAX_SINT64)  if value > MAX_SINT64 or value < MIN_SINT64
+        append_ber_sint64!(body, value)
+      when :sint16
+        value = value.to_i
+        _raise_integer_overflow(value, MIN_SINT16, MAX_SINT16)  if value > MAX_SINT16 or value < MIN_SINT16
+        append_ber_sint16!(body, value)
+      when :sint8
+        value = value.to_i
+        _raise_integer_overflow(value, MIN_SINT8, MAX_SINT8)  if value > MAX_SINT8 or value < MIN_SINT8
+        append_ber_sint8!(body, value)
       when :varint
         value = value.to_i
-        if 0 <= value && value < GREATEST_INT32
-          body << BER4 << [value].pack(INT32)
+        if 0 <= value && value < MAX_INT32
+          append_ber_int32!(body, value)
         else
-          body << BER8 << [value].pack(INT64)
+          append_ber_sint64!(body, value)
         end
       when :error
         raise IndexIndexError
@@ -147,6 +169,10 @@ module Tarantool
         raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
         body << [value.bytesize, value].pack(PACK_STRING)
       end
+    end
+
+    def _raise_integer_overflow(value, min, max)
+        raise IntegerFieldOverflow, "#{value} not in (#{min}..#{max})"
     end
 
     def _modify_request(type, body, fields, ret_tuple, cb, shard_nums, read_write, translators)
@@ -176,7 +202,7 @@ module Tarantool
 
       body = [space_no, flags].pack(UPDATE_HEADER)
       pack_tuple(body, pk, pk_fields, 0)
-      body << [operations.size].pack(INT32)
+      append_int32!(body, operations.size)
 
       _pack_operations(body, operations, fields)
 
@@ -239,7 +265,7 @@ module Tarantool
           unless operation.size == 3 && !operation[2].nil?
             raise ArgumentError, "wrong arguments for integer operation #{operation.inspect}"
           end
-          pack_field(body, :int, operation[2])
+          pack_field(body, :sint, operation[2])
         when 5
           unless operation.size == 5 && !operation[2].nil? && !operation[3].nil?
             raise ArgumentError, "wrong arguments for slice operation #{operation.inspect}"
@@ -247,9 +273,9 @@ module Tarantool
 
           str = operation[4].to_s
           body << [ 10 + ber_size(str.bytesize) + str.bytesize ].pack('w')
-          pack_field(body, :int, operation[2])
-          pack_field(body, :int, operation[3])
-          pack_field(body, :string, str)
+          append_ber_sint32!(body, operation[2].to_i)
+          append_ber_sint32!(body, operation[3].to_i)
+          body << [str.bytesize, str.to_s].pack(PACK_STRING)
         when 7
           old_field_no = field_no + 
             (inserted ||= []).count{|i| i <= field_no} -

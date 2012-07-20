@@ -4,6 +4,7 @@ module Tarantool
 
   class ArgumentError < ::ArgumentError; end
   class StringTooLong < ArgumentError; end
+  class IntegerFieldOverflow < ArgumentError; end
 
   class TarantoolError < StandardError; end
   class ValueError < TarantoolError; end

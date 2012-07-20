@@ -8,10 +8,22 @@ module Tarantool
       return :string  if String  == type
 
       case type
-      when :int, :integer
+      when :int, :integer, :int32, :integer32
         :int
       when :int64, :integer64
         :int64
+      when :int16, :integer16
+        :int16
+      when :int8, :integer8
+        :int8
+      when :sint, :sinteger, :sint32, :sinteger32
+        :sint
+      when :sint16, :sinteger16
+        :sint16
+      when :sint64, :sinteger64
+        :sint64
+      when :sint8, :sinteger8
+        :sint8
       when :varint
         :varint
       when :str, :string
