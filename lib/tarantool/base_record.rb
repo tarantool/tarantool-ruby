@@ -111,6 +111,11 @@ module Tarantool
           end
       end
 
+      def reset_space!
+        @space = nil
+        @auto_space = nil
+      end
+
       def by_pk(pk)
         if Hash === (res = space.by_pk(pk))
           from_fetched(res)
