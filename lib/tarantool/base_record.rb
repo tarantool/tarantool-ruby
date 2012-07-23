@@ -17,8 +17,8 @@ module Tarantool
     t_class_attribute :indexes
     self.indexes = [].freeze
 
-    t_class_attribute :space_no
-    t_class_attribute :tarantool
+    t_class_attribute :_space_no
+    t_class_attribute :_tarantool
 
     t_class_attribute :_shard_proc
     t_class_attribute :_shard_fields
@@ -26,12 +26,41 @@ module Tarantool
     self._shard_fields = nil
 
     class << self
-      alias set_space_no space_no=
-      alias set_tarantool tarantool=
       alias set_shard_proc _shard_proc=
     end
 
     module ClassMethods
+      def tarantool(v=nil)
+        unless v
+          _tarantool
+        else
+          self.tarantool = v
+        end
+      end
+
+      def tarantool=(v)
+        reset_space!
+        unless ::Tarantool::BlockDB === v || ::Tarantool::FiberDB === v
+          raise ArgumentError, "you may assing to record's tarantool only instances of Tarantool::BlockDB or Tarantool::FiberDB"
+        end
+        self._tarantool= v
+      end
+      alias set_tarantool tarantool=
+
+      def space_no(v=nil)
+        unless v
+          _space_no
+        else
+          self.space_no = v
+        end
+      end
+
+      def space_no=(v)
+        reset_space!
+        self._space_no = v
+      end
+      alias set_space_no  space_no=
+
       def field(name, type, params = {})
         type = Serializers.check_type(type)
 
@@ -95,7 +124,7 @@ module Tarantool
               else
                 :default
               end
-            tarantool.space_hash(space_no, fields.dup,
+            _tarantool.space_hash(_space_no, fields.dup,
                                  keys: indexes,
                                  shard_fields: shard_fields,
                                  shard_proc: shard_proc
