@@ -3,6 +3,10 @@ require 'tarantool/em_db'
 
 module Tarantool
   class FiberDB < EMDB
+    def primary_interface
+      :synchronous
+    end
+
     module CommonSpaceFiberMethods
       def all_by_pks(pks, opts={})
         all_by_pks_cb(pks, ::Fiber.current, opts)

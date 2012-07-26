@@ -142,5 +142,9 @@ module Tarantool
       end
       @connections.clear
     end
+
+    def primary_interface
+      raise NoMethodError, "#primary_interface should by overriden"
+    end
   end
 end

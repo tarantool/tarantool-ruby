@@ -83,6 +83,10 @@ module Tarantool
       results
     end
 
+    def primary_interface
+      :synchronous
+    end
+
     module CommonSpaceBlockingMethods
       def _block_cb
         @_block_cb ||= method(:_raise_or_return)

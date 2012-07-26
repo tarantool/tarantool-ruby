@@ -40,7 +40,7 @@ module Tarantool
 
       def tarantool=(v)
         reset_space!
-        unless ::Tarantool::BlockDB === v || ::Tarantool::FiberDB === v
+        unless ::Tarantool::DB === v && v.primary_interface == :synchronous
           raise ArgumentError, "you may assing to record's tarantool only instances of Tarantool::BlockDB or Tarantool::FiberDB"
         end
         self._tarantool= v

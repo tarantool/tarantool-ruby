@@ -2,6 +2,10 @@ require 'tarantool/em_db'
 
 module Tarantool
   class CallbackDB < EMDB
+    def primary_interface
+      :callback
+    end
+
     class SpaceArray < ::Tarantool::SpaceArray
       alias by_pk        by_pk_blk
       alias all_by_key   all_by_key_blk
