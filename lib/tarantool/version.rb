@@ -1,4 +1,4 @@
 module Tarantool
-  VERSION = "0.4.1.2"
-  RECORD_VERSION = "0.4.0"
+  VERSION = "0.4.1.3"
+  RECORD_VERSION = "0.4.1"
 end
