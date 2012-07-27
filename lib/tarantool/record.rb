@@ -39,12 +39,12 @@ module Tarantool
 
         if Symbol === type
           convert_code = case type
-             when :int, :int64, :varint
+             when :int, :int64, :varint, :int16, :int8, :sint, :sint64, :sint16, :sint8
                "v = v.to_i  if String === v"
              when :string, :bytes
                ""
              else
-               if serializer = Serializers::MAP[type]
+               if Serializers::MAP[type]
                  "v = Serializers::MAP[#{type.inspect}].decode(v)  if String === v"
                else
                  raise ArgumentError, "unknown field type #{type.inspect}"
