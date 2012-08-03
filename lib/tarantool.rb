@@ -37,16 +37,19 @@ module Tarantool
         raise ArgumentError, "Shard strategy could be :round_robin or :master_first, got #{replica_strategy.inspect}"
       end
 
+      previous_shards_count = conf[:previous_shards_count]
+      insert_to_previous_shard = conf[:insert_to_previous_shard]
+
       case conf[:type] || :block
       when :em, :em_fiber
         require 'tarantool/fiber_db'
-        FiberDB.new(shards, replica_strategy)
+        FiberDB.new(shards, replica_strategy, previous_shards_count, insert_to_previous_shard)
       when :em_cb, :em_callback
         require 'tarantool/callback_db'
-        CallbackDB.new(shards, replica_strategy)
+        CallbackDB.new(shards, replica_strategy, previous_shards_count, insert_to_previous_shard)
       when :block
         require 'tarantool/block_db'
-        BlockDB.new(shards, replica_strategy)
+        BlockDB.new(shards, replica_strategy, previous_shards_count, insert_to_previous_shard)
       else
         raise "Unknown Tarantool connection type #{conf[:type]}"
       end
@@ -68,11 +71,13 @@ module Tarantool
   end
 
   class DB
-    attr_reader :closed, :connection
+    attr_reader :closed, :connections
     alias closed? closed
-    def initialize(shards, replica_strategy)
+    def initialize(shards, replica_strategy, previous_shards_count, insert_to_previous_shard)
       @shards = shards
       @replica_strategy = replica_strategy
+      @previous_shards_count = previous_shards_count
+      @insert_to_previous_shard = insert_to_previous_shard
       @connections = {}
       @closed = false
     end
@@ -126,6 +131,12 @@ module Tarantool
 
     def shards_count
       @shards.count
+    end
+
+    attr_reader :previous_shards_count
+
+    def insert_with_shards_count
+      @insert_to_previous_shard && @previous_shards_count || @shards.count
     end
 
     def _shard(number)

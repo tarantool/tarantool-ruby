@@ -69,12 +69,25 @@ module Tarantool
 
     def _send_to_several_shards(shard_numbers, read_write, request_type, body, response)
       results = []
-      for shard in shard_numbers
-        res = _send_to_one_shard(shard, read_write, request_type, body, response)
-        if Array === res
-          results.concat res
+      unless read_write == :replace
+        for shard in shard_numbers
+          res = _send_to_one_shard(shard, read_write, request_type, body, response)
+          Array === res ? results.concat(res) : results << res
+        end
+      else
+        for shard in shard_numbers
+          begin
+            res = _send_to_one_shard(shard, read_write, request_type, body, response)
+            Array === res ? results.concat(res) : results << res
+          rescue ::Tarantool::TupleDoesntExists => e
+            results << e
+          end
+        end
+
+        if results.all?{|r| ::Tarantool::TupleDoesntExists === r}
+          raise results.first
         else
-          results << res
+          results.delete_if{|r| ::Tarantool::TupleDoesntExists === r}
         end
       end
       if Integer === results.first

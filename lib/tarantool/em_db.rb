@@ -148,8 +148,74 @@ module Tarantool
       end
     end
 
+    class ConcatterReplace
+      def initialize(count, feed)
+        @result = []
+        @count = count
+        @feed = feed
+      end
+      def call(array)
+        if @count > 0
+          case array
+          when Array
+            @result.concat array
+          when Exception
+            @result = array
+            @count = 1
+          else
+            @result << array
+          end
+          if (@count -= 1) == 0
+            if Array === @result && Integer === @result.first
+              @feed.call @result.inject(0){|s, i| s + i}
+            else
+              @feed.call @result
+            end
+          end
+        end
+      end
+    end
+
+    class ConcatterReplace
+      def initialize(count, feed)
+        @result = []
+        @count = count
+        @feed = feed
+      end
+      def call(array)
+        if @count > 0
+          case array
+          when Array
+            @result.concat array
+          when ::Tarantool::TupleDoesntExists
+            @result << array
+          when Exception
+            @result = array
+            @count = 1
+          else
+            @result << array
+          end
+          if (@count -= 1) == 0
+            if Exception === @result
+              @feed.call @result
+            elsif @result.all?{|r| ::Tarantool::TupleDoesntExists === r}
+              @feed.call @result.first
+            else
+              @result.delete_if{|r| ::Tarantool::TupleDoesntExists === r}
+              if Integer === @result.first
+                @feed.call @result.inject(0){|s, i| s + i}
+              else
+                @feed.call @result
+              end
+            end
+          end
+        end
+      end
+    end
+
     def _send_to_several_shards(shard_numbers, read_write, request_type, body, response, feed)
-      concat = Concatter.new(shard_numbers.size, feed)
+      concat = read_write != :replace ? Concatter.new(shard_numbers.size, feed) :
+                                        ConcatterReplace.new(shard_numbers.size, feed)
       for shard in shard_numbers
         _send_to_one_shard(shard, read_write, request_type, body, response, concat)
       end

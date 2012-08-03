@@ -5,6 +5,7 @@ require 'tarantool/core-ext'
 
 module Tarantool
   class SpaceHash
+    include CommonSpace
     include Request
 
     def initialize(tarantool, space_no, fields_def, indexes, shard_fields = nil, shard_proc = nil)
@@ -144,23 +145,29 @@ module Tarantool
 
     def insert_cb(tuple, cb, opts = {})
       tuple = _prepare_tuple(tuple)
-      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      shard_nums = detect_shard_for_insert(tuple.values_at(*@shard_positions))
       _insert(@space_no, BOX_ADD, tuple, @field_types, cb, opts[:return_tuple],
-              shard_nums, @translators)
+              shard_nums, nil, @translators)
     end
 
     def replace_cb(tuple, cb, opts = {})
       tuple = _prepare_tuple(tuple)
-      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      shard_nums = detect_shard(tuple.values_at(*@shard_positions))
       _insert(@space_no, BOX_REPLACE, tuple, @field_types, cb, opts[:return_tuple],
-              shard_nums, @translators)
+              shard_nums, opts.fetch(:in_any_shard, true), @translators)
     end
 
     def store_cb(tuple, cb, opts = {})
       tuple = _prepare_tuple(tuple)
-      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      shard_nums = _get_shard_nums{
+        if opts.fetch(:to_insert_shard, true)
+          _detect_shard_for_insert(tuple.values_at(*@shard_positions))
+        else
+          _detect_shard(tuple.values_at(*@shard_positions))
+        end
+      }
       _insert(@space_no, 0, tuple, @field_types, cb, opts[:return_tuple],
-              shard_nums, @translators)
+              shard_nums, nil, @translators)
     end
 
     def _prepare_pk(pk)

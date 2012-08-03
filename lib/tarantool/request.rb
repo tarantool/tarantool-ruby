@@ -3,6 +3,10 @@ require 'tarantool/shards_support'
 require 'tarantool/serializers'
 
 module Tarantool
+  module CommonSpace
+    attr_reader :tarantool, :space_no
+  end
+
   module Request
     include Util::Packer
     include Util::TailGetter
@@ -92,7 +96,7 @@ module Tarantool
         body << INT32_1
         pack_field(body, types[0], key)
       end
-    rescue IndexIndexError => e
+    rescue IndexIndexError
       raise ArgumentError, "tuple #{key} has more entries than index #{index_no}"
     end
 
@@ -181,16 +185,16 @@ module Tarantool
       _send_request(shard_nums, read_write, type, body, response)
     end
 
-    def _insert(space_no, flags, tuple, fields, cb, ret_tuple, shard_nums, translators = [])
+    def _insert(space_no, flags, tuple, fields, cb, ret_tuple, shard_nums, in_any_shard = nil, translators = [])
       flags |= BOX_RETURN_TUPLE  if ret_tuple
       fields = [*fields]
 
       tuple = [*tuple]
-      tuple_size = tuple.size
       body = [space_no, flags].pack(INSERT_HEADER)
       pack_tuple(body, tuple, fields, :space)
 
-      _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, shard_nums, :write, translators)
+      _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, shard_nums,
+                      in_any_shard ? :replace : :write, translators)
     end
 
     def _update(space_no, pk, operations, fields, pk_fields, cb, ret_tuple, shard_nums, translators = [])
@@ -319,12 +323,19 @@ module Tarantool
           opts[:types] = TYPES_STR_STR
         end
       end
+
       # scheck for shards hints
-      opts[:shards] ||= _get_shard_nums {
-          opts[:shard_keys] ? _detect_shards(opts[:shard_keys]) :
-          opts[:shard_key]  ?  detect_shard( opts[:shard_key]) :
-                               all_shards
-        }
+      opts[:shards] ||= _get_shard_nums do
+          if opts[:shard_for_insert]
+            opts[:shard_keys] ? _detect_shards_for_insert(opts[:shard_keys]) :
+            opts[:shard_key]  ? _detect_shard_for_insert( opts[:shard_key]) :
+                                 _all_shards
+          else
+            opts[:shard_keys] ? _detect_shards(opts[:shard_keys]) :
+            opts[:shard_key]  ? _detect_shard( opts[:shard_key]) :
+                                 _all_shards
+          end
+        end
       [values, opts]
     end
 
@@ -341,8 +352,17 @@ module Tarantool
       body = [flags, func_name.size, func_name].pack(CALL_HEADER)
       pack_tuple(body, values, value_types, :func_call)
 
-      shard_nums = opts[:shards] || _get_shard_nums{ all_shards }
-      read_write = opts[:readonly] ? :read : :write
+      shard_nums = opts[:shards] || all_shards
+      read_write = case opts[:readonly]
+                   when nil, false, :write
+                     :write
+                   when true, :read
+                     :read
+                   when :replace
+                     :replace
+                   else
+                     raise ArgumentError, "space#call :readonly options accepts nil, false, :write, true, :read and :replace, but #{opts[:readonly].inspect} were sent"
+                   end
 
       _modify_request(REQUEST_CALL, body, return_types, return_tuple, cb, shard_nums, read_write, opts[:translators] || [])
     end
@@ -359,7 +379,7 @@ module Tarantool
       end
     end
     def _ping(cb)
-      _send_request(_get_shard_nums{ all_shards }, :write, REQUEST_PING, EMPTY, WrapPing.new(cb))
+      _send_request(all_shards, :write, REQUEST_PING, EMPTY, WrapPing.new(cb))
     end
     alias ping_cb _ping
 

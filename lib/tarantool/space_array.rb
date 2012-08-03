@@ -6,6 +6,7 @@ require 'tarantool/core-ext'
 
 module Tarantool
   class SpaceArray
+    include CommonSpace
     include Request
     include Util::Array
 
@@ -106,18 +107,24 @@ module Tarantool
     end
 
     def insert_cb(tuple, cb, opts = {})
-      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      shard_nums = detect_shard_for_insert(tuple.values_at(*@shard_positions))
       _insert(@space_no, BOX_ADD, tuple, @fields, cb, opts[:return_tuple], shard_nums)
     end
 
     def replace_cb(tuple, cb, opts = {})
-      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      shard_nums = detect_shard(tuple.values_at(*@shard_positions))
       _insert(@space_no, BOX_REPLACE, tuple, @fields,
-              cb, opts[:return_tuple], shard_nums)
+              cb, opts[:return_tuple], shard_nums, opts.fetch(:in_any_shard, true))
     end
 
     def store_cb(tuple, cb, opts = {})
-      shard_nums = _get_shard_nums{ detect_shard(tuple.values_at(*@shard_positions)) }
+      shard_nums = _get_shard_nums{
+        if opts.fetch(:to_insert_shard, true)
+          _detect_shard_for_insert(tuple.values_at(*@shard_positions))
+        else
+          _detect_shard(tuple.values_at(*@shard_positions))
+        end
+      }
       _insert(@space_no, 0, tuple, @fields, cb, opts[:return_tuple], shard_nums)
     end
 

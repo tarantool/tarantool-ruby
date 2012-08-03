@@ -16,6 +16,9 @@ module Tarantool
       end
     end
 
+    attr_reader :shard_proc, :shards_count, :previous_shards_count
+    attr_reader :insert_with_shards_count
+
     def _init_shard_vars(shard_proc, init_shard_for_index = true)
       if init_shard_for_index
         @shard_by_index = @index_fields.index{|index| index == @shard_fields}
@@ -38,6 +41,8 @@ module Tarantool
       end
 
       @shards_count = @tarantool.shards_count
+      @previous_shards_count = @tarantool.previous_shards_count
+      @insert_with_shards_count = @tarantool.insert_with_shards_count
       @default_shard = 0
     end
 
@@ -47,26 +52,30 @@ module Tarantool
             @index_fields.size == 1 ||
             keys.all?{|key| Array === key && key.size == @index_fields.size}
           )
-        _flat_uniq keys.map{|key| detect_shard(key)}
+        _flat_uniq keys.map{|key| _detect_shard(key)}
       elsif pos = @shard_for_index[index_no]
-        _flat_uniq keys.map{|key| detect_shard([*key].values_at(*pos)) }
+        _flat_uniq keys.map{|key| _detect_shard([*key].values_at(*pos)) }
       else
-        all_shards
+        _all_shards
       end
     end
 
     def _detect_shards_for_key(key, index_no)
       if index_no == @shard_by_index
-        detect_shard(key)
+        _detect_shard(key)
       elsif pos = @shard_for_index[index_no]
-        detect_shard(key.values_at(*pos))
+        _detect_shard(key.values_at(*pos))
       else
-        all_shards
+        _all_shards
       end
     end
 
     def _detect_shards(keys)
-      _flat_uniq keys.map{|key| detect_shard(key)}
+      _flat_uniq keys.map{|key| _detect_shard(key)}
+    end
+
+    def _detect_shards_for_insert(keys)
+      _flat_uniq keys.map{|key| _detect_shard_for_insert(key)}
     end
 
     def _flat_uniq(array)
@@ -81,18 +90,47 @@ module Tarantool
       hsh.keys
     end
 
-    # methods for override
-    def detect_shard(shard_values)
+    def _detect_shard_for_insert(shard_values)
       shard_values = [shard_values]  unless Array === shard_values
-      @shard_proc.call(shard_values, @shards_count, self) || all_shards
+      @shard_proc.call(shard_values, @insert_with_shards_count, self) || _all_shards
+    end
+
+    def _detect_shard(shard_values)
+      shard_values = [shard_values]  unless Array === shard_values
+      shards = @shard_proc.call(shard_values, @shards_count, self) || _all_shards
+      if @previous_shards_count
+        prev_shards = @shard_proc.call(shard_values, @previous_shards_count, self) || _all_shards
+        shards = [*shards, *prev_shards].uniq
+      end
+      shards
     end
 
     def _get_shard_nums
       @shards_count == 1 ? @default_shard : yield
     end
 
-    def all_shards
+    def _all_shards
       (0...@shards_count).to_a
+    end
+
+    def detect_shard(shard_values)
+      @shards_count == 1 ? @default_shard : _detect_shard(shard_values)
+    end
+
+    def detect_shard_for_insert(shard_values)
+      @shards_count == 1 ? @default_shard : _detect_shard_for_insert(shard_values)
+    end
+
+    def detect_shards(shard_values)
+      @shards_count == 1 ? @default_shard : _detect_shards(shard_values)
+    end
+
+    def detect_shards_for_insert(shard_values)
+      @shards_count == 1 ? @default_shard : _detect_shards_for_insert(shard_values)
+    end
+
+    def all_shards
+      @shards_count == 1 ? @default_shard : (0...@shards_count).to_a
     end
 
     def shard(shard_number)
