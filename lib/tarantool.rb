@@ -98,7 +98,7 @@ module Tarantool
       when Array
         space_array(space_no, fields, opts)
       when Hash
-        space_array(space_no, fields, opts)
+        space_hash(space_no, fields, opts)
       else
         raise "You should specify fields as an array or hash (got #{fields.inspect})"
       end
