@@ -91,11 +91,25 @@ module TConf
     conf.delete :dir
   end
 
+  def self.clear_all
+    CONF.keys.each{|name| clear(name) }
+  end
+
   def self.reset_and_up_all
-    CONF.keys.each{|name|
-      clear(name)
-      run(name)
-    }
+    clear_all
+    CONF.keys.each{|name| run(name) }
+  end
+
+  def self.reset_and_up_masters
+    clear_masters
+    run(:master1)
+    run(:master2)
+    sleep(0.01)
+  end
+
+  def self.clear_masters
+    clear(:master1)
+    clear(:master2)
   end
 
   def self.conf(name)
@@ -115,7 +129,6 @@ module TConf
   end
 
   def self.promote_to_slave(slave, master)
-    conf = CONF.fetch(slave)
     clear(slave)
     prepare(slave)
     fcfg = fjoin(dir(slave), 'tarantool.cfg')
@@ -293,7 +306,7 @@ module MiniTest::Spec::SharedExamples
   end
 
   def it_behaves_like(desc)
-    class_eval &MiniTest::Spec.shared_examples.fetch(desc)
+    class_eval(&MiniTest::Spec.shared_examples.fetch(desc))
   end
 end
 

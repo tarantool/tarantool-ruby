@@ -3,6 +3,7 @@ require 'tarantool/light_record'
 
 shared_examples_for 'replication and shards' do
   before { TConf.reset_and_up_all }
+  after { TConf.clear_all }
 
   let(:t_both) {
     Tarantool.new(type: tarantool_type,
@@ -89,7 +90,7 @@ shared_examples_for 'replication and shards' do
     let(:space_second){ space1_array_second }
     before {
       blockrun {
-        100.times.map{|i|
+        100.times{|i|
           space_both.insert([i, "#{i+1}", i+2])
         }
       }
@@ -132,10 +133,6 @@ shared_examples_for 'replication and shards' do
     end
   end
 
-  describe "array space with default shard" do
-    it_behaves_like "array space with simple shard"
-  end
-
   describe "array space with modulo shard" do
     let(:shard_proc1) { :modulo }
     it_behaves_like "array space with simple shard"
@@ -147,7 +144,7 @@ shared_examples_for 'replication and shards' do
     let(:space_second){ space1_hash_second }
     before {
       blockrun {
-        100.times.map{|i|
+        100.times{|i|
           space_both.insert({id: i, name: "#{i+1}", val: i+2})
         }
       }
@@ -188,10 +185,6 @@ shared_examples_for 'replication and shards' do
       results[0].must_equal({id: 50, name: '--', val: 52})
       results[1].must_equal({id: 51, name: '++', val: 53})
     end
-  end
-
-  describe "hash space with default shard" do
-    it_behaves_like "hash space with simple shard"
   end
 
   describe "hash space with modulo shard" do
@@ -374,6 +367,7 @@ shared_examples_for 'replication and shards' do
   end
 
   describe "array space with shard on not pk" do
+    let(:shard_proc0) { :modulo }
     let(:shard_fields_array0) { [3] }
     let(:space_both){ space0_array_both }
     let(:space_first){ space0_array_first }
@@ -439,6 +433,7 @@ shared_examples_for 'replication and shards' do
   end
 
   describe "hash space with shard on not pk" do
+    let(:shard_proc0) { :modulo }
     let(:shard_fields_hash0) { [:score] }
     let(:space_both){ space0_hash_both }
     let(:space_first){ space0_hash_first }
