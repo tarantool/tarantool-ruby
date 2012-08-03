@@ -1,11 +1,50 @@
+require 'sumbur'
+require 'murmurhash3'
 module Tarantool
   module Request
-    class DefaultShardProc
+    class SumburMurmur32
+      include Sumbur
+      include MurmurHash3::V32
+    end
+
+    class SumburMurmurFmix < SumburMurmur32
       def call(shard_values, shards_count, this)
-        if shard_values.size == 1 && Integer === shard_values[0]
-          shard_values[0] % shards_count
-        elsif shard_values.all?
-          shard_values.hash % shards_count
+        shard_values[0] &&
+          sumbur(murmur3_32_fmix(shard_values[0]), shards_count)
+      end
+    end
+
+    class SumburMurmurInt64 < SumburMurmur32
+      def call(shard_values, shards_count, this)
+        shard_values[0] &&
+          sumbur(murmur3_32_int64_hash(shard_values[0]), shards_count)
+      end
+    end
+
+    class SumburMurmurStr < SumburMurmur32
+      def call(shard_values, shards_count, this)
+        shard_values[0] &&
+          sumbur(murmur3_32_str_hash(shard_values[0]), shards_count)
+      end
+    end
+
+    class DefaultShardProc < SumburMurmur32
+      def call(shard_values, shards_count, this)
+        if shard_values.all?
+          hash = i = 0
+          size = shard_values.size
+          while i < size
+            hash = case value = shard_values[i]
+              when Integer
+                murmur3_32_int64_hash(value, hash)
+              when String
+                murmur3_32_str_hash(value, hash)
+              else
+                raise ValueError, "Default sharding proc could deal only with strings and integers"
+              end
+            i += 1
+          end
+          sumbur(hash, shards_count)
         end
       end
     end
@@ -30,6 +69,12 @@ module Tarantool
         @shard_proc = case shard_proc
                       when nil, :default
                         DefaultShardProc.new
+                      when :sumbur_murmur_fmix
+                        SumburMurmurFmix.new
+                      when :sumbur_murmur_int64
+                        SumburMurmurInt64.new
+                      when :sumbur_murmur_str
+                        SumburMurmurStr.new
                       when :modulo, :module
                         ModuloShardProc.new
                       else

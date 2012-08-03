@@ -118,9 +118,17 @@ module Tarantool
         @space ||= begin
             shard_fields = _shard_fields || primary_index
             shard_proc = _shard_proc ||
-              if shard_fields.size == 1 &&
-                  [:int, :int64, :varint].include?(fields[shard_fields[0]])
-                :modulo
+              if shard_fields.size == 1
+                case fields[shard_fields[0]]
+                when :int, :int16, :int8
+                  :sumbur_murmur_fmix
+                when :int64
+                  :sumbur_murmur_int64
+                when :string
+                  :sumbur_murmur_str
+                else
+                  :default
+                end
               else
                 :default
               end
