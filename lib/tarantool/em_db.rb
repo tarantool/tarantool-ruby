@@ -41,9 +41,11 @@ module Tarantool
     end
 
     def _send_to_one_shard(shard_number, read_write, request_type, body, response, feed)
-      if (replicas = _shard(shard_number)).size == 1
-        replicas[0].send_request(request_type, body, response)
-      elsif read_write == :read
+      #if (replicas = _shard(shard_number)).size == 1
+      #  replicas[0].send_request(request_type, body, response)
+      #elsif read_write == :read
+      replicas = _shard(shard_number)
+      if read_write == :read
         replicas = replicas.shuffle  if @replica_strategy == :round_robin
         EM.next_tick OneShardRead.new(replicas, request_type, body, response, feed)
       else
@@ -121,34 +123,6 @@ module Tarantool
     end
 
     class Concatter
-      def initialize(count, feed)
-        @result = []
-        @count = count
-        @feed = feed
-      end
-      def call(array)
-        if @count > 0
-          case array
-          when Array
-            @result.concat array
-          when Exception
-            @result = array
-            @count = 1
-          else
-            @result << array
-          end
-          if (@count -= 1) == 0
-            if Array === @result && Integer === @result.first
-              @feed.call @result.inject(0){|s, i| s + i}
-            else
-              @feed.call @result
-            end
-          end
-        end
-      end
-    end
-
-    class ConcatterReplace
       def initialize(count, feed)
         @result = []
         @count = count
