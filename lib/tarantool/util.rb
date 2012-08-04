@@ -28,7 +28,7 @@ module Tarantool
       def unpack_int8!(data)
         int = data.getbyte(0)
         data[0, 1] = EMPTY
-        data
+        int
       end
 
       def unpack_int16(data)
@@ -38,7 +38,7 @@ module Tarantool
       def unpack_int16!(data)
         int = data.getbyte(0) + data.getbyte(1) * 256
         data[0, 2] = EMPTY
-        data
+        int
       end
 
       def unpack_int32(int)
