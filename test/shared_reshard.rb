@@ -222,6 +222,90 @@ shared_examples_for 'resharding' do
     end
   end
 
+  shared_examples_for "after reshard" do
+    before do
+      blockrun {
+        space_first.insert(one)
+        space_first.insert(two)
+        space_second.insert(five)
+      }
+    end
+
+    it "should read only from right shards" do
+      results = blockrun {[
+        space_past.by_pk(1),
+        space_past.by_pk(2),
+        space_past.by_pk(5)
+      ]}
+      results[0].must_be_nil
+      results[1].must_equal two
+      results[2].must_equal five
+    end
+
+    it "still reads from both shards when query many keys" do
+      results = blockrun {
+        space_past.all_by_pks([1, 2, 5])
+      }
+      # that is cause we do not separate by shards when there is many keys
+      results.sort_by(&get_id).must_equal [one, two, five]
+    end
+
+    it "should insert into right shard" do
+      results = blockrun {
+        space_past.insert(three)
+        space_past.insert(four)
+        [space_first.by_pk(3),
+         space_first.by_pk(4),
+         space_second.by_pk(3),
+         space_second.by_pk(4)
+        ]
+      }
+      results[0].must_be_nil
+      results[1].must_equal four
+      results[2].must_equal three
+      results[3].must_be_nil
+    end
+
+    it "should try update only right shards" do
+      results = blockrun {[
+        space_past.update(1, increment),
+        space_past.update(5, increment),
+        space_first.by_pk(1),
+        space_second.by_pk(5)
+      ]}
+      results[0].must_equal 0
+      results[1].must_equal 1
+      results[2].must_equal one
+      results[3].must_equal incremented(five)
+    end
+
+    it "should replace only right shards" do
+      results = blockrun {
+        proc {
+          space_past.replace(incremented(one))
+        }.must_raise ::Tarantool::TupleDoesntExists
+      [
+        space_past.replace(incremented(five)),
+        space_second.by_pk(5)
+      ]}
+      results[0].must_equal 1
+      results[1].must_equal incremented(five)
+    end
+
+    it "should delete from right shards" do
+      results = blockrun {[
+        space_past.delete(1, return_tuple: true),
+        space_past.delete(5, return_tuple: true),
+        space_first.by_pk(1),
+        space_second.by_pk(5)
+      ]}
+      results[0].must_equal nil
+      results[1].must_equal five
+      results[2].must_equal one
+      results[3].must_equal nil
+    end
+  end
+
   describe "array space reshard" do
     let(:space_before) { space_array_before }
     let(:space_after) { space_array_after }
@@ -248,6 +332,10 @@ shared_examples_for 'resharding' do
 
     describe "second step" do
       it_behaves_like "second step reshard"
+    end
+
+    describe "after reshard" do
+      it_behaves_like "after reshard"
     end
   end
 
@@ -282,6 +370,10 @@ shared_examples_for 'resharding' do
 
     describe "second step" do
       it_behaves_like "second step reshard"
+    end
+
+    describe "after reshard" do
+      it_behaves_like "after reshard"
     end
   end
 
