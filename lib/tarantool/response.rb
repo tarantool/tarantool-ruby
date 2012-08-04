@@ -17,7 +17,7 @@ module Tarantool
     end
   end
 
-  class Response < Struct.new(:cb, :get_tuples, :fields, :translators)
+  class Response < Struct.new(:cb, :request_type, :body, :get_tuples, :fields, :translators)
     include Util::Packer
     include Util::TailGetter
     include Serializers

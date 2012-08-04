@@ -3,32 +3,30 @@ module Tarantool
     IPROTO_CONNECTION_TYPE = :block
 
     include ParseIProto
-    def _send_request(shard_numbers, read_write, request_type, body, response)
+    def _send_request(shard_numbers, read_write, response)
       if @closed
         response.cb.call ::IProto::Disconnected.new("Tarantool is closed")
       else
         response.call_callback begin
           shard_numbers = shard_numbers[0]  if Array === shard_numbers && shard_numbers.size == 1
           if Array === shard_numbers
-            _send_to_several_shards(shard_numbers, read_write, request_type,
-                                    body, response)
+            _send_to_several_shards(shard_numbers, read_write, response)
           else
-            _send_to_one_shard(shard_numbers, read_write, request_type,
-                               body, response)
+            _send_to_one_shard(shard_numbers, read_write, response)
           end
         end
       end
     end
 
-    def _send_to_one_shard(shard_number, read_write, request_type, body, response)
+    def _send_to_one_shard(shard_number, read_write, response)
       response.parse_response(
         if (replicas = _shard(shard_number)).size == 1
-          _parse_iproto(replicas[0].send_request(request_type, body))
+          _parse_iproto(replicas[0].send_request(response.request_type, response.body))
         elsif read_write == :read
           replicas = replicas.shuffle  if @replica_strategy == :round_robin
-          _one_shard_read(replicas, request_type, body)
+          _one_shard_read(replicas, response.request_type, response.body)
         else
-          _one_shard_write(replicas, request_type, body)
+          _one_shard_write(replicas, response.request_type, response.body)
         end
       )
     end
@@ -67,17 +65,17 @@ module Tarantool
       raise NoMasterError, "no available master connections"
     end
 
-    def _send_to_several_shards(shard_numbers, read_write, request_type, body, response)
+    def _send_to_several_shards(shard_numbers, read_write, response)
       results = []
       unless read_write == :replace
         for shard in shard_numbers
-          res = _send_to_one_shard(shard, read_write, request_type, body, response)
+          res = _send_to_one_shard(shard, read_write, response)
           Array === res ? results.concat(res) : results << res
         end
       else
         for shard in shard_numbers
           begin
-            res = _send_to_one_shard(shard, read_write, request_type, body, response)
+            res = _send_to_one_shard(shard, read_write, response)
             Array === res ? results.concat(res) : results << res
           rescue ::Tarantool::TupleDoesntExists => e
             results << e
