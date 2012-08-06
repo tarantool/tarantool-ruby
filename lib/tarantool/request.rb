@@ -1,3 +1,4 @@
+require 'bin_utils'
 require 'tarantool/util'
 require 'tarantool/shards_support'
 require 'tarantool/serializers'
@@ -83,7 +84,7 @@ module Tarantool
         if index_no != :space && nili = key.index(nil)
           key = key.slice(0, nili)
         end
-        body << [key_size = key.size].pack(INT32)
+        ::BinUtils.append_int32_le!(body, key_size = key.size)
         i = 0
         while i < key_size
           field = types[i] || get_tail_item(types, i, tail)
@@ -110,50 +111,50 @@ module Tarantool
       when :int, :integer
         value = value.to_i
         _raise_integer_overflow(value, MIN_INT, MAX_INT32)  if value > MAX_INT32 or value < 0
-        append_ber_int32!(body, value)
+        ::BinUtils.append_bersize_int32_le!(body, value)
       when :string, :bytes, :str
         value = value.to_s
         value = ZERO + value  if value < ONE
         raise StringTooLong  if value.bytesize >= MAX_BYTE_SIZE
-        body << [value.bytesize, value].pack(PACK_STRING)
+        ::BinUtils.append_bersize_string!(body, value)
       when :bytes
         value = value.to_s
         raise StringTooLong  if value.bytesize >= MAX_BYTE_SIZE
-        body << [value.bytesize, value].pack(PACK_STRING)
+        ::BinUtils.append_bersize_string!(body, value)
       when :int64
         value = value.to_i
         _raise_integer_overflow(value, MIN_INT, MAX_INT64)  if value > MAX_INT64 or value < 0
-        append_ber_int64!(body, value)
+        ::BinUtils.append_bersize_int64_le!(body, value)
       when :int16
         value = value.to_i
         _raise_integer_overflow(value, MIN_INT, MAX_INT16)  if value > MAX_INT16 or value < 0
-        append_ber_int16!(body, value)
+        ::BinUtils.append_bersize_int16_le!(body, value)
       when :int8
         value = value.to_i
         _raise_integer_overflow(value, MIN_INT, MAX_INT8)  if value > MAX_INT8 or value < 0
-        append_ber_int8!(body, value)
+        ::BinUtils.append_bersize_int8!(body, value)
       when :sint
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT32, MAX_SINT32)  if value > MAX_SINT32 or value < MIN_SINT32
-        append_ber_sint32!(body, value)
+        ::BinUtils.append_bersize_sint32_le!(body, value)
       when :sint64
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT64, MAX_SINT64)  if value > MAX_SINT64 or value < MIN_SINT64
-        append_ber_sint64!(body, value)
+        ::BinUtils.append_bersize_sint64_le!(body, value)
       when :sint16
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT16, MAX_SINT16)  if value > MAX_SINT16 or value < MIN_SINT16
-        append_ber_sint16!(body, value)
+        ::BinUtils.append_bersize_sint16_le!(body, value)
       when :sint8
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT8, MAX_SINT8)  if value > MAX_SINT8 or value < MIN_SINT8
-        append_ber_sint8!(body, value)
+        ::BinUtils.append_bersize_sint8!(body, value)
       when :varint
         value = value.to_i
         if 0 <= value && value < MAX_INT32
-          append_ber_int32!(body, value)
+          ::BinUtils.append_bersize_int32_le!(body, value)
         else
-          append_ber_sint64!(body, value)
+          ::BinUtils.append_bersize_sint64_le!(body, value)
         end
       when :error
         raise IndexIndexError
@@ -171,7 +172,7 @@ module Tarantool
       else
         value = get_serializer(field_kind).encode(value).to_s
         raise StringTooLong  if value.bytesize > MAX_BYTE_SIZE
-        body << [value.bytesize, value].pack(PACK_STRING)
+        ::BinUtils.append_bersize_string!(body, value)
       end
     end
 
@@ -206,7 +207,7 @@ module Tarantool
 
       body = [space_no, flags].pack(UPDATE_HEADER)
       pack_tuple(body, pk, pk_fields, 0)
-      append_int32!(body, operations.size)
+      ::BinUtils.append_int32_le!(body, operations.size)
 
       _pack_operations(body, operations, fields)
 
@@ -276,10 +277,10 @@ module Tarantool
           end
 
           str = operation[4].to_s
-          body << [ 10 + ber_size(str.bytesize) + str.bytesize ].pack('w')
-          append_ber_sint32!(body, operation[2].to_i)
-          append_ber_sint32!(body, operation[3].to_i)
-          body << [str.bytesize, str.to_s].pack(PACK_STRING)
+          ::BinUtils.append_ber!(body, 10 + ber_size(str.bytesize) + str.bytesize)
+          ::BinUtils.append_bersize_sint32_le!(body, operation[2].to_i)
+          ::BinUtils.append_bersize_sint32_le!(body, operation[3].to_i)
+          ::BinUtils.append_bersize_string!(body, str.to_s)
         when 7
           old_field_no = field_no + 
             (inserted ||= []).count{|i| i <= field_no} -
