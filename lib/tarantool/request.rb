@@ -1,4 +1,3 @@
-require 'bin_utils'
 require 'tarantool/util'
 require 'tarantool/shards_support'
 require 'tarantool/serializers'

@@ -1,4 +1,3 @@
-require 'bin_utils'
 require 'tarantool/util'
 require 'tarantool/exceptions'
 require 'tarantool/serializers'

@@ -1,3 +1,4 @@
+require 'bin_utils'
 module Tarantool
   module Util
     module Packer
@@ -25,131 +26,12 @@ module Tarantool
     private
       EMPTY = ''.freeze
       ONE = "\x01".freeze
-      def unpack_int8!(data)
-        int = data.getbyte(0)
-        data[0, 1] = EMPTY
-        int
-      end
-
-      def unpack_int16(data)
-        data.getbyte(0) + data.getbyte(1) * 256
-      end
-
-      def unpack_int16!(data)
-        int = data.getbyte(0) + data.getbyte(1) * 256
-        data[0, 2] = EMPTY
-        int
-      end
-
-      def unpack_int32(int)
-        (int.getbyte(0) + int.getbyte(1) * 256 +
-         int.getbyte(2) * 65536 + int.getbyte(3) * 16777216)
-      end
-
-      def unpack_int32!(data)
-        int = (data.getbyte(0) + data.getbyte(1) * 256 +
-               data.getbyte(2) * 65536 + data.getbyte(3) * 16777216)
-        data[0, 4] = EMPTY
-        int
-      end
-
-      def unpack_int64!(data)
-        int = data.unpack(INT64)[0]
-        data[0, 8] = EMPTY
-        int
-      end
-
-      def unpack_int64(data)
-        data.unpack(INT64)[0]
-      end
-
-      def unpack_sint8!(data)
-        i = unpack_int8!(data)
-        i - ((i & 128) << 1)
-      end
-
-      def unpack_sint16!(data)
-        i = unpack_int16!(data)
-        i - ((i & 32768) << 1)
-      end
-
-      def unpack_sint32!(data)
-        i = unpack_int32!(data)
-        i - ((i >> 31) << 32)
-      end
-
-      def unpack_sint64!(data)
-        i = unpack_int64!(data)
-        i - ((i >> 63) << 64)
-      end
-
       def ber_size(int)
         int < 128 ? 1 :
         int < 16384 ? 2 :
         int < 2097153 ? 3 :
         int < 268435456 ? 4 : 5
       end
-
-      def unpack_ber!(data)
-        res = 0
-        pos = 0
-        while true
-          if (byte = data.getbyte(pos)) <= 127
-            res += byte
-            break
-          else
-            res = (res + (byte - 128)) * 128
-            pos += 1
-          end
-        end
-        data[0, pos+1] = EMPTY
-        res
-      end
-
-      def append_int8!(str, int)
-        str << (int & 255)
-      end
-
-      def append_int16!(str, int)
-        str << (int & 255) << ((int>>8) & 255)
-      end
-
-      def append_int32!(str, int)
-        str << (int & 255) << ((int>>8) & 255) <<
-               ((int>>16) & 255) << ((int>>24) & 255)
-      end
-
-      def append_int64!(str, int)
-        str << [int].pack(INT64)
-      end
-
-      alias append_sint8! append_int8!
-      alias append_sint16! append_int16!
-      alias append_sint32! append_int32!
-      alias append_sint64! append_int64!
-
-      def append_ber_int8!(str, int)
-        str << 1 << (int & 255)
-      end
-
-      def append_ber_int16!(str, int)
-        str << 2 << (int & 255) << ((int>>8) & 255)
-      end
-
-      def append_ber_int32!(str, int)
-        str << 4 <<
-                (int & 255) << ((int>>8) & 255) <<
-               ((int>>16) & 255) << ((int>>24) & 255)
-      end
-
-      def append_ber_int64!(str, int)
-        str << 8 << [int].pack(INT64)
-      end
-
-      alias append_ber_sint8! append_ber_int8!
-      alias append_ber_sint16! append_ber_int16!
-      alias append_ber_sint32! append_ber_int32!
-      alias append_ber_sint64! append_ber_int64!
     end
 
     module TailGetter
@@ -179,11 +61,11 @@ module Tarantool
       def to_int
         case @data.bytesize
         when 8
-          unpack_int64(@data)
+          ::BinUtils.get_int64_le(@data)
         when 4
-          unpack_int32(@data)
+          ::BinUtils.get_int32_le(@data)
         when 2
-          unpack_int16(@data)
+          ::BinUtils.get_int16_le(@data)
         else
           raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
         end
