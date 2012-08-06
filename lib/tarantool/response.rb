@@ -1,3 +1,4 @@
+require 'bin_utils'
 require 'tarantool/util'
 require 'tarantool/exceptions'
 require 'tarantool/serializers'
@@ -8,7 +9,7 @@ module Tarantool
     def _parse_iproto(data)
       if Exception === data || data == ''
         data
-      elsif (ret = unpack_int32!(data)) == 0
+      elsif (ret = ::BinUtils.slice_int32_le!(data)) == 0
         data
       else
         data.gsub!("\x00", "")
@@ -47,7 +48,7 @@ module Tarantool
     def parse_response(data)
       return data  if Exception === data
       unless get_tuples
-        unpack_int32(data)
+        ::BinUtils.get_int32_le(data)
       else
         tuples = unpack_tuples(data)
         if translators
@@ -60,7 +61,7 @@ module Tarantool
     end
 
     def unpack_tuples(data)
-      tuples_affected = unpack_int32!(data)
+      tuples_affected = ::BinUtils.slice_int32_le!(data)
       tuples = []
       fields = fields()
       if Integer === fields.last
@@ -70,13 +71,13 @@ module Tarantool
       end
 
       while tuples_affected > 0
-        byte_size = unpack_int32!(data)
-        fields_num = unpack_int32!(data)
+        byte_size = ::BinUtils.slice_int32_le!(data)
+        fields_num = ::BinUtils.slice_int32_le!(data)
         tuple_str = data.slice!(0, byte_size)
         i = 0
         tuple = []
         while i < fields_num
-          field_size = unpack_ber!(tuple_str)
+          field_size = ::BinUtils.slice_ber!(tuple_str)
 
           field = fields[i] || get_tail_item(fields, i, tail)
 
@@ -86,7 +87,7 @@ module Tarantool
               if field_size != 4
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
-              unpack_int32!(tuple_str)
+              ::BinUtils.slice_int32_le!(tuple_str)
             when :string, :str
               str = tuple_str.slice!(0, field_size)
               str[0,1] = EMPTY  if str < ONE
@@ -95,47 +96,47 @@ module Tarantool
               if field_size != 8
                 raise ValueError, "Bad field size #{field_size} for 64bit integer field ##{i}"
               end
-              unpack_int64!(tuple_str)
+              ::BinUtils.slice_int64_le!(tuple_str)
             when :bytes
               tuple_str.slice!(0, field_size)
             when :int16
               if field_size != 2
                 raise ValueError, "Bad field size #{field_size} for 16bit integer field ##{i}"
               end
-              unpack_int16!(tuple_str)
+              ::BinUtils.slice_int16_le!(tuple_str)
             when :int8
               if field_size != 1
                 raise ValueError, "Bad field size #{field_size} for 8bit integer field ##{i}"
               end
-              unpack_int8!(tuple_str)
+              ::BinUtils.slice_int8!(tuple_str)
             when :sint
               if field_size != 4
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
-              unpack_sint32!(tuple_str)
+              ::BinUtils.slice_sint32_le!(tuple_str)
             when :sint64
               if field_size != 8
                 raise ValueError, "Bad field size #{field_size} for 64bit integer field ##{i}"
               end
-              unpack_sint64!(tuple_str)
+              ::BinUtils.slice_sint64_le!(tuple_str)
             when :sint16
               if field_size != 2
                 raise ValueError, "Bad field size #{field_size} for 16bit integer field ##{i}"
               end
-              unpack_sint16!(tuple_str)
+              ::BinUtils.slice_sint16_le!(tuple_str)
             when :sint8
               if field_size != 1
                 raise ValueError, "Bad field size #{field_size} for 8bit integer field ##{i}"
               end
-              unpack_sint8!(tuple_str)
+              ::BinUtils.slice_sint8!(tuple_str)
             when :varint
               case field_size
               when 8
-                unpack_int64!(tuple_str)
+                ::BinUtils.slice_int64_le!(tuple_str)
               when 4
-                unpack_int32!(tuple_str)
+                ::BinUtils.slice_int32_le!(tuple_str)
               when 2
-                unpack_int16!(tuple_str)
+                ::BinUtils.slice_int16_le!(tuple_str)
               else
                 raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
               end
@@ -159,7 +160,7 @@ module Tarantool
     end
 
     def return_code(data)
-      unpack_int32!(data)
+      ::BinUtils.slice_int32_le!(data)
     end
   end
 
