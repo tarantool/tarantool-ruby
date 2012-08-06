@@ -3,12 +3,13 @@ require 'yajl'
 require 'tarantool/serializers/bson'
 
 shared_examples_for :record do
-  DB = Tarantool.new(TCONFIG.merge(type: :block))
+  let(:db){ Tarantool.new(TCONFIG.merge(type: :block)) }
   before{ truncate }
 
   let(:user_class) do
+    db = db()
     Class.new(base_class) do
-      set_tarantool DB
+      set_tarantool db
       set_space_no 0
 
       def self.name # For naming
@@ -24,8 +25,9 @@ shared_examples_for :record do
   end
 
   let(:second_class) do
+    db = db()
     Class.new(base_class) do
-      set_tarantool DB
+      set_tarantool db
       set_space_no 1
 
       def self.name # For naming
@@ -360,13 +362,13 @@ shared_examples_for :record do
       second_class.insert(id: 100).must_equal 1
       obj = second_class.by_pk(100)
       obj.attributes.must_equal({id: 100, count1: nil, count2: nil})
-      tuple = DB.space(1, [:int, :int, :int], keys: 0).by_pk(100)
+      tuple = db.space(1, [:int, :int, :int], keys: 0).by_pk(100)
       tuple.must_equal([100, nil, nil])
 
       second_class.insert(id: 101, count2: 102).must_equal 1
       obj = second_class.by_pk(101)
       obj.attributes.must_equal({id: 101, count1: nil, count2: 102})
-      tuple = DB.space(1, [:int, :int, :int], keys: 0).by_pk(101)
+      tuple = db.space(1, [:int, :int, :int], keys: 0).by_pk(101)
       tuple.must_equal([101, nil, 102])
     end
 
@@ -474,8 +476,9 @@ shared_examples_for :record do
 
   describe "composite primary key" do
     let(:address_class) do
+      db = db()
       Class.new(base_class) do
-        set_tarantool DB
+        set_tarantool db
         set_space_no 2
 
         def self.name # For naming
