@@ -59,10 +59,12 @@ module Tarantool
       @tarantool._send_request(shard_numbers, read_write, cb)
     end
 
+    BINARY = ::Encoding::BINARY
     def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, shard_nums, translators = [])
       get_tuples = limit == :first ? (limit = 1; :first) : :all
       keys = [*keys]
-      body = [space_no, index_no, offset, limit, keys.size].pack(SELECT_HEADER)
+      body = ''.force_encoding(BINARY)
+      ::BinUtils.append_int32_le!(body, space_no, index_no, offset, limit, keys.size)
 
       for key in keys
         pack_tuple(body, key, index_fields, index_no)
@@ -135,25 +137,25 @@ module Tarantool
       when :sint
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT32, MAX_SINT32)  if value > MAX_SINT32 or value < MIN_SINT32
-        ::BinUtils.append_bersize_sint32_le!(body, value)
+        ::BinUtils.append_bersize_int32_le!(body, value)
       when :sint64
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT64, MAX_SINT64)  if value > MAX_SINT64 or value < MIN_SINT64
-        ::BinUtils.append_bersize_sint64_le!(body, value)
+        ::BinUtils.append_bersize_int64_le!(body, value)
       when :sint16
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT16, MAX_SINT16)  if value > MAX_SINT16 or value < MIN_SINT16
-        ::BinUtils.append_bersize_sint16_le!(body, value)
+        ::BinUtils.append_bersize_int16_le!(body, value)
       when :sint8
         value = value.to_i
         _raise_integer_overflow(value, MIN_SINT8, MAX_SINT8)  if value > MAX_SINT8 or value < MIN_SINT8
-        ::BinUtils.append_bersize_sint8!(body, value)
+        ::BinUtils.append_bersize_int8!(body, value)
       when :varint
         value = value.to_i
         if 0 <= value && value < MAX_INT32
           ::BinUtils.append_bersize_int32_le!(body, value)
         else
-          ::BinUtils.append_bersize_sint64_le!(body, value)
+          ::BinUtils.append_bersize_int64_le!(body, value)
         end
       when :error
         raise IndexIndexError
@@ -185,12 +187,14 @@ module Tarantool
       _send_request(shard_nums, read_write, response)
     end
 
+
     def _insert(space_no, flags, tuple, fields, cb, ret_tuple, shard_nums, in_any_shard = nil, translators = [])
       flags |= BOX_RETURN_TUPLE  if ret_tuple
       fields = [*fields]
 
       tuple = [*tuple]
-      body = [space_no, flags].pack(INSERT_HEADER)
+      body = ''.force_encoding(BINARY)
+      ::BinUtils.append_int32_le!(body, space_no, flags)
       pack_tuple(body, tuple, fields, :space)
 
       _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, shard_nums,
@@ -204,7 +208,8 @@ module Tarantool
         operations = [operations]
       end
 
-      body = [space_no, flags].pack(UPDATE_HEADER)
+      body = ''.force_encoding(BINARY)
+      ::BinUtils.append_int32_le!(body, space_no, flags)
       pack_tuple(body, pk, pk_fields, 0)
       ::BinUtils.append_int32_le!(body, operations.size)
 
@@ -234,7 +239,7 @@ module Tarantool
         if operation.size == 2
           if (Integer === field_no || field_no =~ /\A\d/)
             unless Symbol === operation[1] && UPDATE_OPS[operation[1]] == 6
-              body << [field_no, 0].pack(UPDATE_FIELDNO_OP)
+              ::BinUtils.append_int32_int8_le!(body, field_no, 0)
               type = fields[field_no] || get_tail_item(fields, field_no, tail) ||
                 _detect_type(operation[1])
               pack_field(body, type, operation[1])
@@ -251,7 +256,7 @@ module Tarantool
         op = operation[1]
         op = UPDATE_OPS[op]  unless Integer === op
         raise ArgumentError, "Unknown operation #{operation[1]}" unless op
-        body << [field_no, op].pack(UPDATE_FIELDNO_OP)
+        ::BinUtils.append_int32_int8_le!(body, field_no, op)
         case op
         when 0
           if (type = fields[field_no]).nil?
@@ -277,8 +282,8 @@ module Tarantool
 
           str = operation[4].to_s
           ::BinUtils.append_ber!(body, 10 + ber_size(str.bytesize) + str.bytesize)
-          ::BinUtils.append_bersize_sint32_le!(body, operation[2].to_i)
-          ::BinUtils.append_bersize_sint32_le!(body, operation[3].to_i)
+          ::BinUtils.append_bersize_int32_le!(body, operation[2].to_i)
+          ::BinUtils.append_bersize_int32_le!(body, operation[3].to_i)
           ::BinUtils.append_bersize_string!(body, str.to_s)
         when 7
           old_field_no = field_no + 
@@ -306,7 +311,8 @@ module Tarantool
     def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple, shard_nums, translators = [])
       flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
-      body = [space_no, flags].pack(DELETE_HEADER)
+      body = ''.force_encoding(BINARY)
+      ::BinUtils.append_int32_le!(body, space_no, flags)
       pack_tuple(body, pk, pk_fields, 0)
 
       _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb, shard_nums, :write, translators)
@@ -349,7 +355,9 @@ module Tarantool
       return_types = [*opts[:returns] || TYPES_AUTO]
 
       func_name = func_name.to_s
-      body = [flags, func_name.size, func_name].pack(CALL_HEADER)
+      body = ''.force_encoding(BINARY)
+      ::BinUtils.append_int32_le!(body, flags)
+      ::BinUtils.append_bersize_string!(body, func_name)
       pack_tuple(body, values, value_types, :func_call)
 
       shard_nums = opts[:shards] || all_shards

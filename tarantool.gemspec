@@ -25,5 +25,5 @@ Gem::Specification.new do |gem|
   gem.add_dependency "iproto", [">= 0.3.6"]
   gem.add_dependency "murmurhash3", [">= 0.1.1"]
   gem.add_dependency "sumbur", [">= 0.0.2"]
-  gem.add_dependency "bin_utils", [">= 0.0.1"]
+  gem.add_dependency "bin_utils", [">= 0.0.2"]
 end
