@@ -63,8 +63,7 @@ module Tarantool
     def _select(space_no, index_no, offset, limit, keys, cb, fields, index_fields, shard_nums, translators = [])
       get_tuples = limit == :first ? (limit = 1; :first) : :all
       keys = [*keys]
-      body = ''.force_encoding(BINARY)
-      ::BinUtils.append_int32_le!(body, space_no, index_no, offset, limit, keys.size)
+      body = ::BinUtils.append_int32_le!(nil, space_no, index_no, offset, limit, keys.size)
 
       for key in keys
         pack_tuple(body, key, index_fields, index_no)
@@ -193,8 +192,7 @@ module Tarantool
       fields = [*fields]
 
       tuple = [*tuple]
-      body = ''.force_encoding(BINARY)
-      ::BinUtils.append_int32_le!(body, space_no, flags)
+      body = ::BinUtils.append_int32_le!(nil, space_no, flags)
       pack_tuple(body, tuple, fields, :space)
 
       _modify_request(REQUEST_INSERT, body, fields, ret_tuple, cb, shard_nums,
@@ -208,8 +206,7 @@ module Tarantool
         operations = [operations]
       end
 
-      body = ''.force_encoding(BINARY)
-      ::BinUtils.append_int32_le!(body, space_no, flags)
+      body = ::BinUtils.append_int32_le!(nil, space_no, flags)
       pack_tuple(body, pk, pk_fields, 0)
       ::BinUtils.append_int32_le!(body, operations.size)
 
@@ -311,8 +308,7 @@ module Tarantool
     def _delete(space_no, pk, fields, pk_fields, cb, ret_tuple, shard_nums, translators = [])
       flags = ret_tuple ? BOX_RETURN_TUPLE : 0
 
-      body = ''.force_encoding(BINARY)
-      ::BinUtils.append_int32_le!(body, space_no, flags)
+      body = ::BinUtils.append_int32_le!(nil, space_no, flags)
       pack_tuple(body, pk, pk_fields, 0)
 
       _modify_request(REQUEST_DELETE, body, fields, ret_tuple, cb, shard_nums, :write, translators)
@@ -355,8 +351,7 @@ module Tarantool
       return_types = [*opts[:returns] || TYPES_AUTO]
 
       func_name = func_name.to_s
-      body = ''.force_encoding(BINARY)
-      ::BinUtils.append_int32_le!(body, flags)
+      body = ::BinUtils.append_int32_le!(nil, flags)
       ::BinUtils.append_bersize_string!(body, func_name)
       pack_tuple(body, values, value_types, :func_call)
 
