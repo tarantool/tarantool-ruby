@@ -26,6 +26,7 @@ module Tarantool
   # general error return codes
   class BadReturnCode < StatusCode; end
   class NonMaster     < BadReturnCode; end
+  class IsSecondaryPort < NonMaster; end
   class IllegalParams < BadReturnCode; end
   class UnsupportedCommand < BadReturnCode; end
   class WrongField    < BadReturnCode; end
@@ -43,6 +44,7 @@ module Tarantool
     0x0701 => MemoryIssue,
     0x0102 => NonMaster,
     0x0202 => IllegalParams,
+    0x0302 => IsSecondaryPort,
     0x0a02 => UnsupportedCommand,
     0x1e02 => WrongField,
     0x1f02 => WrongNumber,
