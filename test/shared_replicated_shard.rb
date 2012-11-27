@@ -577,6 +577,24 @@ shared_examples_for 'replication and shards' do
       ]}.must_equal [one, two]
     end
 
+    it "should not delete under wrong explicit shard" do
+      blockrun{[
+        space_both.shard(1).delete(1, return_tuple: true),
+        space_both.shard(0).delete(2, return_tuple: true)
+      ]}.must_equal [nil, nil]
+    end
+
+    it "should delete under right explicit shard" do
+      blockrun{[
+        space_both.shard(0).delete(1, return_tuple: true),
+        space_both.shard(1).delete(2, return_tuple: true),
+        space_both.shard(0).by_pk(1),
+        space_both.shard(1).by_pk(1),
+        space_both.shard(0).by_pk(2),
+        space_both.shard(1).by_pk(2)
+      ]}.must_equal [one, two, nil, nil, nil, nil]
+    end
+
     it "should call on both" do
       result = blockrun{ space_both.call('box.select_range', [0, 100]) }
       result.sort_by{|t| get_id(t)}.must_equal [one, two]
