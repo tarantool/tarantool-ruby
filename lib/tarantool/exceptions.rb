@@ -28,6 +28,7 @@ module Tarantool
   class NonMaster     < BadReturnCode; end
   class IsSecondaryPort < NonMaster; end
   class IllegalParams < BadReturnCode; end
+  class BadIntegrity  < BadReturnCode; end
   class UnsupportedCommand < BadReturnCode; end
   class WrongField    < BadReturnCode; end
   class WrongNumber   < BadReturnCode; end
@@ -38,6 +39,7 @@ module Tarantool
   class StoredProcedureNotDefined < BadReturnCode; end
   class TupleExists   < BadReturnCode; end
   class TupleDoesntExists < BadReturnCode; end
+  class DuplicateKey  < BadReturnCode; end
   CODE_TO_EXCEPTION = {
     0x0401 => TupleReadOnly,
     0x0601 => TupleIsLocked,
@@ -45,6 +47,7 @@ module Tarantool
     0x0102 => NonMaster,
     0x0202 => IllegalParams,
     0x0302 => IsSecondaryPort,
+    0x0802 => BadIntegrity,
     0x0a02 => UnsupportedCommand,
     0x1e02 => WrongField,
     0x1f02 => WrongNumber,
@@ -55,6 +58,7 @@ module Tarantool
     0x3202 => StoredProcedureNotDefined,
     0x3302 => LuaError,
     0x3702 => TupleExists,
+    0x3802 => DuplicateKey,
   }
   CODE_TO_EXCEPTION.default = BadReturnCode
 end
