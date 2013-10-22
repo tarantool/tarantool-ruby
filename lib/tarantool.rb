@@ -32,7 +32,7 @@ module Tarantool
       if %w{round_robin master_first}.include?(replica_strategy)
         replica_strategy = replica_strategy.to_sym
       end
-      unless [:round_robin, :master_first].include?(replica_strategy)
+      unless [:round_robin, :master_first, :prefer_slave].include?(replica_strategy)
         raise ArgumentError, "Shard strategy could be :round_robin or :master_first, got #{replica_strategy.inspect}"
       end
 
