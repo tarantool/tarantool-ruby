@@ -43,7 +43,12 @@ module Tarantool
       if (replicas = _shard(shard_number)).size == 1
         replicas[0].send_request(response.request_type, response.body, OneReplica.new(response, feed))
       elsif read_write == :read
-        replicas = replicas.shuffle  if @replica_strategy == :round_robin
+        case @replica_strategy
+        when :round_robin
+          replicas = replicas.shuffle
+        when :prefer_slave
+          replicas = replicas[1..-1].shuffle << replicas[0]
+        end
         EM.next_tick OneShardRead.new(replicas, response, feed)
       else
         EM.next_tick OneShardWrite.new(replicas, response, feed)
