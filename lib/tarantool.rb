@@ -1,4 +1,3 @@
-require 'eventmachine'
 require "iproto"
 require "tarantool/version"
 require "tarantool/exceptions"

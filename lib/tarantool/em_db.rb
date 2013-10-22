@@ -1,3 +1,4 @@
+require 'eventmachine'
 module Tarantool
   class EMDB < DB
     IPROTO_CONNECTION_TYPE = :em_callback
