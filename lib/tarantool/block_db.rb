@@ -28,6 +28,8 @@ module Tarantool
             replicas = replicas.shuffle
           when :prefer_slave
             replicas = replicas[1..-1].shuffle << replicas[0]
+          when :prefer_master
+            replicas
           end
           _one_shard_read(replicas, response.request_type, response.body)
         else
