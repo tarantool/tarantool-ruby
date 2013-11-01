@@ -48,6 +48,8 @@ module Tarantool
           replicas = replicas.shuffle
         when :prefer_slave
           replicas = replicas[1..-1].shuffle << replicas[0]
+        when :prefer_master
+          replicas
         end
         EM.next_tick OneShardRead.new(replicas, response, feed)
       else
