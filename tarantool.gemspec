@@ -9,7 +9,7 @@ Gem::Specification.new do |gem|
   gem.homepage      = "http://github.com/mailru/tarantool-ruby"
   gem.authors       = ["Andrew Rudenko", "Sokolov Yura 'funny-falcon'"]
   gem.email         = ["ceo@prepor.ru", "funny.falcon@gmail.com"]
-  gem.license       = "MIT"
+  gem.license       = "BSD-2-Clause"
 
   gem.rdoc_options = ["--charset=UTF-8"]
   gem.extra_rdoc_files = %w[README.md LICENSE]
