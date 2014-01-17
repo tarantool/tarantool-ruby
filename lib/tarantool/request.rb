@@ -380,6 +380,9 @@ module Tarantool
       def parse_response(data)
         data
       end
+      def parse_response_for_cb(data)
+        data
+      end
     end
     def _ping(cb)
       _send_request(all_shards, :write, REQUEST_PING, EMPTY, WrapPing.new(cb))

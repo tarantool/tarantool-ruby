@@ -66,7 +66,7 @@ module Tarantool
         if Exception === (result = _parse_iproto(result))
           @feed.call result
         else
-          @feed.call @response.parse_response(result)
+          @feed.call @response.parse_response_for_cb(result)
         end
       end
     end
@@ -94,7 +94,7 @@ module Tarantool
         when Exception
           @feed.call result
         else
-          @feed.call @response.parse_response(result)
+          @feed.call @response.parse_response_for_cb(result)
         end
       end
     end
@@ -131,7 +131,7 @@ module Tarantool
           @feed.call result
         else
           @replicas_origin.replace @replicas
-          @feed.call @response.parse_response(result)
+          @feed.call @response.parse_response_for_cb(result)
         end
       end
     end

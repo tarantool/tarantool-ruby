@@ -28,11 +28,7 @@ module Tarantool
         cb.call(data)
       else
         if (ret = return_code(data)) == 0
-          call_callback begin
-            parse_response(data)
-          rescue StandardError => e
-            e
-          end
+          call_callback parse_response_for_cb(data)
         else
           data.gsub!("\x00", "")
           cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
@@ -46,6 +42,12 @@ module Tarantool
 
     def call_callback(result)
       cb.call(Exception === result || get_tuples != :first ? result : result.first)
+    end
+
+    def parse_response_for_cb(data)
+      parse_response data
+    rescue StandardError => e
+      e
     end
 
     def parse_response(data)
