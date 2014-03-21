@@ -115,9 +115,9 @@ module Tarantool
       @query ||= self.class::Query.new(self)
     end
 
-    def method_missing(name, *args)
+    def method_missing(name, *args, &block)
       if query.respond_to?(name)
-        query.send(name, *args)
+        query.send(name, *args, &block)
       else
         super
       end
