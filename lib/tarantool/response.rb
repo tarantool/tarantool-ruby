@@ -3,6 +3,13 @@ require 'tarantool/exceptions'
 require 'tarantool/serializers'
 
 module Tarantool
+  module UnpackTuples
+  end
+  begin
+    require 'tarantool/response_c'
+  rescue LoadError
+  end
+
   module ParseIProto
     include Util::Packer
     def _parse_iproto(data)
@@ -21,6 +28,7 @@ module Tarantool
     include Util::Packer
     include Util::TailGetter
     include Serializers
+    include UnpackTuples
     UTF8 = 'utf-8'.freeze
 
     def call(data)
@@ -67,14 +75,17 @@ module Tarantool
 
     def unpack_tuples(data)
       tuples_affected = ::BinUtils.slice_int32_le!(data)
-      tuples = []
       fields = fields()
       if Integer === fields.last
         *fields, tail = fields
       else
         tail = 1
       end
+      _unpack_tuples(data, fields, tail, tuples_affected)
+    end
 
+    def _unpack_tuples(data, fields, tail, tuples_affected)
+      tuples = []
       while tuples_affected > 0
         byte_size = ::BinUtils.slice_int32_le!(data)
         fields_num = ::BinUtils.slice_int32_le!(data)
@@ -162,7 +173,7 @@ module Tarantool
         tuples_affected -= 1
       end
       tuples
-    end
+    end unless method_defined?(:_unpack_tuples)
 
     def return_code(data)
       ::BinUtils.slice_int32_le!(data)

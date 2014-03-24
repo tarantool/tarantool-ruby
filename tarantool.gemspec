@@ -15,13 +15,15 @@ Gem::Specification.new do |gem|
   gem.extra_rdoc_files = %w[README.md LICENSE]
 
   files             = Dir['lib/**/*'] - ['lib/tarantool/record.rb']
+  files            += %w{ext/tarantool/extconf.rb ext/tarantool/response_c.c}
   files            += Dir['test/*'].find_all{|f| !File.directory?(f)} - ['test/test_record.rb']
   files            += %w{Gemfile LICENSE Rakefile README.md}.find_all{|f| File.file?(f)}
   gem.files         = files
 
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
   gem.test_files    = gem.files.grep(%r{^(test|spec|features)/})
-  gem.require_paths = ["lib"]
+  gem.require_paths = ["lib", "ext"]
+  gem.extensions    = ["ext/tarantool/extconf.rb"]
 
   gem.add_dependency "iproto", [">= 0.3.8"]
   gem.add_dependency "murmurhash3", [">= 0.1.1"]
