@@ -83,7 +83,11 @@ describe 'Tarantool::Record' do
     it "should support AM serialization API" do
       h = { login: 'prepor', name: 'Andrew', email: 'ceo@prepor.ru' }
       u = user_class.create h
-      u.as_json.must_equal({ 'user' => h.merge(apples_count: 0) })
+      if ActiveModel::VERSION::MAJOR >= 4
+        u.as_json.must_equal(h.merge(apples_count: 0))
+      else
+        u.as_json.must_equal({ 'user' => h.merge(apples_count: 0) })
+      end
     end
   end
 end

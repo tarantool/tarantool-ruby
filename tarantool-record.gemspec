@@ -22,5 +22,5 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
 
   gem.add_dependency "tarantool", ["~> #{Tarantool::VERSION}"]
-  gem.add_dependency "activemodel", [">= 3.1", "< 4.0"]
+  gem.add_dependency "activemodel", [">= 3.1"]
 end

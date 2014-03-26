@@ -10,6 +10,9 @@ group :test do
   gem "yajl-ruby"
   gem "bson"
   gem "bson_ext"
+  gem "rake"
+  gem "kgio"
+  gem "eventmachine"
 end
 # Specify your gem's dependencies in tarantool.gemspec
 gemspec name: 'tarantool'

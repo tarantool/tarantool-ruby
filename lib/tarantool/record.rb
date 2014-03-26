@@ -1,4 +1,5 @@
 require 'active_model'
+require 'active_support/core_ext/hash/indifferent_access.rb'
 require 'tarantool/base_record'
 
 module Tarantool
