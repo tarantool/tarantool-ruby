@@ -253,9 +253,9 @@ module Tarantool
         op = operation[1]
         op = UPDATE_OPS[op]  unless Integer === op
         raise ArgumentError, "Unknown operation #{operation[1]}" unless op
-        ::BinUtils.append_int32_int8_le!(body, field_no, op)
         case op
         when 0
+          ::BinUtils.append_int32_int8_le!(body, field_no, op)
           if (type = fields[field_no]).nil?
             if operation.size == 4 && Symbol === operation.last
               *operation, type = operation
@@ -268,11 +268,13 @@ module Tarantool
           end
           pack_field(body, type, operation[2])
         when 1, 2, 3, 4
+          ::BinUtils.append_int32_int8_le!(body, field_no, op)
           unless operation.size == 3 && !operation[2].nil?
             raise ArgumentError, "wrong arguments for integer operation #{operation.inspect}"
           end
           pack_field(body, :sint, operation[2])
         when 5
+          ::BinUtils.append_int32_int8_le!(body, field_no, op)
           unless operation.size == 5 && !operation[2].nil? && !operation[3].nil?
             raise ArgumentError, "wrong arguments for slice operation #{operation.inspect}"
           end
@@ -283,9 +285,10 @@ module Tarantool
           ::BinUtils.append_bersize_int32_le!(body, operation[3].to_i)
           ::BinUtils.append_bersize_string!(body, str.to_s)
         when 7
-          old_field_no = field_no + 
+          old_field_no = field_no +
             (inserted ||= []).count{|i| i <= field_no} -
             (deleted ||= []).count{|i| i <= field_no}
+          ::BinUtils.append_int32_int8_le!(body, old_field_no, op)
           inserted << field_no
           if (type = fields[old_field_no]).nil?
             if operation.size == 4 && Symbol === operation.last
@@ -299,6 +302,11 @@ module Tarantool
           end
           pack_field(body, type, operation[2])
         when 6
+          old_field_no = field_no +
+            (inserted ||= []).count{|i| i <= field_no} -
+            (deleted ||= []).count{|i| i <= field_no}
+          ::BinUtils.append_int32_int8_le!(body, old_field_no, op)
+          deleted << field_no
           body << ZERO
           # pass
         end
