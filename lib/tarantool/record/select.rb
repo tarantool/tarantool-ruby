@@ -56,13 +56,14 @@ module Tarantool
 
       def auto_shard
         params = @params.dup
-        params.delte :shard
+        params.delete :shard
         self.class.new(@record, params)
       end
 
       def all
         results.dup
       end
+      alias to_a all
 
       def first
         space.select(@params[:where], @params[:offset] || 0, 1).first
