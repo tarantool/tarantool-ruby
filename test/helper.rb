@@ -1,6 +1,7 @@
 require 'minitest/spec'
 require 'rr'
 require 'fileutils'
+require 'eventmachine'
 
 require 'tarantool'
 
@@ -184,9 +185,10 @@ HSPACE3 = {
 
 module Helper
   def tarantool_pipe
-    $tarantool_pipe ||= begin
+    #$tarantool_pipe ||= begin
+    begin
         cnf = {port: 33013, admin: 33015} #TCONFIG
-        tarant = %W{tarantool -p #{cnf[:port]} -m #{cnf[:admin]}}
+        tarant = %W{tarantool -p #{cnf[:port]} -a #{cnf[:admin]}}
         tarant = [{}, *tarant, :err => [:child, :out]]
         IO.popen(tarant, 'w+').tap{|p| p.sync = true}
     end
@@ -194,10 +196,12 @@ module Helper
 
   def exec_tarantool(cmd, lines_to_read)
     cmd = cmd.gsub(/^\s+/, '')
-    tarantool_pipe.puts(cmd)
-    tarantool_pipe.flush
+    pipe = tarantool_pipe
+    pipe.puts(cmd)
+    pipe.flush
     lines_to_read.times do
-      tarantool_pipe.gets
+      #STDERR.puts pipe.gets
+      pipe.gets
     end
   end
 
@@ -284,14 +288,11 @@ module Helper
     yield
   end
 
-  def mock(u, meth, &block)
-    u.define_singleton_method(meth, &block)
-  end
 end
 
 class MiniTest::Unit::TestCase
   include ::Helper
-  include RR::Adapters::MiniTest
+  include ::RR::Adapters::MiniTest
 end
 
 class << MiniTest::Spec
