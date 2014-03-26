@@ -133,7 +133,7 @@ unpack_tuples(VALUE self, VALUE data, VALUE fields, VALUE _tail, VALUE tuples_af
         }
         end = str + 8 + *(uint32_t*)str;
         tuplen = *(uint32_t*)(str+4);
-        tuple = rb_ary_new2(fieldsn);
+        tuple = rb_ary_new2(tuplen);
         str += 8;
         len -= 8;
         for(i = 0; i < tuplen; i++) {
