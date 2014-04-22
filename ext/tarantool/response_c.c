@@ -178,9 +178,6 @@ unpack_tuples(VALUE self, VALUE data, VALUE fields, VALUE _tail, VALUE tuples_af
 #error "Should have long long or sizeof(long) == 8"
 #endif
             } else if (field == sym_bytes) {
-                if (*str == 0 && fieldsize > 0) {
-                    str++; len--; fieldsize--;
-                }
                 value = rb_enc_str_new(str, fieldsize, binary);
             } else if (field == sym_int16) {
                 if (fieldsize != 2) {
