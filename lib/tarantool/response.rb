@@ -73,6 +73,7 @@ module Tarantool
       end
     end
 
+    X02 = '%02x'.freeze
     def unpack_tuples(data)
       tuples_affected = ::BinUtils.slice_int32_le!(data)
       fields = fields()
@@ -81,7 +82,13 @@ module Tarantool
       else
         tail = 1
       end
-      _unpack_tuples(data, fields, tail, tuples_affected)
+      orig_data = data.dup
+      begin
+        _unpack_tuples(data, fields, tail, tuples_affected)
+      rescue ValueError => e
+        $stderr.puts "Value Error: tuples=#{tuples_affected}, data='#{orig_data.each_byte.map{|b| format(X02, b)}.join(' ')}'"
+        raise e
+      end
     end
 
     def _unpack_tuples(data, fields, tail, tuples_affected)
