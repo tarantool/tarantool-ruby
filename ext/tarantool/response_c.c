@@ -87,9 +87,9 @@ slice_ber(const uint8_t **str, size_t *len)
         uint8_t digit = **str;
         res = (res << 7) | (digit & 127);
         (*str)++; (*len)--;
-        if (digit < 128) return res;
+        if ((digit & 128) == 0) return res;
     }
-    rb_raise(rb_eValueError, "Response too short");
+    rb_raise(rb_eValueError, "Response too short for ber");
     return 0;
 }
 
@@ -131,8 +131,8 @@ unpack_tuples(VALUE self, VALUE data, VALUE fields, VALUE _tail, VALUE tuples_af
         if (len < 8) {
             rb_raise(rb_eValueError, "Response too short");
         }
-        end = str + 8 + *(uint32_t*)str;
-        tuplen = *(uint32_t*)(str+4);
+        end = str + 8 + get_uint32(str);
+        tuplen = get_uint32(str+4);
         tuple = rb_ary_new2(tuplen);
         str += 8;
         len -= 8;
