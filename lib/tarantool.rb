@@ -141,15 +141,24 @@ module Tarantool
     def _shard(number)
       @connections[number] ||= begin
         @shards[number].map do |host, port|
-          IProto.get_connection(host, port, self.class::IPROTO_CONNECTION_TYPE)
+          con = IProto.get_connection(host, port, self.class::IPROTO_CONNECTION_TYPE)
+          _tune_new_connection(con)
+          con
         end
       end
     end
 
-    def close_connection
-      @connections.each do |number, replicas|
-        replicas.each(&:close)
+    def _tune_new_connection(con)
+    end
+
+    def each_connection
+      @connections.each do |num, replicas|
+        replicas.each{|r| yield r}
       end
+    end
+
+    def close_connection
+      each_connection{|c| c.close}
       @connections.clear
     end
 

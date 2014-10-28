@@ -4,6 +4,22 @@ module Tarantool
     IPROTO_CONNECTION_TYPE = :em_callback
     INITIAL = Object.new.freeze
 
+    def inactivity_timeout
+      @inactivity_timeout ||= 0
+    end
+
+    def inactivity_timeout=(v)
+      @inactivity_timeout = v || 0
+      each_connection do |c|
+        c.comm_inactivity_timeout = @inactivity_timeout
+      end
+    end
+
+    def _tune_new_connection(con)
+      super
+      con.comm_inactivity_timeout = inactivity_timeout
+    end
+
     class Curry1 < Struct.new(:obj, :arg)
       def call
         obj.call arg
