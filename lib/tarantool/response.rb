@@ -84,103 +84,103 @@ module Tarantool
       end
       orig_data = data.dup
       begin
-        _unpack_tuples(data, fields, tail, tuples_affected)
+        tuples = []
+        serializers = []
+        while tuples_affected > 0
+          byte_size = ::BinUtils.slice_int32_le!(data)
+          fields_num = ::BinUtils.slice_int32_le!(data)
+          tuple_str = data.slice!(0, byte_size)
+          i = 0
+          tuple = []
+          while i < fields_num
+            field = fields[fieldno = i] || fields[fieldno = get_tail_no(fields, i, tail)]
+            tuple << _unpack_field(tuple_str, field, i, fieldno, serializers)
+            i += 1
+          end
+          tuples << tuple
+          tuples_affected -= 1
+        end
+        tuples
       rescue ValueError => e
         $stderr.puts "Value Error: tuples=#{tuples_affected}, data='#{orig_data.each_byte.map{|b| format(X02, b)}.join(' ')}'"
         raise e
       end
     end
 
-    def _unpack_tuples(data, fields, tail, tuples_affected)
-      tuples = []
-      while tuples_affected > 0
-        byte_size = ::BinUtils.slice_int32_le!(data)
-        fields_num = ::BinUtils.slice_int32_le!(data)
-        tuple_str = data.slice!(0, byte_size)
-        i = 0
-        tuple = []
-        while i < fields_num
-          field_size = ::BinUtils.slice_ber!(tuple_str)
+    def _unpack_field(tuple_str, field, i, realfield, serializers)
+      field_size = ::BinUtils.slice_ber!(tuple_str)
+      return nil if field_size == 0
 
-          field = fields[i] || get_tail_item(fields, i, tail)
-
-          tuple << (field_size == 0 ? nil :
-            case field
-            when :int, :integer
-              if field_size != 4
-                raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
-              end
-              ::BinUtils.slice_int32_le!(tuple_str)
-            when :string, :str
-              str = tuple_str.slice!(0, field_size)
-              str[0,1] = EMPTY  if str < ONE
-              str.force_encoding(UTF8)
-            when :int64
-              if field_size != 8
-                raise ValueError, "Bad field size #{field_size} for 64bit integer field ##{i}"
-              end
-              ::BinUtils.slice_int64_le!(tuple_str)
-            when :bytes
-              tuple_str.slice!(0, field_size)
-            when :int16
-              if field_size != 2
-                raise ValueError, "Bad field size #{field_size} for 16bit integer field ##{i}"
-              end
-              ::BinUtils.slice_int16_le!(tuple_str)
-            when :int8
-              if field_size != 1
-                raise ValueError, "Bad field size #{field_size} for 8bit integer field ##{i}"
-              end
-              ::BinUtils.slice_int8!(tuple_str)
-            when :sint
-              if field_size != 4
-                raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
-              end
-              ::BinUtils.slice_sint32_le!(tuple_str)
-            when :sint64
-              if field_size != 8
-                raise ValueError, "Bad field size #{field_size} for 64bit integer field ##{i}"
-              end
-              ::BinUtils.slice_sint64_le!(tuple_str)
-            when :sint16
-              if field_size != 2
-                raise ValueError, "Bad field size #{field_size} for 16bit integer field ##{i}"
-              end
-              ::BinUtils.slice_sint16_le!(tuple_str)
-            when :sint8
-              if field_size != 1
-                raise ValueError, "Bad field size #{field_size} for 8bit integer field ##{i}"
-              end
-              ::BinUtils.slice_sint8!(tuple_str)
-            when :varint
-              case field_size
-              when 8
-                ::BinUtils.slice_int64_le!(tuple_str)
-              when 4
-                ::BinUtils.slice_int32_le!(tuple_str)
-              when 2
-                ::BinUtils.slice_int16_le!(tuple_str)
-              else
-                raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
-              end
-            when :auto
-              str = tuple_str.slice!(0, field_size).force_encoding('utf-8')
-              case field_size
-              when 8, 4, 2
-                Util::AutoType.new(str)
-              else
-                str
-              end
-            else
-              get_serializer(field).decode(tuple_str.slice!(0, field_size))
-            end)
-          i += 1
+      case field
+      when :int, :integer
+        if field_size != 4
+          raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
         end
-        tuples << tuple
-        tuples_affected -= 1
+        ::BinUtils.slice_int32_le!(tuple_str)
+      when :string, :str
+        str = tuple_str.slice!(0, field_size)
+        str[0,1] = EMPTY  if str < ONE
+        str.force_encoding(UTF8)
+      when :int64
+        if field_size != 8
+          raise ValueError, "Bad field size #{field_size} for 64bit integer field ##{i}"
+        end
+        ::BinUtils.slice_int64_le!(tuple_str)
+      when :bytes
+        tuple_str.slice!(0, field_size)
+      when :int16
+        if field_size != 2
+          raise ValueError, "Bad field size #{field_size} for 16bit integer field ##{i}"
+        end
+        ::BinUtils.slice_int16_le!(tuple_str)
+      when :int8
+        if field_size != 1
+          raise ValueError, "Bad field size #{field_size} for 8bit integer field ##{i}"
+        end
+        ::BinUtils.slice_int8!(tuple_str)
+      when :sint
+        if field_size != 4
+          raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
+        end
+        ::BinUtils.slice_sint32_le!(tuple_str)
+      when :sint64
+        if field_size != 8
+          raise ValueError, "Bad field size #{field_size} for 64bit integer field ##{i}"
+        end
+        ::BinUtils.slice_sint64_le!(tuple_str)
+      when :sint16
+        if field_size != 2
+          raise ValueError, "Bad field size #{field_size} for 16bit integer field ##{i}"
+        end
+        ::BinUtils.slice_sint16_le!(tuple_str)
+      when :sint8
+        if field_size != 1
+          raise ValueError, "Bad field size #{field_size} for 8bit integer field ##{i}"
+        end
+        ::BinUtils.slice_sint8!(tuple_str)
+      when :varint
+        case field_size
+        when 8
+          ::BinUtils.slice_int64_le!(tuple_str)
+        when 4
+          ::BinUtils.slice_int32_le!(tuple_str)
+        when 2
+          ::BinUtils.slice_int16_le!(tuple_str)
+        else
+          raise ValueError, "Bad field size #{field_size} for integer field ##{i}"
+        end
+      when :auto
+        str = tuple_str.slice!(0, field_size).force_encoding('utf-8')
+        case field_size
+        when 8, 4, 2
+          Util::AutoType.new(str)
+        else
+          str
+        end
+      else
+        (serializers[realfield] ||= get_serializer(field)).decode(tuple_str.slice!(0, field_size))
       end
-      tuples
-    end unless method_defined?(:_unpack_tuples)
+    end unless method_defined?(:_unpack_field)
 
     def return_code(data)
       ::BinUtils.slice_int32_le!(data)

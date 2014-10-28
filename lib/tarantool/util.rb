@@ -36,6 +36,9 @@ module Tarantool
 
     module TailGetter
       private
+      def get_tail_no(array, index, tail)
+        tail == 1 ? array.size - 1 : array.size - tail + (index - array.size) % tail
+      end
       def get_tail_item(array, index, tail)
         tail == 1 ?
           array.last :
