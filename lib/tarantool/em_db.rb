@@ -61,9 +61,11 @@ module Tarantool
       elsif read_write == :read
         case @replica_strategy
         when :round_robin
-          replicas = replicas.shuffle
+          replicas = replicas.shuffle.sort_by!{|con| con.waiting_requests_size/5}
         when :prefer_slave
-          replicas = replicas[1..-1].shuffle << replicas[0]
+          master = replicas[0]
+          replicas = replicas[1..-1].shuffle.sort_by!{|con| con.waiting_requests_size/5}
+          replicas << master
         end
         EM.next_tick OneShardRead.new(replicas, response, feed)
       else
