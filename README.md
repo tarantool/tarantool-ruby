@@ -22,10 +22,12 @@ Available field types:
 - `:int`, `:integer` - nonnegative 32 bit integer
 - `:int64`, `:integer64` - nonnegative 64 bit integer
 - `:varint` - 32bit or 64bit integer, depending on value
-- `:str`, `:string` - UTF-8 string (attention: empty string is stored as "\x00", which converted back to "" on load)
+- `:str`, `:string` - UTF-8 string (attention: empty string and every string started with "\x00" is prepended with "\x00", which is cut on load. It is done to distinguish empty string from nil)
 - `:bytes`  - ASCII8-bit
 - `:auto` - do not use it (used for space without definition)
 - any object with #encode and #decode methods
+(note: Tarantool itself has no notion of types - it stores only 'bytestrings'. So nil is stored as
+ empty 'bytestring', and every empty 'bytestring' fetched is converted to nil, despite field type)
 
 Declaration of indexes is optional for array spaces and required for hash spaces.
 When there is no indexes defined for space array, their behaviour is not fixes, so that
