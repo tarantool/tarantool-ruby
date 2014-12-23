@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 group :development do
-  gem "debugger"
+#  gem "debugger"
 end
 
 group :test do
