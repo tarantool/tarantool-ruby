@@ -112,7 +112,7 @@ module Tarantool
         value = value.to_i
         _raise_integer_overflow(value, MIN_INT, MAX_INT32)  if value > MAX_INT32 or value < 0
         ::BinUtils.append_bersize_int32_le!(body, value)
-      when :string, :bytes, :str
+      when :string, :str
         value = value.to_s
         value = ZERO + value  if value < ONE
         raise StringTooLong  if value.bytesize >= MAX_BYTE_SIZE
