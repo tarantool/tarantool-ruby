@@ -1,37 +1,23 @@
 module Tarantool16
-  class ResponseError
-    def initialize(err, message = nil)
-      if StandardError === err
-        @error = err
-      else
-        @error = err.new message
-      end
-    end
-
-    def ok?
-      false
-    end
-
-    attr :error
-
-    def data
-      nil
-    end
-  end
-
-  class ResponseData
-    def initialize(data)
+  class Option
+    def initialize(err, data)
+      @error = err
       @data = data
     end
-
     def ok?
-      true
+      !@error
+    end
+    attr :error, :data
+
+    def self.ok(data)
+      new(nil, data)
     end
 
-    attr :data
-
-    def error
-      nil
+    def self.error(err, message = nil)
+      if err.is_a? Class
+        err = err.new message
+      end
+      new(err, nil)
     end
   end
 end

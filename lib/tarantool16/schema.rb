@@ -5,6 +5,7 @@ module Tarantool16
     def initialize(sid, name, fields, indices)
       @sid = sid
       @name = name
+      @has_tail = false
       self.fields = fields
       self.indices = indices if indices
     end
@@ -12,7 +13,11 @@ module Tarantool16
     def fields=(flds)
       @field_names = {}
       @fields = []
+      @has_tail = false
       flds.each_with_index do |fld, i|
+        if @has_tail
+          raise "no fields allowed after tail: #{flds}"
+        end
         case fld
         when String, Symbol
           name = fld.to_s
@@ -20,7 +25,9 @@ module Tarantool16
         when Array
           name, type = fld
         when Hash
-          name, type = fld['name'], fld['type']
+          name = fld['name'] || fld[:name]
+          type = fld['type'] || fld[:type]
+          tail = fld['tail'] || fld[:tail]
         end
         name_s = name.to_sym
         field = Field.new(name_s, i, type)
@@ -28,6 +35,7 @@ module Tarantool16
         @field_names[name_s] = field
         @field_names[i] = field
         @fields << field
+        @has_tail = true if tail
       end
     end
 
@@ -62,7 +70,7 @@ module Tarantool16
     end
 
     def indices?
-      !!@indices
+      @indices && !@indices.empty?
     end
 
     def get_ino(ino, key, cb)
@@ -71,7 +79,7 @@ module Tarantool16
         keys = key.keys
         unless (_ino = @_fields_2_ino[keys]).nil?
           return _ino ? yield(_ino) :
-              cb.call(ResponseError.new(
+              cb.call(Option.error(
                 SchemaError, "Could not detect index for fields #{key.keys} in #{name_sid}"))
         end
 
@@ -82,7 +90,7 @@ module Tarantool16
           when Symbol, String
             @field_names[fld].pos
           else
-            return cb.call(ResponseError.new(SchemaError, "Unknown field #{fld.inspect} in query key #{key.inspect}"))
+            return cb.call(Option.error(SchemaError, "Unknown field #{fld.inspect} in query key #{key.inspect}"))
           end
         }
 
@@ -101,12 +109,12 @@ module Tarantool16
           yield index.pos
         else
           @_fields_2_ino[keys.freeze] = false
-          cb.call(ResponseError.new(SchemaError, "Could not detect index for fields #{key.keys} in #{name_sid}"))
+          cb.call(Option.error(SchemaError, "Could not detect index for fields #{key.keys} in #{name_sid}"))
         end
       elsif index = @index_names[ino]
         yield index.pos
       else
-        cb.call(ResponseError.new(SchemaError, "Could not find index #{ino} for spacefor fields #{key.keys}"))
+        cb.call(Option.error(SchemaError, "Could not find index #{ino} for spacefor fields #{key.keys}"))
       end
     end
 
@@ -115,6 +123,28 @@ module Tarantool16
       positions = @indices[ino].part_positions
       key.each_key do |k|
         res[positions[k]] = key[k]
+      end
+      res
+    end
+
+    def tuple2hash(ar)
+      raise "No fields defined for #{name_sid}"
+      res = {}
+      i = 0
+      flds = @fields
+      s = flds.size - (@has_tail ? 1 : 0)
+      while i < s
+        res[flds[i].name] = ar[i]
+        i += 1
+      end
+      if @has_tail
+        tail = flds[s]
+        tail_size = [*tail.type].size
+        if tail_size == 1 || tail_size == 0
+          res[tail.name] = ar[s..-1]
+        else
+          res[tail.name] = ar[s..-1].each_slice(tail_size).to_a
+        end
       end
       res
     end
@@ -129,6 +159,10 @@ module Tarantool16
         @name = name
         @pos = pos
         @type = type
+      end
+
+      def to_s
+        "<Fields #{@name}@#{pos}>"
       end
     end
 
