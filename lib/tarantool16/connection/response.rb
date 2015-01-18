@@ -1,39 +1,40 @@
 require 'tarantool16/errors'
+require 'tarantool16/response'
 
 module Tarantool16
   module Connection
-    class Response
-      def initialize(sync, retcode, data)
+    class Option < ::Tarantool16::Option
+      attr :sync, :error, :data
+      def initialize(sync, err, data)
         @sync = sync
-        if retcode == 0
-          @error = nil
-          @data = data
-        elsif Integer === retcode
-          @error = Tarantool16::DBError.with_code_message(retcode, data)
-          @data = nil
-        elsif ::StandardError === retcode
-          @error = retcode
-          @data = nil
-        elsif retcode.is_a?(Class) && StandardError > retcode
-          @error = retcode.new(data)
-          @data = nil
+        @error = err
+        @data = data
+      end
+
+      def ok?
+        !@error
+      end
+
+      def self.ok(sync, code, data)
+        if code == 0
+          new(sync, nil, data)
         else
-          raise "what are f**k?"
+          new(sync, ::Tarantool16::DBError.with_code_message(code, data), nil)
         end
       end
 
-      attr :sync, :error, :data
-      alias error? error
-
-      def ok?
-        @error.nil?
+      def self.error(sync, err, message = nil)
+        if err.is_a? Class
+          err = err.new message
+        end
+        new(sync, err, nil)
       end
 
       def inspect
         if ok?
-          "<Tarantool16::Connection::Response data=#{@data.inspect}>"
+          "<Tarantool16::Option data=#{@data.inspect}>"
         else
-          "<Tarantool16::Connection::Response error=#{@error.inspect}>"
+          "<Tarantool16::Option error=#{@error.inspect}>"
         end
       end
     end

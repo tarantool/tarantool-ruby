@@ -16,51 +16,50 @@ module Tarantool16
       offset = opts[:offset] || 0
       limit = opts[:limit] || 2**30
       iterator = opts[:iterator]
-      cb = RETURN_OR_RAISE
+      need_hash = opts[:hash]
       key = case key
             when nil
               []
             when Array
               key
             when Hash
-              cb = lambda{|r|
-                raise r.error unless r.ok?
-                sp = _space(sno)
-                r.data.map{|ar| sp.tuple2hash(ar) }
-              }
+              need_hash = true
               key
             else
               [key]
             end
-      _select(sno, ino, key, offset, limit, iterator, RETURN_OR_RAISE)
+      _select(sno, ino, key, offset, limit, iterator, need_hash, RETURN_OR_RAISE)
     end
 
-    def insert(sno, tuple)
-      _insert(sno, tuple, RETURN_OR_RAISE)
+    def insert(sno, tuple, opts = {})
+      need_hash = opts[:hash] || tuple.is_a?(Hash)
+      _insert(sno, tuple, need_hash, RETURN_OR_RAISE)
     end
 
-    def replace(sno, tuple)
-      _replace(sno, tuple, RETURN_OR_RAISE)
+    def replace(sno, tuple, opts = {})
+      need_hash = opts[:hash] || tuple.is_a?(Hash)
+      _replace(sno, tuple, need_hash, RETURN_OR_RAISE)
     end
 
     def delete(sno, key, opts = {})
       ino = opts[:index]
-      _delete(sno, ino, key, RETURN_OR_RAISE)
+      need_hash = opts[:hash] || tkey.is_a?(Hash)
+      _delete(sno, ino, key, need_hash, RETURN_OR_RAISE)
     end
 
     def update(sno, key, ops, opts = {})
       ino = opts[:index]
-      _update(sno, ino, key, ops, RETURN_OR_RAISE)
+      need_hash = opts[:hash] || key.is_a?(Hash)
+      _update(sno, ino, key, ops, need_hash, RETURN_OR_RAISE)
     end
 
     def _synchronized
       yield
     end
 
-    class Future < Struct.new(:kind, :cb)
+    class SchemaFuture
       UNDEF = Object.new.freeze
-      def initialize(kind)
-        @kind = kind
+      def initialize
         @r = UNDEF
         @cb = nil
       end
@@ -68,7 +67,9 @@ module Tarantool16
         unless @r.equal? UNDEF
           return cb.call(@r)
         end
-        raise "Blocking future accepts unly 1 callback" if @cb
+        if @cb
+          raise "Blocking future accepts only 1 callback"
+        end
         @cb = cb
       end
 

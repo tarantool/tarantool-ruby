@@ -89,9 +89,9 @@ module Tarantool16
           n -= 1
         end
         if sync == nil
-          return Response.new(nil, UnexpectedResponse, "Mailformed response: no sync")
+          return Option.error(nil, UnexpectedResponse, "Mailformed response: no sync")
         elsif code == nil
-          return Response.new(nil, UnexpectedResponse, "Mailformed response: no code for sync=#{sync}")
+          return Option.error(nil, UnexpectedResponse, "Mailformed response: no code for sync=#{sync}")
         end
         unless @u.buffer.empty?
           n = @u.read_map_header
@@ -104,9 +104,9 @@ module Tarantool16
         else
           body = nil
         end
-        Response.new(sync, code, body)
+        Option.ok(sync, code, body)
       rescue ::MessagePack::UnpackError, ::MessagePack::TypeError => e
-        Response.new(sync, e, nil)
+        Option.ok(sync, e, nil)
       end
 
       def host_port
@@ -136,10 +136,7 @@ module Tarantool16
       def _select(space_no, index_no, key, offset, limit, iterator, cb)
         iterator ||= ::Tarantool16::ITERATOR_EQ
         unless Integer === iterator
-          unless it = ::Tarantool16::Iterators[iterator]
-            raise "Unknown iterator #{iterator.inspect}"
-          end
-          iterator = it
+          iterator = ::Tarantool16.iter(iterator)
         end
         req = {IPROTO_SPACE_ID => space_no,
                IPROTO_INDEX_ID => index_no,

@@ -47,9 +47,9 @@ module Tarantool16
   ITERATOR_LE  = 4
   ITERATOR_GE  = 5
   ITERATOR_GT  = 6
-  ITERATOR_BITSET_ALL_SET     = 7
-  ITERATOR_BITSET_ANY_SET     = 8
-  ITERATOR_BITSET_ALL_NOT_SET = 9
+  ITERATOR_BITS_ALL_SET     = 7
+  ITERATOR_BITS_ANY_SET     = 8
+  ITERATOR_BITS_ALL_NOT_SET = 9
   ITERATOR_RTREE_OVERLAPS = 10
   ITERATOR_RTREE_NEIGHBOR = 11
 
@@ -62,16 +62,24 @@ module Tarantool16
     [ITERATOR_LE, %w[<= le]],
     [ITERATOR_GE, %w[>  ge]],
     [ITERATOR_GT, %w[>= gt]],
-    [ITERATOR_BITSET_ALL_SET, %w[ball &=]],
-    [ITERATOR_BITSET_ANY_SET, %w[bany &]],
-    [ITERATOR_BITSET_ALL_NOT_SET, %w[bnotany !&]],
+    [ITERATOR_BITS_ALL_SET, %w[ball &=]],
+    [ITERATOR_BITS_ANY_SET, %w[bany &]],
+    [ITERATOR_BITS_ALL_NOT_SET, %w[bnotany !&]],
     [ITERATOR_RTREE_OVERLAPS, %w[roverlaps here &&]],
     [ITERATOR_RTREE_NEIGHBOR, %w[rneighbor near <->]],
   ].each do |it, names|
     names.each do |name|
+      Iterators[it] = it
       Iterators[name] = it
       Iterators[name.to_sym] = it
     end
+  end
+  Iterators[nil] = ITERATOR_EQ
+  def self.iter(iter)
+    unless it = Iterators[iter]
+      raise "Unknown iterator #{iter.inspect}"
+    end
+    it
   end
 
   # Default value for socket timeout (seconds)

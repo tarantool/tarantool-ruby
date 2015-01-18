@@ -15,7 +15,7 @@ module Tarantool16
         _send format_request(code, next_sync, body)
         cb.call _read_response
       rescue StandardError => e
-        cb.call Response.new(nil, e, nil)
+        cb.call Option.error(nil, e, nil)
       end
 
       def close
