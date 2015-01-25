@@ -7,11 +7,14 @@ require_relative 'response'
 module Tarantool16
   module Connection
     class Error < ::StandardError; end
-    class CouldNotConnect < Error; end
-    class Disconnected < Error; end
+    class ConnectionError < Error; end
+    class CouldNotConnect < ConnectionError; end
+    class Disconnected < ConnectionError; end
+    class Retry < ConnectionError; end
     class UnexpectedResponse < Error; end
 
     module Common
+      DEFAULT_RECONNECT = 0.2
       attr :host, :user
       def _init_common(host, opts)
         @host = host
@@ -19,9 +22,37 @@ module Tarantool16
         if opts[:password]
           @passwd = ::OpenSSL::Digest::SHA1.digest(opts[:password])
         end
+        if opts[:reconnect].nil?
+          @reconnect_timeout = DEFAULT_RECONNECT
+          @reconnect = true
+        elsif Numeric === opts[:reconnect]
+          @reconnect_timeout = opts[:reconnect]
+          @reconnect = true
+        else
+          @reconnect = false
+        end
         @p = MessagePack::Packer.new
         @u = MessagePack::Unpacker.new
         @s = 0
+      end
+
+      if ::Process.respond_to?(:clock_gettime)
+        if defined?(::Process::CLOCK_MONOTONIC_COARSE)
+          CLOCK_KIND = ::Process::CLOCK_MONOTONIC_COARSE
+        elsif defined?(::Process::CLOCK_MONOTONIC_FAST)
+          CLOCK_KIND = ::Process::CLOCK_MONOTONIC_FAST
+        elsif defined?(::Process::CLOCK_MONOTONIC)
+          CLOCK_KIND = ::Process::CLOCK_MONOTONIC
+        else
+          CLOCK_KIND = ::Process::CLOCK_REALTIME
+        end
+        def now_f
+          ::Process.clock_gettime(CLOCK_KIND)
+        end
+      else
+        def now_f
+          Time.now.to_f
+        end
       end
 
       def next_sync
@@ -51,15 +82,15 @@ module Tarantool16
         pints = pass1.unpack('L*')
         sints = scramble.unpack('L*')
         pints.size.times{|i| sints[i] ^= pints[i] }
-        format_request(REQUEST_TYPE_AUTHENTICATE, {
+        format_request(REQUEST_TYPE_AUTHENTICATE, next_sync, {
           IPROTO_USER_NAME => user,
-          IPROTO_TUPLE => [ 'chap-sha1', pints.pack('L*') ]
+          IPROTO_TUPLE => [ 'chap-sha1', sints.pack('L*') ]
         })
       end
 
       def parse_greeting(greeting)
         @greeting = greeting[0, 64]
-        @salt = greeting[64, 44].unpack('m')[0]
+        @salt = greeting[64..-1].unpack('m')[0][0,20]
       end
 
       def parse_size(str)
@@ -73,7 +104,7 @@ module Tarantool16
         e
       end
 
-      def parse_reponse(str)
+      def parse_response(str)
         sync = nil
         @u.feed(str)
         n = @u.read_map_header
@@ -94,19 +125,14 @@ module Tarantool16
           return Option.error(nil, UnexpectedResponse, "Mailformed response: no code for sync=#{sync}")
         end
         unless @u.buffer.empty?
-          n = @u.read_map_header
-          while n > 0
-            cd = @u.read
-            vl = @u.read
-            body = vl if cd == IPROTO_DATA || cd == IPROTO_ERROR
-            n -= 1
-          end
+          bmap = @u.read
+          body = bmap[IPROTO_DATA] || bmap[IPROTO_ERROR]
         else
           body = nil
         end
         Option.ok(sync, code, body)
       rescue ::MessagePack::UnpackError, ::MessagePack::TypeError => e
-        Option.ok(sync, e, nil)
+        Option.error(sync, e, nil)
       end
 
       def host_port

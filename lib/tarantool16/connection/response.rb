@@ -3,7 +3,7 @@ require 'tarantool16/response'
 
 module Tarantool16
   module Connection
-    class Option < ::Tarantool16::Option
+    class Option
       attr :sync, :error, :data
       def initialize(sync, err, data)
         @sync = sync
@@ -13,6 +13,10 @@ module Tarantool16
 
       def ok?
         !@error
+      end
+
+      def raise_if_error!
+        raise @error if @error
       end
 
       def self.ok(sync, code, data)
@@ -31,10 +35,11 @@ module Tarantool16
       end
 
       def inspect
+        s = @sync ? " sync=#{sync}" : ""
         if ok?
-          "<Tarantool16::Option data=#{@data.inspect}>"
+          "<Option#{s} data=#{@data.inspect}>"
         else
-          "<Tarantool16::Option error=#{@error.inspect}>"
+          "<Option#{s} error=#{@error.inspect}>"
         end
       end
     end

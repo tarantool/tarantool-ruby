@@ -5,12 +5,12 @@ module Tarantool16
 
     def initialize(host, opts = {})
       @host = host
-      @opts = opts
+      @opts = opts.dup
       @future = nil
       @spaces = nil
       @defined_fields = {}
       _fill_standard_spaces
-      @conn = self.class::Connection.new(@host, opts)
+      @conn = self.class::Connection.new(@host, @opts)
     end
 
     def define_fields(sid, fields)
