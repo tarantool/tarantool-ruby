@@ -2,14 +2,14 @@ require "tarantool16/version"
 require "tarantool16/db"
 
 module Tarantool16
-  autoload :BlockingDB, 'tarantool16/blocking_db'
+  autoload :DumbDB, 'tarantool16/dumb_db'
   def self.new(opts = {})
     opts = opts.dup
     hosts = opts[:host]
-    type = opts[:type] && opts[:type].to_s || 'blocking'
+    type = opts[:type] && opts[:type].to_s || 'dumb'
     case type
-    when 'blocking'
-      BlockingDB.new hosts, opts
+    when 'dumb'
+      DumbDB.new hosts, opts
     else
       raise "Unknown DB type"
     end

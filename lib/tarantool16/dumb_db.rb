@@ -1,9 +1,9 @@
 require_relative 'db'
-require_relative 'connection/blocking'
+require_relative 'connection/dumb'
 
 module Tarantool16
-  class BlockingDB < DB
-    Connection = Tarantool16::Connection::Blocking
+  class DumbDB < DB
+    Connection = Tarantool16::Connection::Dumb
 
     RETURN_OR_RAISE = lambda{|r|
       raise r.error unless r.ok?

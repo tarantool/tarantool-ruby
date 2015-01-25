@@ -2,7 +2,7 @@ require 'socket'
 require_relative 'common'
 module Tarantool16
   module Connection
-    class Blocking
+    class Dumb
       include Common
 
       def initialize(host, opts = {})
