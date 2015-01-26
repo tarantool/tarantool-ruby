@@ -1,8 +1,8 @@
 # Tarantool16
 
-This is adapter for (tarantool)[http://tarantool.org] version 1.6.
+This is adapter for [tarantool](http://tarantool.org) version 1.6.
 
-(adapter for version <=1.5 is called (tarantool)[https://github.org/tarantoool/tarantool-ruby])
+(adapter for version <=1.5 is called [tarantool](https://github.org/tarantoool/tarantool-ruby))
 
 ## Installation
 
