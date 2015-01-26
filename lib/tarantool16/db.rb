@@ -16,7 +16,7 @@ module Tarantool16
     def define_fields(sid, fields)
       sid = sid.to_s if sid.is_a?(Symbol)
       @defined_fields[sid] = fields
-      if sp = @spaces[sid]
+      if @spaces && (sp = @spaces[sid])
         if sp.sid && sp.name && !sp.name.empty?
           rf1 = @defined_fields[sp.sid]
           rf2 = @defined_fields[sp.name]
@@ -43,7 +43,7 @@ module Tarantool16
     UNDEF = Object.new.freeze
     def _with_space(name, cb)
       future = @future || _space_future
-      future.then lambda{|r|
+      future.then_blk do |r|
         unless r.ok?
           cb.call r
         else
@@ -59,7 +59,7 @@ module Tarantool16
             yield sp
           end
         end
-      }
+      end
     end
 
     def _space_future
@@ -172,7 +172,7 @@ module Tarantool16
       end
     end
 
-    def _update(sno, ino, key, ops, cb)
+    def _update(sno, ino, key, ops, need_hash, cb)
       ino = 0 if ino.nil? && key.is_a?(Array)
       ops_good = ops.is_a?(Array) && ops.all?{|a| ops[1].is_a?(Integer)}
       if sno.is_a?(Integer) && ino.is_a?(Integer) && key.is_a?(Array) && ops_good
@@ -182,7 +182,7 @@ module Tarantool16
         sp.get_ino(ino, key, ITERATOR_EQ, cb) do |_ino, _key|
           _ops = ops_good ? ops : sp.map_ops(ops)
           _cb = need_hash ? sp.wrap_cb(cb) : cb
-          conn._updade(sp.sid, _ino, _key, _ops, _cb)
+          conn._update(sp.sid, _ino, _key, _ops, _cb)
         end
       end
     end

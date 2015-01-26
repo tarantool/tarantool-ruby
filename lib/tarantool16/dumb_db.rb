@@ -9,6 +9,10 @@ module Tarantool16
       raise r.error unless r.ok?
       r.data
     }
+    RETURN_ONE_OR_RAISE = lambda{|r|
+      raise r.error unless r.ok?
+      r.data[0]
+    }
     HUGE_LIMIT = 2**30
 
     def select(sno, key, opts={})
@@ -29,6 +33,24 @@ module Tarantool16
               [key]
             end
       _select(sno, ino, key, offset, limit, iterator, need_hash, RETURN_OR_RAISE)
+    end
+
+    def get(sno, key, opts={})
+      ino = opts[:index]
+      iterator = opts[:iterator]
+      need_hash = opts[:hash]
+      key = case key
+            when nil
+              []
+            when Array
+              key
+            when Hash
+              need_hash = true
+              key
+            else
+              [key]
+            end
+      _select(sno, ino, key, 0, 1, iterator, need_hash, RETURN_ONE_OR_RAISE)
     end
 
     def insert(sno, tuple, opts = {})
@@ -71,6 +93,16 @@ module Tarantool16
           raise "Blocking future accepts only 1 callback"
         end
         @cb = cb
+      end
+
+      def then_blk
+        unless @r.equal? UNDEF
+          return yield @r
+        end
+        if @cb
+          raise "Blocking future accepts only 1 callback"
+        end
+        @cb = lambda{|r| yield r}
       end
 
       def set(r)

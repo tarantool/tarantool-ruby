@@ -41,9 +41,14 @@ module Tarantool16
         @fields << field
         @has_tail = true if tail
       end
+      if @index_defs
+        self.indices= @index_defs
+      end
+      flds
     end
 
     def indices=(inds)
+      @index_defs = inds
       @index_names = {}
       @indices = []
       @_fields_2_ino = {}
@@ -78,7 +83,7 @@ module Tarantool16
         keys = key.keys
         _ino = @_fields_2_ino[keys]
         if _ino
-          ind = @indicies[_ino]
+          ind = @indices[_ino]
           return yield(_ino, ind.map_key(key))
         elsif _ino == false
           opt = Option.error(SchemaError, "Could not detect index for fields #{key.keys} in #{name_sid}")
@@ -181,13 +186,10 @@ module Tarantool16
           op
         when Symbol, String
           _op = op.dup
-          _op[1] = @field_names[_1]
+          _op[1] = @field_names[_1].pos
           _op
         when Array
-          _op = _1.dup
-          _op[0] = @field_names[_op[0]]
-          _op.unshift op[0]
-          _op
+          _1.dup.insert(1, @field_names[op[0]].pos)
         end
       end
     end
