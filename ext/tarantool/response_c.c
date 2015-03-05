@@ -107,8 +107,7 @@ unpack_field(VALUE self, VALUE data, VALUE field, VALUE i_o, VALUE realfield_o, 
     size_t len = RSTRING_LEN(data);
     size_t fieldsize = slice_ber((const uint8_t**)&str, &len);
     VALUE value;
-    rb_str_drop_bytes(data, RSTRING_LEN(data) - len);
-    str = StringValuePtr(data);
+    size_t offset = RSTRING_LEN(data) - len;
 
     if (fieldsize == 0) {
 	return Qnil;
@@ -190,7 +189,7 @@ unpack_field(VALUE self, VALUE data, VALUE field, VALUE i_o, VALUE realfield_o, 
 	}
 	value = rb_funcall2(serializer, id_decode, 1, &substr);
     }
-    rb_str_drop_bytes(data, fieldsize);
+    rb_str_drop_bytes(data, offset + fieldsize);
     return value;
 }
 

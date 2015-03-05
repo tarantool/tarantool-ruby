@@ -76,6 +76,7 @@ module Tarantool
     X02 = '%02x'.freeze
     def unpack_tuples(data)
       tuples_affected = ::BinUtils.slice_int32_le!(data)
+      ta = tuples_affected
       fields = fields()
       if Integer === fields.last
         *fields, tail = fields
@@ -102,7 +103,7 @@ module Tarantool
         end
         tuples
       rescue ValueError => e
-        $stderr.puts "Value Error: tuples=#{tuples_affected}, data='#{orig_data.each_byte.map{|b| format(X02, b)}.join(' ')}'"
+        $stderr.puts "Value Error: tuples=#{ta} now=#{ta-tuples_affected}, remains=#{data.bytesize} remains_data='#{data.unpack('H*').gsub(/../,'\& ')}' orig_size=#{orig_data.size} orig_data='#{orig_data.unpack('H*').gsub(/../,'\& ')}'"
         raise e
       end
     end
