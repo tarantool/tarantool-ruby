@@ -103,7 +103,7 @@ static VALUE
 unpack_field(VALUE self, VALUE data, VALUE field, VALUE i_o, VALUE realfield_o, VALUE serializers)
 {
     int i = NUM2INT(i_o);
-    const char *str = StringValuePtr(data);
+    const char *str = RSTRING_PTR(data);
     size_t len = RSTRING_LEN(data);
     size_t fieldsize = slice_ber((const uint8_t**)&str, &len);
     VALUE value;
