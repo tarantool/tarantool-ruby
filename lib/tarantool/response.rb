@@ -103,7 +103,7 @@ module Tarantool
         end
         tuples
       rescue ValueError => e
-        $stderr.puts "Value Error: tuples=#{ta} now=#{ta-tuples_affected}, remains=#{data.bytesize} remains_data='#{data.unpack('H*').gsub(/../,'\& ')}' orig_size=#{orig_data.size} orig_data='#{orig_data.unpack('H*').gsub(/../,'\& ')}'"
+        $stderr.puts "Value Error: tuples=#{ta} now=#{ta-tuples_affected}, remains=#{data.bytesize} remains_data='#{data.unpack('H*')[0].gsub(/../,'\& ')}' orig_size=#{orig_data.size} orig_data='#{orig_data.unpack('H*')[0].gsub(/../,'\& ')}'"
         raise e
       end
     end
