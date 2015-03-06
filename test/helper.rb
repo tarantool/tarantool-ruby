@@ -74,6 +74,7 @@ module TConf
     Dir.chdir(conf[:dir]) do
       conf[:pid] = spawn('tarantool_box')
     end
+    sleep(0.01)
   end
 
   def self.stop(name)
@@ -197,8 +198,9 @@ module Helper
   def exec_tarantool(cmd, lines_to_read)
     cmd = cmd.gsub(/^\s+/, '')
     pipe = tarantool_pipe
-    pipe.puts(cmd)
+    pipe.write(cmd)
     pipe.flush
+    pipe.close_write
     lines_to_read.times do
       #STDERR.puts pipe.gets
       pipe.gets
@@ -211,7 +213,7 @@ module Helper
        lua truncate(1)
        lua truncate(2)
        lua truncate(3)
-    ", 12
+    ", 8
   end
 
   def seed
@@ -224,7 +226,7 @@ module Helper
       insert into t2 values ('hi zo', 'ho zo', 1)
       insert into t2 values ('hi zo', 'pidas', 1, 3, 5)
       insert into t2 values ('coma', 'peredoma', 2)
-    ", 16
+    ", 8
   end
 
   def clear_db
@@ -292,7 +294,11 @@ end
 
 class MiniTest::Unit::TestCase
   include ::Helper
-  include ::RR::Adapters::MiniTest
+  #include ::RR::Adapters::MiniTest
+end
+
+module MiniTest::Spec::SharedExamples
+  include ::Helper
 end
 
 class << MiniTest::Spec
