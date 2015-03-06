@@ -4,110 +4,6 @@ require 'tarantool/serializers'
 
 module Tarantool
   module UnpackTuples
-  end
-  begin
-    require 'tarantool/response_c'
-  rescue LoadError
-  end
-
-  module ParseIProto
-    include Util::Packer
-    def _parse_iproto(data)
-      if Exception === data || data == ''
-        data
-      elsif (ret = ::BinUtils.slice_int32_le!(data)) == 0
-        data
-      else
-        data.gsub!("\x00", "")
-        CODE_TO_EXCEPTION[ret].new(ret, data)
-      end
-    end
-  end
-
-  class Response < Struct.new(:cb, :request_type, :body, :get_tuples, :fields, :translators)
-    include Util::Packer
-    include Util::TailGetter
-    include Serializers
-    include UnpackTuples
-    UTF8 = 'utf-8'.freeze
-
-    def call(data)
-      if Exception === data
-        cb.call(data)
-      else
-        if (ret = return_code(data)) == 0
-          call_callback parse_response_for_cb(data)
-        else
-          data.gsub!("\x00", "")
-          cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
-        end
-      end
-    end
-
-    def translators
-      super || (self.translators = [])
-    end
-
-    def call_callback(result)
-      cb.call(Exception === result || get_tuples != :first ? result : result.first)
-    end
-
-    def parse_response_for_cb(data)
-      parse_response data
-    rescue StandardError => e
-      e
-    end
-
-    def parse_response(data)
-      return data  if Exception === data
-      unless get_tuples
-        ::BinUtils.get_int32_le(data)
-      else
-        tuples = unpack_tuples(data)
-        if translators
-          translators.each{|trans|
-            tuples.map!{|tuple| trans.call(tuple)}
-          }
-        end
-        tuples
-      end
-    end
-
-    X02 = '%02x'.freeze
-    def unpack_tuples(data)
-      tuples_affected = ::BinUtils.slice_int32_le!(data)
-      ta = tuples_affected
-      fields = fields()
-      if Integer === fields.last
-        *fields, tail = fields
-      else
-        tail = 1
-      end
-      orig_data = data.dup
-      begin
-        tuples = []
-        serializers = []
-        while tuples_affected > 0
-          byte_size = ::BinUtils.slice_int32_le!(data)
-          fields_num = ::BinUtils.slice_int32_le!(data)
-          tuple_str = data.slice!(0, byte_size)
-          i = 0
-          tuple = []
-          while i < fields_num
-            field = fields[fieldno = i] || fields[fieldno = get_tail_no(fields, i, tail)]
-            tuple << _unpack_field(tuple_str, field, i, fieldno, serializers)
-            i += 1
-          end
-          tuples << tuple
-          tuples_affected -= 1
-        end
-        tuples
-      rescue ValueError => e
-        $stderr.puts "Value Error: tuples=#{ta} now=#{ta-tuples_affected}, remains=#{data.bytesize} remains_data='#{data.unpack('H*')[0].gsub(/../,'\& ')}' orig_size=#{orig_data.size} orig_data='#{orig_data.unpack('H*')[0].gsub(/../,'\& ')}'"
-        raise e
-      end
-    end
-
     def _unpack_field(tuple_str, field, i, realfield, serializers)
       field_size = ::BinUtils.slice_ber!(tuple_str)
       return nil if field_size == 0
@@ -181,7 +77,105 @@ module Tarantool
       else
         (serializers[realfield] ||= get_serializer(field)).decode(tuple_str.slice!(0, field_size))
       end
-    end unless method_defined?(:_unpack_field)
+    end
+  end
+
+  module ParseIProto
+    include Util::Packer
+    def _parse_iproto(data)
+      if Exception === data || data == ''
+        data
+      elsif (ret = ::BinUtils.slice_int32_le!(data)) == 0
+        data
+      else
+        data.gsub!("\x00", "")
+        CODE_TO_EXCEPTION[ret].new(ret, data)
+      end
+    end
+  end
+
+  class Response < Struct.new(:cb, :request_type, :body, :get_tuples, :fields, :translators)
+    include Util::Packer
+    include Util::TailGetter
+    include Serializers
+    include UnpackTuples
+    UTF8 = 'utf-8'.freeze
+
+    def call(data)
+      if Exception === data
+        cb.call(data)
+      else
+        if (ret = return_code(data)) == 0
+          call_callback parse_response_for_cb(data)
+        else
+          data.gsub!("\x00", "")
+          cb.call CODE_TO_EXCEPTION[ret].new(ret, data)
+        end
+      end
+    end
+
+    def translators
+      super || (self.translators = [])
+    end
+
+    def call_callback(result)
+      cb.call(Exception === result || get_tuples != :first ? result : result.first)
+    end
+
+    def parse_response_for_cb(data)
+      parse_response data
+    rescue StandardError => e
+      e
+    end
+
+    def parse_response(data)
+      return data  if Exception === data
+      unless get_tuples
+        ::BinUtils.get_int32_le(data)
+      else
+        tuples = unpack_tuples(data)
+        if translators
+          translators.each{|trans|
+            tuples.map!{|tuple| trans.call(tuple)}
+          }
+        end
+        tuples
+      end
+    end
+
+    def unpack_tuples(data)
+      tuples_affected = ::BinUtils.slice_int32_le!(data)
+      ta = tuples_affected
+      fields = fields()
+      if Integer === fields.last
+        *fields, tail = fields
+      else
+        tail = 1
+      end
+      orig_data = data.dup
+      begin
+        tuples = []
+        serializers = []
+        while tuples_affected > 0
+          byte_size = ::BinUtils.slice_int32_le!(data)
+          fields_num = ::BinUtils.slice_int32_le!(data)
+          tuple_str = data.slice!(0, byte_size)
+          i = 0
+          tuple = []
+          while i < fields_num
+            field = fields[fieldno = i] || fields[fieldno = get_tail_no(fields, i, tail)]
+            tuple << _unpack_field(tuple_str, field, i, fieldno, serializers)
+            i += 1
+          end
+          tuples << tuple
+          tuples_affected -= 1
+        end
+        tuples
+      rescue ValueError => e
+        $stderr.puts "Value Error: tuples=#{ta} now=#{ta-tuples_affected}, remains=#{data.bytesize} remains_data='#{data.unpack('H*')[0].gsub(/../,'\& ')}' orig_size=#{orig_data.size} orig_data='#{orig_data.unpack('H*')[0].gsub(/../,'\& ')}'"
+        raise e
+      end
+    end
 
     def return_code(data)
       ::BinUtils.slice_int32_le!(data)
