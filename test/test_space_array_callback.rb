@@ -105,18 +105,20 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
     end
 
     it "should fetch longer records" do
-      emrun(2) {
+      emrun(3) {
         space2.by_pk(['hi zo', 'pidas'], &setp(0))
         space1.by_pk(2, &setp(1))
+        space1.by_pk(2, &setp(2))
       }
       results[0].must_equal ['hi zo', 'pidas', 1, 3, 5]
       results[1].must_equal [2, 'medium', 6, 'common', 7]
+      results[2].must_equal [2, 'medium', 6, 'common', 7]
     end
 
     it "should be able to insert" do
       asdf = ['asdf', 'asdf', 'asdf', 4, 5]
       qwer = ['qwer', 'qwer', 'qwer', 4, 20, 19]
-      zxcv = [4, 'zxcv', 7, 'zxcv', 8]
+      zxcv = [4, "\0zxcv", 7, 'zxcv', 8]
       xcvb = [5, 'xcvb', 7, 'xcvb', 8]
       emrun(4) {
         space0.insert(asdf, &setp(0))
@@ -124,6 +126,7 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
         space1.insert(zxcv){|res|
           results[2] = res
           space1.by_pk(4, &setp(3))
+          space1.by_pk(2, &setp(5))
         }
         space1.insert(xcvb, return_tuple: true, &setp(4))
       }
@@ -132,6 +135,7 @@ describe 'Tarantool::CallbackDB::SpaceArray' do
       results[2].must_equal 1
       results[3].must_equal zxcv
       results[4].must_equal xcvb
+      results[5].must_equal [2, 'medium', 6, 'common', 7]
     end
 
     it "should be able to update" do
