@@ -4,6 +4,9 @@ require 'tarantool/serializers'
 
 module Tarantool
   module UnpackTuples
+    include Util::Packer
+    include Util::TailGetter
+    UTF8 = 'utf-8'.freeze
     def _unpack_field(tuple_str, field, i, realfield, serializers)
       field_size = ::BinUtils.slice_ber!(tuple_str)
       return nil if field_size == 0
@@ -81,7 +84,6 @@ module Tarantool
   end
 
   module ParseIProto
-    include Util::Packer
     def _parse_iproto(data)
       if Exception === data || data == ''
         data
@@ -95,11 +97,8 @@ module Tarantool
   end
 
   class Response < Struct.new(:cb, :request_type, :body, :get_tuples, :fields, :translators)
-    include Util::Packer
-    include Util::TailGetter
     include Serializers
     include UnpackTuples
-    UTF8 = 'utf-8'.freeze
 
     def call(data)
       if Exception === data
