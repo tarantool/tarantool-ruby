@@ -406,7 +406,7 @@ shared_examples_for :record do
       user_class.by_pk('ruden').must_be_nil
 
       user_class.by_pk('petro').attributes.must_equal petro.merge(apples_count: 0)
-      user_class.invoke('box.delete', user_class.space_no, 'petro', space_no: nil).must_equal 1
+      user_class.invoke('box.delete', user_class.space_no, 'petro', space_no: nil, types: [:str, :str]).must_equal 1
       user_class.by_pk('petro').must_be_nil
     end
 
@@ -416,7 +416,7 @@ shared_examples_for :record do
       user_class.by_pk('ruden').must_be_nil
 
       user_class.by_pk('petro').attributes.must_equal petro.merge(apples_count: 0)
-      user_class.call('box.delete', user_class.space_no, 'petro', space_no: nil)[0].
+      user_class.call('box.delete', user_class.space_no, 'petro', space_no: nil, types: [:str, :str])[0].
         attributes.must_equal petro.merge(apples_count: 0)
       user_class.by_pk('petro').must_be_nil
     end
