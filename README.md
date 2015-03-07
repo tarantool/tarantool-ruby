@@ -1,6 +1,6 @@
 # About
 
-Its ruby client for [Tarantool Key-Value Storage](http://github.com/mailru/tarantool).
+Its ruby client for [Tarantool](http://github.com/tarantool/tarantool).
 
 # Install
 
