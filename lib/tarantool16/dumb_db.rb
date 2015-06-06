@@ -65,7 +65,7 @@ module Tarantool16
 
     def delete(sno, key, opts = {})
       ino = opts[:index]
-      need_hash = opts[:hash] || tkey.is_a?(Hash)
+      need_hash = opts[:hash] || key.is_a?(Hash)
       _delete(sno, ino, key, need_hash, RETURN_OR_RAISE)
     end
 
@@ -73,6 +73,10 @@ module Tarantool16
       ino = opts[:index]
       need_hash = opts[:hash] || key.is_a?(Hash)
       _update(sno, ino, key, ops, need_hash, RETURN_OR_RAISE)
+    end
+
+    def call(name, args)
+      _call(name, args, RETURN_OR_RAISE)
     end
 
     def _synchronized
