@@ -82,9 +82,12 @@ module Tarantool16
         pints = pass1.unpack('L*')
         sints = scramble.unpack('L*')
         pints.size.times{|i| sints[i] ^= pints[i] }
+        packed = sints.pack('L*')
+        # tarantool waits packed as a string, so that force msgpack to pack as string
+        packed.force_encoding('utf-8')
         format_request(REQUEST_TYPE_AUTHENTICATE, next_sync, {
           IPROTO_USER_NAME => user,
-          IPROTO_TUPLE => [ 'chap-sha1', sints.pack('L*') ]
+          IPROTO_TUPLE => [ 'chap-sha1', packed ]
         })
       end
 

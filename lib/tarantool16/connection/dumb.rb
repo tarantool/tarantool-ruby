@@ -7,7 +7,7 @@ module Tarantool16
 
       def initialize(host, opts = {})
         _init_common(host, opts)
-        @nbuf = "\x00".b * 5
+        @nbuf = "\x00\x00\x00\x00\x00".force_encoding('BINARY')
         @reconnect_time = now_f - 1
         @socket = nil
         _connect
