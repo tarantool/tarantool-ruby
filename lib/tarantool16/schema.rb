@@ -124,7 +124,7 @@ module Tarantool16
       elsif index = @index_names[ino]
         yield index.pos, index.map_key(key)
       else
-        cb.call(Option.error(SchemaError, "Could not find index #{ino} for spacefor fields #{key.keys}"))
+        cb.call(Option.error(SchemaError, "Could not find index #{ino} for fields #{Hash===key ? key.keys : key.inspect} in #{name_sid}"))
       end
     end
 
