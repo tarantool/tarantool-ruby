@@ -69,6 +69,8 @@ class Spawn
     run
     s = TCPSocket.new '127.0.0.1', @admin_port
     s.send("reseed()\n", 0)
+    sleep(0.001)
+    s.read_nonblock(1000)
     s.close
   end
 
