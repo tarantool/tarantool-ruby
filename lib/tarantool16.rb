@@ -5,7 +5,7 @@ module Tarantool16
   autoload :DumbDB, 'tarantool16/dumb_db'
   def self.new(opts = {})
     opts = opts.dup
-    hosts = opts[:host]
+    hosts = [opts[:host], opts[:port]].compact.join(':')
     type = opts[:type] && opts[:type].to_s || 'dumb'
     case type
     when 'dumb'
