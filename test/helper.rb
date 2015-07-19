@@ -62,14 +62,14 @@ class Spawn
     Dir.chdir(@dir) do
       @pid = spawn(@binary, 'config.lua', {out: log, err: log})
     end
-    sleep(0.2)
+    sleep(0.25)
   end
 
   def reseed
     run
     s = TCPSocket.new '127.0.0.1', @admin_port
     s.send("reseed()\n", 0)
-    sleep(0.001)
+    sleep(0.004)
     s.read_nonblock(1000)
     s.close
   end
@@ -107,6 +107,27 @@ class Spawn
   at_exit do
     CONF.each_key{|name| clear(name)}
     FileUtils.rm_rf(File.join(DIR, "run"))
+  end
+end
+
+class Object
+  def deep_freeze
+    case self
+    when String
+      freeze
+    when Array
+      each{|v| v.deep_freeze}
+      freeze
+    when Hash
+      each_value{|v| v.deep_freeze}
+      freeze
+    else
+      if respond_to?(:freeze)
+        freeze
+      else
+        self
+      end
+    end
   end
 end
 

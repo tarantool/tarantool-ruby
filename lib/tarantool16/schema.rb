@@ -215,7 +215,7 @@ module Tarantool16
       attr :name, :pos, :parts, :type, :part_names, :part_positions
       ITERS = {
         tree:   (ITERATOR_EQ..ITERATOR_GT).freeze,
-        hash:   [ITERATOR_ALL, ITERATOR_EQ, ITERATOR_GT].freeze,
+        hash:   [ITERATOR_ALL, ITERATOR_EQ].freeze,
         bitset: [ITERATOR_ALL, ITERATOR_EQ, ITERATOR_BITS_ALL_SET,
                  ITERATOR_BITS_ANY_SET, ITERATOR_BITS_ALL_NOT_SET].freeze,
         rtree:  [ITERATOR_ALL, ITERATOR_EQ, ITERATOR_GT, ITERATOR_GE, ITERATOR_LT, ITERATOR_LE,

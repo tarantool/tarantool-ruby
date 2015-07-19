@@ -7,7 +7,9 @@ box.cfg{
 if not box.space.test then
     local s1 = box.schema.space.create('test', {id = 513, if_not_exists = true})
     local ip = s1:create_index('primary', {type = 'hash', parts = {1, 'NUM'}, if_not_exists = true})
-    local iname = s1:create_index('name', {type = 'hash', parts = {2, 'STR'}, if_not_exists = true})
+    local iname = s1:create_index('name', {type = 'tree', parts = {2, 'STR'}, if_not_exists = true})
+    local irtree = s1:create_index('point', {type = 'rtree', unique=false, parts = {3, 'ARRAY'}, if_not_exists = true})
+    local ipname = s1:create_index('id_name', {type = 'tree', parts = {1, 'NUM', 2, 'STR'}})
 end
 
 function reseed()
