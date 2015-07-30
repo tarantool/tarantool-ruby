@@ -7,7 +7,6 @@ module Tarantool16
 
       def initialize(host, opts = {})
         _init_common(host, opts)
-        @nbuf = "\x00\x00\x00\x00\x00".force_encoding('BINARY')
         @reconnect_time = now_f - 1
         @socket = nil
         _connect
@@ -69,6 +68,7 @@ module Tarantool16
         unless greeting && greeting.bytesize == IPROTO_GREETING_SIZE
           raise Disconnected, "mailformed greeting #{greeting.inspect}"
         end
+        @nbuf = "\x00\x00\x00\x00\x00".force_encoding('BINARY')
         parse_greeting greeting
         authenticate if @user
       rescue ::Errno::ECONNREFUSED, ::Errno::EPIPE, Disconnected => e
