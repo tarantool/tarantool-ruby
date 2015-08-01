@@ -70,17 +70,15 @@ module Tarantool16
       @indices && !@indices.empty?
     end
 
-    def get_ino(ino, key, iter, cb)
+    def get_ino(ino, key, _iter, cb)
       if ino.nil?
         unless key.is_a?(Hash)
           opt = Option.error(SchemaError, "Could not detect index without field names and iterator: #{key.inspect} in #{name_sid}")
           return cb.call(opt)
         end
-        unless iter.is_a?(Integer)
-          iter = ::Tarantool16.iter(iter)
-        end
         # key should be Hash here
         keys = key.keys
+        keys << _iter
         _ino = @_fields_2_ino[keys]
         if _ino
           ind = @indices[_ino]
@@ -89,6 +87,8 @@ module Tarantool16
           opt = Option.error(SchemaError, "Could not detect index for fields #{key.keys} in #{name_sid}")
           return cb.call(opt)
         end
+        keys.pop
+        iter = _iter.is_a?(Integer) ? _iter : ::Tarantool16.iter(iter)
 
         fields = keys.map{|fld|
           case fld
@@ -105,7 +105,7 @@ module Tarantool16
         for ind in @indices
           next unless ind
           first_fields = ind.parts[0,fields.size]
-          if ind.can_iterator?(iter)
+          if ind.can_iterator?(iter, fields.size)
             if fields == first_fields
               index = ind
               break
@@ -114,6 +114,7 @@ module Tarantool16
             end
           end
         end
+        keys << _iter
         if index
           @_fields_2_ino[keys.freeze] = index.pos
           yield index.pos, index.map_key(key)
@@ -189,7 +190,15 @@ module Tarantool16
           _op[1] = @field_names[_1].pos
           _op
         when Array
-          _1.dup.insert(1, @field_names[op[0]].pos)
+          fld_pos = case op[0]
+                when Integer
+                  op[0]
+                when Symbol, String
+                  @field_names[op[0]].pos
+                else
+                  raise "No field #{op[0].inspect} in #{name_sid}"
+                end
+          _1.dup.insert(1, fld_pos)
         end
       end
     end
@@ -236,8 +245,18 @@ module Tarantool16
         }
       end
 
-      def can_iterator?(iter)
-        @iters.include?(iter)
+      def can_iterator?(iter, flds_cnt)
+        @iters.include?(iter) && begin
+          if iter == ITERATOR_ALL
+            true
+          elsif @type == :hash && flds_cnt == @parts.count
+            true
+          elsif flds_cnt == 1
+            true
+          else
+            false
+          end
+        end
       end
 
       def map_key(key)

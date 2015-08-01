@@ -160,7 +160,13 @@ module Tarantool16
     def _select(sno, ino, key, offset, limit, iterator, need_hash, cb)
       key = [] if key.nil?
       ino = 0 if ino.nil? && key.is_a?(Array)
-      iterator = ::Tarantool16.iter(iterator) unless iterator.is_a?(Integer)
+      unless iterator.is_a?(Integer)
+        if key.empty? && (Array === key || Hash === key)
+          iterator = ITERATOR_ALL
+        else
+          iterator = ::Tarantool16.iter(iterator)
+        end
+      end
       if sno.is_a?(Integer) && ino.is_a?(Integer) && (key.is_a?(Array) || key.nil?)
         return conn._select(sno, ino, key, offset, limit, iterator, cb)
       end

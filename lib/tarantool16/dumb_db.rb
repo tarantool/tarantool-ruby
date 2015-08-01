@@ -20,36 +20,16 @@ module Tarantool16
       offset = opts[:offset] || 0
       limit = opts[:limit] || 2**30
       iterator = opts[:iterator]
-      need_hash = opts[:hash]
-      key = case key
-            when nil
-              []
-            when Array
-              key
-            when Hash
-              need_hash = true
-              key
-            else
-              [key]
-            end
+      need_hash = opts.fetch(:hash, Hash === key)
+      key = _norm_key(key)
       _select(sno, ino, key, offset, limit, iterator, need_hash, RETURN_OR_RAISE)
     end
 
     def get(sno, key, opts={})
       ino = opts[:index]
       iterator = opts[:iterator]
-      need_hash = opts[:hash]
-      key = case key
-            when nil
-              []
-            when Array
-              key
-            when Hash
-              need_hash = true
-              key
-            else
-              [key]
-            end
+      need_hash = opts.fetch(:hash, Hash === key)
+      key = _norm_key(key)
       _select(sno, ino, key, 0, 1, iterator, need_hash, RETURN_ONE_OR_RAISE)
     end
 
@@ -64,14 +44,18 @@ module Tarantool16
     end
 
     def delete(sno, key, opts = {})
-      ino = opts[:index]
-      need_hash = opts[:hash] || key.is_a?(Hash)
+      key_hash = Hash === key
+      ino = opts[:index] || (key_hash ? nil : 0)
+      need_hash = opts.fetch(:hash, key_hash)
+      key = _norm_key(key)
       _delete(sno, ino, key, need_hash, RETURN_OR_RAISE)
     end
 
     def update(sno, key, ops, opts = {})
-      ino = opts[:index]
-      need_hash = opts[:hash] || key.is_a?(Hash)
+      key_hash = Hash === key
+      ino = opts[:index] || (key_hash ? nil : 0)
+      need_hash = opts.fetch(:hash, key_hash)
+      key = _norm_key(key)
       _update(sno, ino, key, ops, need_hash, RETURN_OR_RAISE)
     end
 
@@ -81,6 +65,17 @@ module Tarantool16
 
     def _synchronized
       yield
+    end
+
+    def _norm_key(key)
+      case key
+      when Array
+        key
+      when Hash
+        key
+      else
+        [key]
+      end
     end
 
     class SchemaFuture

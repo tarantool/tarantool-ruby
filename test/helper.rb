@@ -62,15 +62,33 @@ class Spawn
     Dir.chdir(@dir) do
       @pid = spawn(@binary, 'config.lua', {out: log, err: log})
     end
-    sleep(0.25)
+    100.times do
+      begin
+        TCPSocket.new('127.0.0.1', @admin_port).close
+        return
+      rescue Errno::ECONNREFUSED
+        sleep(0.02)
+      end
+    end
+    raise "NOT CONNECTED"
   end
 
   def reseed
     run
     s = TCPSocket.new '127.0.0.1', @admin_port
+    begin
+      sleep(0.0005)
+      s.read_nonblock(1000)
+    rescue Errno::EWOULDBLOCK
+      retry
+    end
     s.send("reseed()\n", 0)
-    sleep(0.004)
-    s.read_nonblock(1000)
+    begin
+      sleep(0.0005)
+      s.read_nonblock(1000)
+    rescue Errno::EWOULDBLOCK
+      retry
+    end
     s.close
   end
 

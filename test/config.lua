@@ -15,8 +15,8 @@ end
 function reseed()
     local s1 = box.space.test
     s1:truncate()
-    s1:insert{1, "hello", {1, 2}}
-    s1:insert{2, "world", {3, 4}}
+    s1:insert{1, "hello", {1, 2}, 100}
+    s1:insert{2, "world", {3, 4}, 200}
 end
 
 pcall(function()
