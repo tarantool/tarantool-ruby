@@ -129,10 +129,10 @@ module Tarantool16
         elsif code == nil
           return Option.error(nil, UnexpectedResponse, "Mailformed response: no code for sync=#{sync}")
         end
-        unless @u.buffer.empty?
+        begin
           bmap = @u.read
           body = bmap[IPROTO_DATA] || bmap[IPROTO_ERROR]
-        else
+        rescue EOFError
           body = nil
         end
         Option.ok(sync, code, body)
