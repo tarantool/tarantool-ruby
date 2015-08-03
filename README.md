@@ -69,6 +69,10 @@ tar.update(:_space, {name: 'test'}, {format: [:=, [{name: :id, type: :num}, {nam
 
 ```
 
+## Changelog
+
+0.0.6 - DumbConnection supports timeouts
+
 ## Contributing
 
 1. Fork it ( https://github.com/funny-falcon/tarantool16/fork )
