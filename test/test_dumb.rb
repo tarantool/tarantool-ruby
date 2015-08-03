@@ -2,7 +2,7 @@ require_relative 'helper'
 
 describe 'DumbConnection' do
   before { Spawn.reseed }
-  let(:db) { Tarantool16.new host: 'localhost:16788' }
+  let(:db) { Tarantool16.new host: 'localhost:16788', timeout: 0.1 }
   let(:r1) { [1, 'hello', [1,2], 100].deep_freeze }
   let(:r2) { [2, 'world', [3,4], 200].deep_freeze }
   let(:r3) { [3, 'wicky', [7,10], 300].deep_freeze }
@@ -99,6 +99,25 @@ describe 'DumbConnection' do
     it "should update" do
       db.update(:test, {id: 1}, [[:+, :count, 1]]).must_equal [hwith(h1, :count, 101)]
       db.update(:test, {name: "world"}, {count:  [:+, 1]}).must_equal [hwith(h2, :count, 201)]
+    end
+  end
+
+  describe "timeouts" do
+    it "should timeout on connect" do
+      Spawn.with_pause do
+        proc {
+          db.get(:test, 1)
+        }.must_raise Tarantool16::Connection::CouldNotConnect
+      end
+    end
+
+    it "should timeout on request" do
+      db.get(:test, 1)
+      Spawn.with_pause do
+        proc {
+          db.get(:test, 1)
+        }.must_raise Tarantool16::Connection::Timeout
+      end
     end
   end
 end

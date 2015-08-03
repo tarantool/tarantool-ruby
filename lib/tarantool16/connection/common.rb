@@ -10,6 +10,7 @@ module Tarantool16
     class ConnectionError < Error; end
     class CouldNotConnect < ConnectionError; end
     class Disconnected < ConnectionError; end
+    class Timeout < ConnectionError; end
     class Retry < ConnectionError; end
     class UnexpectedResponse < Error; end
 
@@ -31,6 +32,7 @@ module Tarantool16
         else
           @reconnect = false
         end
+        @timeout = opts[:timeout]
         @p = MessagePack::Packer.new
         @u = MessagePack::Unpacker.new
         @s = 0
@@ -139,8 +141,12 @@ module Tarantool16
       end
 
       def host_port
-        h, p = @host.split(':')
-        [h, p.to_i]
+        @host =~ /^(.*):([^:]+)$/
+        [$1, $2.to_i]
+      end
+
+      def _ipv6?
+        @host.count(':') > 1
       end
 
       def _insert(space_no, tuple, cb)

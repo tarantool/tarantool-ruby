@@ -73,6 +73,13 @@ class Spawn
     raise "NOT CONNECTED"
   end
 
+  def with_pause
+    Process.kill('STOP', @pid)
+    yield
+  ensure
+    Process.kill('CONT', @pid)
+  end
+
   def reseed
     run
     s = TCPSocket.new '127.0.0.1', @admin_port
@@ -108,6 +115,10 @@ class Spawn
 
   def self.reseed(what=:main)
     inst(what).reseed
+  end
+
+  def self.with_pause(what=:main)
+    inst(what).with_pause{ yield }
   end
 
   def self.stop(what=:main)
