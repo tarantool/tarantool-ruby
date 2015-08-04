@@ -24,6 +24,7 @@ module Tarantool16
         written = true
         response = _read_response
       rescue ::Errno::EPIPE, Retry => e
+        @socket.close rescue nil
         @socket = nil
         if !written && @retry && @reconnect
           @retry = false

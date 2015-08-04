@@ -76,6 +76,8 @@ module Tarantool16
         str.setbyte(2, sz>>16)
         str.setbyte(1, sz>>24)
         str
+      ensure
+        @p.clear
       end
 
       def format_authenticate(user, pass1, salt)
@@ -106,6 +108,7 @@ module Tarantool16
         end
         n
       rescue ::MessagePack::UnpackError, ::MessagePack::TypeError => e
+        @u.reset
         e
       end
 
@@ -137,6 +140,7 @@ module Tarantool16
         end
         Option.ok(sync, code, body)
       rescue ::MessagePack::UnpackError, ::MessagePack::TypeError => e
+        @u.reset
         Option.error(sync, e, nil)
       end
 
