@@ -71,6 +71,7 @@ tar.update(:_space, {name: 'test'}, {format: [:=, [{name: :id, type: :num}, {nam
 
 ## Changelog
 
+0.0.7 - Implement EVAL, fix REPLACE
 0.0.6 - DumbConnection supports timeouts
 
 ## Contributing
