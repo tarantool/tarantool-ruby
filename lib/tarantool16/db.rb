@@ -197,6 +197,10 @@ module Tarantool16
       conn._call(name, args, cb)
     end
 
+    def _eval(expr, args, cb)
+      conn._eval(expr, args, cb)
+    end
+
     def _ping(cb)
       conn._ping(cb)
     end

@@ -64,6 +64,10 @@ describe 'DumbConnection' do
     db.delete(:test, "world", index: 1).must_equal [r2]
   end
 
+  it "should eval" do
+    db.eval("local a, b = ... ; return a + b", [1, 2]).must_equal [3]
+  end
+
   describe "with field names" do
     before {
       db.define_fields(:test, [[:id, :int], [:name, :str], [:point, :array], [:count, :int]])

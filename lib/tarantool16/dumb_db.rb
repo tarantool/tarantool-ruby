@@ -63,6 +63,10 @@ module Tarantool16
       _call(name, args, RETURN_OR_RAISE)
     end
 
+    def eval(expr, args)
+      _eval(expr, args, RETURN_OR_RAISE)
+    end
+
     def _synchronized
       yield
     end

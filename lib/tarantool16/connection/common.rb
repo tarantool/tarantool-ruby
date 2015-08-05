@@ -200,6 +200,12 @@ module Tarantool16
         send_request(REQUEST_TYPE_CALL, req, cb)
       end
 
+      def _eval(expr, args, cb)
+        req = {IPROTO_EXPR => expr,
+               IPROTO_TUPLE => args}
+        send_request(REQUEST_TYPE_EVAL, req, cb)
+      end
+
       REQ_EMPTY = {}.freeze
       def _ping(cb)
         send_request(REQUEST_TYPE_PING, REQ_EMPTY, cb)
