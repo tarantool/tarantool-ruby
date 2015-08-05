@@ -140,7 +140,7 @@ module Tarantool16
       _with_space(sno, cb) do |sp|
         _tuple = tuple.is_a?(Hash) ? sp.map_tuple(tuple) : tuple
         _cb = need_hash ? sp.wrap_cb(cb) : cb
-        conn.insert(sp.sid, _tuple, _cb)
+        conn._replace(sp.sid, _tuple, _cb)
       end
     end
 
