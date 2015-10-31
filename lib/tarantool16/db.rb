@@ -114,7 +114,14 @@ module Tarantool16
 
     def _fill_indices(spaces, rows)
       rows.
-        map{|row| [row[0], [row[2], row[1], row[3], 6.step(row.size-1, 2).map{|i| row[i]}]]}.
+        map{|row|
+          if row[4].is_a? Hash
+            # new format
+            [row[0], [row[2], row[1], row[3], row[5].map(&:first)]]
+          else
+            [row[0], [row[2], row[1], row[3], 6.step(row.size-1, 2).map{|i| row[i]}]]
+          end
+        }.
         group_by{|sid, _| sid}.
         each do |sid, inds|
           sp = spaces[sid]
