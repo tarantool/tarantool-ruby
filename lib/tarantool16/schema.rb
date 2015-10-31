@@ -260,7 +260,7 @@ module Tarantool16
       end
 
       def map_key(key)
-        return key if key.is_a?(Array)
+        return key if key.is_a?(Array) || key.nil?
         res = []
         positions = @part_positions
         key.each_key do |k|
