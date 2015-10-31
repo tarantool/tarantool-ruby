@@ -59,6 +59,13 @@ describe 'DumbConnection' do
     db.update(:test, "world", {1 => [':', 6, 0, '!']}, index: 1).must_equal [rwith(r2,1,"world!")]
   end
 
+  it "should upsert" do
+    db.upsert(:test1, [1, 'hallo', [7,5], 999], [[:+, 3, 1]])
+    db.select(:test1, 1).must_equal [rwith(r1,3,101)]
+    db.upsert(:test1, r3, [[:+, 3, 1]])
+    db.select(:test1, 3).must_equal [r3]
+  end
+
   it "should delete" do
     db.delete(:test, 1).must_equal [r1]
     db.delete(:test, "world", index: 1).must_equal [r2]

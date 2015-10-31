@@ -59,6 +59,12 @@ module Tarantool16
       _update(sno, ino, key, ops, need_hash, RETURN_OR_RAISE)
     end
 
+    def upsert(sno, tuple_key, ops, opts = {})
+      ino = opts[:index] || 0
+      need_hash = opts.fetch(:hash, Hash === tuple_key)
+      _upsert(sno, ino, tuple_key, ops, need_hash, RETURN_OR_RAISE)
+    end
+
     def call(name, args)
       _call(name, args, RETURN_OR_RAISE)
     end

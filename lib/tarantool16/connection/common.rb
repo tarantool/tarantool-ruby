@@ -194,6 +194,14 @@ module Tarantool16
         send_request(REQUEST_TYPE_UPDATE, req, cb)
       end
 
+      def _upsert(space_no, index_no, tuple_key, ops, cb)
+        req = {IPROTO_SPACE_ID => space_no,
+               IPROTO_INDEX_ID => index_no,
+               IPROTO_TUPLE => tuple_key,
+               IPROTO_DEF_DUPLE => ops}
+        send_request(REQUEST_TYPE_UPSERT, req, cb)
+      end
+
       def _call(name, args, cb)
         req = {IPROTO_FUNCTION_NAME => name,
                IPROTO_TUPLE => args}

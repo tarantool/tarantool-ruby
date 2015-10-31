@@ -200,6 +200,22 @@ module Tarantool16
       end
     end
 
+    def _upsert(sno, ino, tuple_key, ops, need_hash, cb)
+      ino = 0 if ino.nil?
+      ops_good = ops.is_a?(Array) && ops.all?{|a| ops[1].is_a?(Integer)}
+      if sno.is_a?(Integer) && ino.is_a?(Integer) && tuple_key.is_a?(Array) && ops_good
+        return conn._upsert(sno, ino, tuple_key, ops, cb)
+      end
+      _with_space(sno, cb) do |sp|
+        _tuple = tuple_key.is_a?(Hash) ? sp.map_tuple(tuple_key) : tuple_key
+        sp.get_ino(ino, nil, ITERATOR_EQ, cb) do |_ino, _key|
+          _ops = ops_good ? ops : sp.map_ops(ops)
+          _cb = need_hash ? sp.wrap_cb(cb) : cb
+          conn._upsert(sp.sid, _ino, tuple_key, _ops, _cb)
+        end
+      end
+    end
+
     def _call(name, args, cb)
       conn._call(name, args, cb)
     end
