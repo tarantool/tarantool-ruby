@@ -187,7 +187,7 @@ module Tarantool16
 
     def _update(sno, ino, key, ops, need_hash, cb)
       ino = 0 if ino.nil? && key.is_a?(Array)
-      ops_good = ops.is_a?(Array) && ops.all?{|a| ops[1].is_a?(Integer)}
+      ops_good = ops.is_a?(Array) && ops.all?{|a| a[1].is_a?(Integer)}
       if sno.is_a?(Integer) && ino.is_a?(Integer) && key.is_a?(Array) && ops_good
         return conn._update(sno, ino, key, ops, cb)
       end
@@ -202,7 +202,7 @@ module Tarantool16
 
     def _upsert(sno, ino, tuple_key, ops, need_hash, cb)
       ino = 0 if ino.nil?
-      ops_good = ops.is_a?(Array) && ops.all?{|a| ops[1].is_a?(Integer)}
+      ops_good = ops.is_a?(Array) && ops.all?{|a| a[1].is_a?(Integer)}
       if sno.is_a?(Integer) && ino.is_a?(Integer) && tuple_key.is_a?(Array) && ops_good
         return conn._upsert(sno, ino, tuple_key, ops, cb)
       end
