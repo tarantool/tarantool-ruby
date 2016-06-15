@@ -20,6 +20,7 @@ module Tarantool16
       def _init_common(host, opts)
         @host = host
         @user = opts[:user]
+        @socketfile = opts[:socketfile]
         if opts[:password]
           @passwd = ::OpenSSL::Digest::SHA1.digest(opts[:password])
         end

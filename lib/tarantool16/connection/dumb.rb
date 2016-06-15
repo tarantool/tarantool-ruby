@@ -68,16 +68,21 @@ module Tarantool16
         unless could_be_connected?
           raise Disconnected, "connection is closed"
         end
-        @socket = Socket.new((_ipv6? ? Socket::AF_INET6 : Socket::AF_INET), Socket::SOCK_STREAM)
-        @socket.setsockopt(::Socket::IPPROTO_TCP, ::Socket::TCP_NODELAY, 1)
-        @socket.sync = true
-        sockaddr = Socket.pack_sockaddr_in(*host_port.reverse)
-        @retry = @reconnect
-        if @timeout
-          _connect_nonblock(sockaddr)
+        if @socketfile.nil?
+          @socket = Socket.new((_ipv6? ? Socket::AF_INET6 : Socket::AF_INET), Socket::SOCK_STREAM)
+          @socket.setsockopt(::Socket::IPPROTO_TCP, ::Socket::TCP_NODELAY, 1)
+          @socket.sync = true
+          sockaddr = Socket.pack_sockaddr_in(*host_port.reverse)
+          @retry = @reconnect
+          if @timeout
+            _connect_nonblock(sockaddr)
+          else
+            @socket.connect(sockaddr)
+          end
         else
-          @socket.connect(sockaddr)
+          @socket = Socket.unix(@socketfile)
         end
+
         greeting = _read(IPROTO_GREETING_SIZE)
         unless greeting && greeting.bytesize == IPROTO_GREETING_SIZE
           raise Disconnected, "mailformed greeting #{greeting.inspect}"
