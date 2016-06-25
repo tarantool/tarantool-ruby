@@ -68,8 +68,9 @@ module Tarantool16
         unless could_be_connected?
           raise Disconnected, "connection is closed"
         end
-        if  @host.rindex(/unix:\/.+/) == 0
-          @socket = Socket.unix(@host.match('unix:/*(/.+)')[1])
+        if @host =~ /\Aunix:(.+)\z/
+          path = $1
+          @socket = Socket.unix(path)
         else
           @socket = Socket.new((_ipv6? ? Socket::AF_INET6 : Socket::AF_INET), Socket::SOCK_STREAM)
           @socket.setsockopt(::Socket::IPPROTO_TCP, ::Socket::TCP_NODELAY, 1)

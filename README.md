@@ -29,6 +29,8 @@ require 'tarantool16'
 
 db = Tarantool16.new host:'localhost:33013'
 #db = Tarantool16.new host:'localhost:33013', user:'tester', password:'testpass'
+#db = Tarantool16.new host:'unix:../relative/path.sock'
+#db = Tarantool16.new host:'unix:/absolute/path.sock'
 
 # select from '_space' space info about 'test' table
 # returns array of tuples as an array
