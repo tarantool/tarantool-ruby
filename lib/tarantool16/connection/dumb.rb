@@ -204,7 +204,16 @@ module Tarantool16
         end
       end
 
-      if defined?(Kgio)
+      if RUBY_VERSION.split('.').map(&:to_i) >= [2,3]
+        EXCEPTION_FALSE = {exception: false}.freeze
+        def _read_nonblock(n, buf)
+          if buf
+            @socket.read_nonblock(n, buf, EXCEPTION_FALSE)
+          else
+            @socket.read_nonblock(n, EXCEPTION_FALSE)
+          end
+        end
+      elsif defined?(Kgio)
         def _read_nonblock(n, buf)
           return buf ? Kgio.tryread(@socket, n, buf) : Kgio.tryread(@socket, n)
         end
