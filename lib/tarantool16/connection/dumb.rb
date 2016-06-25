@@ -130,7 +130,13 @@ module Tarantool16
               req = req[n..-1]
             end
           rescue IO::WaitWritable
-            _wait_writable(expire - now_f)
+            nf = now_f
+            if expire <= nf
+              raise Timeout, "response timeouted"
+            else
+              _wait_writable(expire - nf)
+              retry
+            end
           rescue Errno::EINTR
             retry
           end
