@@ -30,7 +30,9 @@ require 'tarantool16'
 db = Tarantool16.new host:'localhost:33013'
 #db = Tarantool16.new host:'localhost:33013', user:'tester', password:'testpass'
 #db = Tarantool16.new host:'unix:../relative/path.sock'
+#db = Tarantool16.new unix:'../relative/path.sock'
 #db = Tarantool16.new host:'unix:/absolute/path.sock'
+#db = Tarantool16.new unix:'/absolute/path.sock'
 
 # select from '_space' space info about 'test' table
 # returns array of tuples as an array
@@ -73,6 +75,8 @@ tar.update(:_space, {name: 'test'}, {format: [:=, [{name: :id, type: :num}, {nam
 
 ## Changelog
 
+0.0.9 - Fix detection of update operation shape
+        Add unix socket connection.
 0.0.8 - Fix schema read from new tarantool versions
         Implement UPSERT
 0.0.7 - Implement EVAL, fix REPLACE
