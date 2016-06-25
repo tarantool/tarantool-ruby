@@ -204,7 +204,7 @@ module Tarantool16
         end
       end
 
-      if RUBY_VERSION.split('.').map(&:to_i) >= [2,3]
+      if (RUBY_VERSION.split('.').map(&:to_i) <=> [2,1]) >= 0
         EXCEPTION_FALSE = {exception: false}.freeze
         def _read_nonblock(n, buf)
           if buf
