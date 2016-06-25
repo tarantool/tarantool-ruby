@@ -68,10 +68,9 @@ module Tarantool16
         unless could_be_connected?
           raise Disconnected, "connection is closed"
         end
-        if @host =~ /\Aunix:(.+)\z/
-          path = $1
-          @socket = Socket.unix(path)
-        else
+        if _unix?
+          @socket = Socket.unix(_unix_sock_path)
+        elsif _tcp?
           @socket = Socket.new((_ipv6? ? Socket::AF_INET6 : Socket::AF_INET), Socket::SOCK_STREAM)
           @socket.setsockopt(::Socket::IPPROTO_TCP, ::Socket::TCP_NODELAY, 1)
           @socket.sync = true
@@ -82,6 +81,8 @@ module Tarantool16
           else
             @socket.connect(sockaddr)
           end
+        else
+          raise "unsupported host option: #{@host.inspect}"
         end
 
         greeting = _read(IPROTO_GREETING_SIZE)

@@ -5,11 +5,19 @@ module Tarantool16
   autoload :DumbDB, 'tarantool16/dumb_db'
   def self.new(opts = {})
     opts = opts.dup
-    if opts[:unix]
-      raise "`:host` and `:unix` options are mutually exclusive"
-      opts[:host] = "unix:#{opts.delete(:unix)}"
+    if opts[:unix] && opts[:host]
+        raise "`:host` and `:unix` options are mutually exclusive"
+    elsif opts[:unix]
+      hosts = ["unix", opts[:unix]]
+    elsif opts[:host]
+      host = opts[:host]
+      if Array === host
+        hosts = host
+      else
+        host = [host, opts[:port]].compact.join(':')
+        hosts = ["tcp", host]
+      end
     end
-    hosts = [opts[:host], opts[:port]].compact.join(':')
     type = opts[:type] && opts[:type].to_s || 'dumb'
     case type
     when 'dumb'

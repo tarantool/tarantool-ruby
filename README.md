@@ -29,10 +29,9 @@ require 'tarantool16'
 
 db = Tarantool16.new host:'localhost:33013'
 #db = Tarantool16.new host:'localhost:33013', user:'tester', password:'testpass'
-#db = Tarantool16.new host:'unix:../relative/path.sock'
-#db = Tarantool16.new unix:'../relative/path.sock'
-#db = Tarantool16.new host:'unix:/absolute/path.sock'
-#db = Tarantool16.new unix:'/absolute/path.sock'
+#db = Tarantool16.new host:['tcp','localhost:33013']
+#db = Tarantool16.new host:['unix','path/to.sock']
+#db = Tarantool16.new unix:'path/to.sock'
 
 # select from '_space' space info about 'test' table
 # returns array of tuples as an array
@@ -75,6 +74,10 @@ tar.update(:_space, {name: 'test'}, {format: [:=, [{name: :id, type: :num}, {nam
 
 ## Changelog
 
+0.0.11 - change a way of unix socket option.
+        since previos scheme were introduced 12 hours ago,
+        i think it is still safe to change it.
+0.0.10 - a bit of fixes
 0.0.9 - Fix detection of update operation shape
         Add unix socket connection.
 0.0.8 - Fix schema read from new tarantool versions

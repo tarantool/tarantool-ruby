@@ -144,13 +144,25 @@ module Tarantool16
         Option.error(sync, e, nil)
       end
 
+      def _unix?
+        @host[0] == 'unix' || @host[0] == :unix
+      end
+
+      def _tcp?
+        @host[0] == 'tcp' || @host[0] == :tcp
+      end
+
+      def _unix_sock_path
+        @host[1]
+      end
+
       def host_port
-        @host =~ /^(.*):([^:]+)$/
+        @host[1] =~ /^(.*):([^:]+)$/
         [$1, $2.to_i]
       end
 
       def _ipv6?
-        @host.count(':') > 1
+        @host[1].count(':') > 1
       end
 
       def _insert(space_no, tuple, cb)
