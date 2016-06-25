@@ -1,4 +1,4 @@
-Copyright (c) 2014 Sokolov Yura aka funny_falcon
+Copyright (c) 2014-2016 Sokolov Yura aka funny_falcon
 
 MIT License
 
