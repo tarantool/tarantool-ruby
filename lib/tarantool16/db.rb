@@ -69,7 +69,7 @@ module Tarantool16
             _synchronized do
               _fill_spaces(r.data)
               spaces = @spaces
-              _select(SPACE_INDEX, 0, [], 0, 2**30, :all, false, fill_indexes)
+              _select(SPACE_VINDEX, 0, [], 0, 2**30, :all, false, fill_indexes)
             end
           end
         end
@@ -87,7 +87,7 @@ module Tarantool16
             end
           end
         end
-        _select(SPACE_SPACE, 0, [], 0, 2**30, :all, false, fill_spaces)
+        _select(SPACE_VSPACE, 0, [], 0, 2**30, :all, false, fill_spaces)
         return future
       end
     end
