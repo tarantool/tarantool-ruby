@@ -9,7 +9,6 @@ module Tarantool16
       @future = nil
       @spaces = nil
       @defined_fields = {}
-      _fill_standard_spaces
       @conn = self.class::Connection.new(@host, @opts)
     end
 
@@ -26,14 +25,6 @@ module Tarantool16
         end
         sp.fields = fields
       end
-    end
-
-    def _fill_standard_spaces
-      rf = @defined_fields
-      rf[SPACE_INDEX] =
-        [%w{sid num}, %w{iid num}, %w{name str},
-         %w{type str}, %w{unique num}, %w{part_count num},
-         {name: 'parts', type: [:num, :str], tail: true}]
     end
 
     def _synchronized
