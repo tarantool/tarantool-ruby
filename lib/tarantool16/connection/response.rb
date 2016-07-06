@@ -23,7 +23,7 @@ module Tarantool16
         if code == 0
           new(sync, nil, data)
         else
-          new(sync, ::Tarantool16::DBError.with_code_message(code, data), nil)
+          new(sync, ::Tarantool16::DBError.with_code_message(code&(REQUEST_TYPE_ERROR-1), data), nil)
         end
       end
 
