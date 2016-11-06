@@ -69,6 +69,10 @@ module Tarantool16
       _call(name, args, RETURN_OR_RAISE)
     end
 
+    def call16(name, args)
+      _call16(name, args, RETURN_OR_RAISE)
+    end
+
     def eval(expr, args)
       _eval(expr, args, RETURN_OR_RAISE)
     end

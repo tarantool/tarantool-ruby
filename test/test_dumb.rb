@@ -71,6 +71,11 @@ describe 'DumbConnection' do
     db.delete(:test, "world", index: 1).must_equal [r2]
   end
 
+  it "should call" do
+    db.call("func1", [1]).must_equal [2]
+    db.call16("func1", [1]).must_equal [[2]]
+  end
+
   it "should eval" do
     db.eval("local a, b = ... ; return a + b", [1, 2]).must_equal [3]
   end
@@ -118,7 +123,7 @@ describe 'DumbConnection' do
       Spawn.with_pause do
         proc {
           db.get(:test, 1)
-        }.must_raise Tarantool16::Connection::CouldNotConnect
+        }.must_raise ::Tarantool16::Connection::CouldNotConnect
       end
     end
 
@@ -127,7 +132,7 @@ describe 'DumbConnection' do
       Spawn.with_pause do
         proc {
           db.get(:test, 1)
-        }.must_raise Tarantool16::Connection::Timeout
+        }.must_raise ::Tarantool16::Connection::Timeout
       end
     end
   end

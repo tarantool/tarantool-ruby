@@ -217,7 +217,13 @@ module Tarantool16
       def _call(name, args, cb)
         req = {IPROTO_FUNCTION_NAME => name,
                IPROTO_TUPLE => args}
-        send_request(REQUEST_TYPE_CALL, req, cb)
+        send_request(REQUEST_TYPE_CALL17, req, cb)
+      end
+
+      def _call16(name, args, cb)
+        req = {IPROTO_FUNCTION_NAME => name,
+               IPROTO_TUPLE => args}
+        send_request(REQUEST_TYPE_CALL16, req, cb)
       end
 
       def _eval(expr, args, cb)

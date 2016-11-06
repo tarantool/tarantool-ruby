@@ -211,6 +211,10 @@ module Tarantool16
       conn._call(name, args, cb)
     end
 
+    def _call16(name, args, cb)
+      conn._call16(name, args, cb)
+    end
+
     def _eval(expr, args, cb)
       conn._eval(expr, args, cb)
     end

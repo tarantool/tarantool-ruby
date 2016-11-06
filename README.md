@@ -1,6 +1,6 @@
 # Tarantool16
 
-This is adapter for [tarantool](http://tarantool.org) version 1.6.
+This is adapter for [tarantool](http://tarantool.org) version 1.6 and 1.7.
 
 (adapter for version <=1.5 is called [tarantool](https://github.org/tarantoool/tarantool-ruby))
 
@@ -74,6 +74,9 @@ tar.update(:_space, {name: 'test'}, {format: [:=, [{name: :id, type: :num}, {nam
 
 ## Changelog
 
+0.1.0 - breaking change: call now issues request in Tarantool17 format.
+        use call16 to issue `call` request to Tarantool16.
+	see tests for difference in returned results.
 0.0.11 - change a way of unix socket option.
         since previos scheme were introduced 12 hours ago,
         i think it is still safe to change it.
