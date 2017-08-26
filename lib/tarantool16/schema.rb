@@ -18,9 +18,10 @@ module Tarantool16
       @field_names = {}
       @fields = []
       @has_tail = false
-      flds.each_with_index do |fld, i|
+      flds.each_with_index do |fld, i; name|
         if @has_tail
-          raise "no fields allowed after tail: #{flds}"
+          $stderr.puts "no fields allowed after tail: #{flds}"
+          break
         end
         case fld
         when String, Symbol
@@ -33,7 +34,12 @@ module Tarantool16
           type = fld['type'] || fld[:type]
           tail = fld['tail'] || fld[:tail]
         end
+        unless name.is_a?(String) || name.is_a?(Symbol)
+          $stderr.puts "no field name found for field_#{i} in #{flds}"
+          name = "field_#{i}"
+        end
         name_s = name.to_sym
+        name = name.to_s
         field = Field.new(name_s, i, type)
         @field_names[name] = field
         @field_names[name_s] = field
@@ -41,6 +47,7 @@ module Tarantool16
         @fields << field
         @has_tail = true if tail
       end
+      # refresh indices ?
       if @index_defs
         self.indices= @index_defs
       end
