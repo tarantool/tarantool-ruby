@@ -96,34 +96,23 @@ module Tarantool16
       UNDEF = Object.new.freeze
       def initialize
         @r = UNDEF
-        @cb = nil
       end
       def then(cb)
         unless @r.equal? UNDEF
           return cb.call(@r)
         end
-        if @cb
-          raise "Blocking future accepts only 1 callback"
-        end
-        @cb = cb
+        raise "DumbDB::ShemaFuture future is not real future :-("
       end
 
       def then_blk
         unless @r.equal? UNDEF
           return yield @r
         end
-        if @cb
-          raise "Blocking future accepts only 1 callback"
-        end
-        @cb = lambda{|r| yield r}
+        raise "DumbDB::ShemaFuture future is not real future :-("
       end
 
       def set(r)
         @r = r
-        if cb = @cb
-          @cb = nil
-          cb.call(r)
-        end
       end
     end
 
