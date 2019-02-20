@@ -3,7 +3,7 @@ require 'minitest/spec'
 require 'fileutils'
 require 'tarantool16'
 require 'socket'
-
+Tarantool16::DumbDB # make sure to autoload before running tests
 
 class Spawn
   DIR = File.expand_path('..', __FILE__)
