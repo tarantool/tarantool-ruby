@@ -189,12 +189,12 @@ module Tarantool16
 
     def map_ops(ops)
       ops.map do |op|
-        case _1 = op[1]
+        case op1 = op[1]
         when Integer
           op
         when Symbol, String
           _op = op.dup
-          _op[1] = @field_names[_1].pos
+          _op[1] = @field_names[op1].pos
           _op
         when Array
           fld_pos = case op[0]
@@ -205,7 +205,7 @@ module Tarantool16
                 else
                   raise "No field #{op[0].inspect} in #{name_sid}"
                 end
-          _1.dup.insert(1, fld_pos)
+          op1.dup.insert(1, fld_pos)
         end
       end
     end
