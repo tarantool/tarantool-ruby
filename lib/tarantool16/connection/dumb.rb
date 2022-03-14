@@ -209,9 +209,9 @@ module Tarantool16
         EXCEPTION_FALSE = {exception: false}.freeze
         def _read_nonblock(n, buf)
           if buf
-            @socket.read_nonblock(n, buf, EXCEPTION_FALSE)
+            @socket.read_nonblock(n, buf, **EXCEPTION_FALSE)
           else
-            @socket.read_nonblock(n, EXCEPTION_FALSE)
+            @socket.read_nonblock(n, **EXCEPTION_FALSE)
           end
         end
       elsif defined?(Kgio)
